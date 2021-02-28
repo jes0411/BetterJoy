@@ -711,9 +711,13 @@ namespace BetterJoyForCemu {
             DetectShake();
 
             if (buttons_down[(int)Button.CAPTURE])
-                Simulate(Config.Value("capture"));
+                Simulate(Config.Value("capture"), false, false);
+            if (buttons_up[(int)Button.CAPTURE])
+                Simulate(Config.Value("capture"), false, true);
             if (buttons_down[(int)Button.HOME])
-                Simulate(Config.Value("home"));
+                Simulate(Config.Value("home"), false, false);
+            if (buttons_up[(int)Button.HOME])
+                Simulate(Config.Value("home"), false, true);
             SimulateContinous((int)Button.CAPTURE, Config.Value("capture"));
             SimulateContinous((int)Button.HOME, Config.Value("home"));
 
@@ -1118,13 +1122,17 @@ namespace BetterJoyForCemu {
             if (isSnes || thirdParty)
                 return;
             HIDapi.hid_set_nonblocking(handle, 0);
-            byte[] buf_ = ReadSPI(0x80, (isLeft ? (byte)0x12 : (byte)0x1d), 9); // get user calibration data if possible
+            bool ok = false;
+            byte[] buf_ = ReadSPI(0x80, (isLeft ? (byte)0x12 : (byte)0x1d), 9, ok); // get user calibration data if possible
             bool found = false;
-            for (int i = 0; i < 9; ++i) {
-                if (buf_[i] != 0xff) {
-                    form.AppendTextBox("Using user stick calibration data.\r\n");
-                    found = true;
-                    break;
+            if(ok)
+            {
+                for (int i = 0; i < 9; ++i) {
+                    if (buf_[i] != 0xff) {
+                        form.AppendTextBox("Using user stick calibration data.\r\n");
+                        found = true;
+                        break;
+                    }
                 }
             }
             if (!found) {
@@ -1141,13 +1149,16 @@ namespace BetterJoyForCemu {
             PrintArray(stick_cal, len: 6, start: 0, format: "Stick calibration data: {0:S}");
 
             if (isPro) {
-                buf_ = ReadSPI(0x80, (!isLeft ? (byte)0x12 : (byte)0x1d), 9); // get user calibration data if possible
+                buf_ = ReadSPI(0x80, (!isLeft ? (byte)0x12 : (byte)0x1d), 9, ok); // get user calibration data if possible
                 found = false;
-                for (int i = 0; i < 9; ++i) {
-                    if (buf_[i] != 0xff) {
-                        form.AppendTextBox("Using user stick calibration data.\r\n");
-                        found = true;
-                        break;
+                if(ok)
+                {
+                    for (int i = 0; i < 9; ++i) {
+                        if (buf_[i] != 0xff) {
+                            form.AppendTextBox("Using user stick calibration data.\r\n");
+                            found = true;
+                            break;
+                        }
                     }
                 }
                 if (!found) {
@@ -1220,18 +1231,26 @@ namespace BetterJoyForCemu {
         }
 
         private byte[] ReadSPI(byte addr1, byte addr2, uint len, bool print = false) {
+            bool ok;
+            return ReadSPI(addr1, addr2, len, out ok, print);
+        }
+        private byte[] ReadSPI(byte addr1, byte addr2, uint len, out bool ok, bool print = false) {
             byte[] buf = { addr2, addr1, 0x00, 0x00, (byte)len };
             byte[] read_buf = new byte[len];
             byte[] buf_ = new byte[len + 20];
 
-            for (int i = 0; i < 100; ++i) {
+            ok = false;
+            for (int i = 0; i < 5; ++i) {
                 buf_ = Subcommand(0x10, buf, 5, false);
                 if (buf_[15] == addr2 && buf_[16] == addr1) {
+                    ok = true;
                     break;
                 }
             }
             Array.Copy(buf_, 20, read_buf, 0, len);
             if (print) PrintArray(read_buf, DebugType.COMMS, len);
+            if(!ok) form.AppendTextBox("ReadSPI error\r\n");
+
             return read_buf;
         }
 

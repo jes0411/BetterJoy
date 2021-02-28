@@ -23,6 +23,7 @@ namespace BetterJoyForCemu {
     public class JoyconManager {
         public bool EnableIMU = true;
         public bool EnableLocalize = false;
+        private bool checkingForNewControllers = false;
 
         private const ushort vendor_id = 0x57e;
         private const ushort product_l = 0x2006;
@@ -36,7 +37,7 @@ namespace BetterJoyForCemu {
         public MainForm form;
 
         System.Timers.Timer controllerCheck;
-
+        
         public static JoyconManager Instance {
             get { return instance; }
         }
@@ -48,7 +49,7 @@ namespace BetterJoyForCemu {
         }
 
         public void Start() {
-            controllerCheck = new System.Timers.Timer(2000); // check for new controllers every 2 seconds
+            controllerCheck = new System.Timers.Timer(5000); // check for new controllers every 5 seconds
             controllerCheck.Elapsed += CheckForNewControllersTime;
             controllerCheck.Start();
         }
@@ -90,10 +91,14 @@ namespace BetterJoyForCemu {
         }
 
         void CheckForNewControllersTime(Object source, ElapsedEventArgs e) {
+            if(checkingForNewControllers)
+                return;
+            checkingForNewControllers = true;
             CleanUp();
             if (Config.IntValue("ProgressiveScan") == 1) {
                 CheckForNewControllers();
             }
+            checkingForNewControllers = false;
         }
 
         private ushort TypeToProdId(byte type) {
