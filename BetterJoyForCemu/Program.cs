@@ -23,7 +23,6 @@ namespace BetterJoyForCemu {
     public class JoyconManager {
         public bool EnableIMU = true;
         public bool EnableLocalize = false;
-        private bool checkingForNewControllers = false;
 
         private const ushort vendor_id = 0x57e;
         private const ushort product_l = 0x2006;
@@ -51,6 +50,7 @@ namespace BetterJoyForCemu {
         public void Start() {
             controllerCheck = new System.Timers.Timer(5000); // check for new controllers every 5 seconds
             controllerCheck.Elapsed += CheckForNewControllersTime;
+            controllerCheck.AutoReset = false;
             controllerCheck.Start();
         }
 
@@ -91,14 +91,10 @@ namespace BetterJoyForCemu {
         }
 
         void CheckForNewControllersTime(Object source, ElapsedEventArgs e) {
-            if(checkingForNewControllers)
-                return;
-            checkingForNewControllers = true;
             CleanUp();
             if (Config.IntValue("ProgressiveScan") == 1) {
                 CheckForNewControllers();
             }
-            checkingForNewControllers = false;
         }
 
         private ushort TypeToProdId(byte type) {
@@ -327,6 +323,7 @@ namespace BetterJoyForCemu {
                     }
                 }
             }
+            controllerCheck.Start();
         }
 
         public void OnApplicationQuit() {
@@ -434,8 +431,6 @@ namespace BetterJoyForCemu {
             mgr = new JoyconManager();
             mgr.form = form;
             mgr.Awake();
-            mgr.CheckForNewControllers();
-            mgr.Start();
 
             server = new UdpServer(mgr.j);
             server.form = form;
@@ -449,6 +444,7 @@ namespace BetterJoyForCemu {
             mouse.MouseEvent += Mouse_MouseEvent;
 
             form.console.AppendText("All systems go\r\n");
+            mgr.Start();
         }
 
         private static void Mouse_MouseEvent(object sender, WindowsInput.EventSources.EventSourceEventArgs<WindowsInput.EventSources.MouseEvent> e) {
