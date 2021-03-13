@@ -48,7 +48,7 @@ namespace BetterJoyForCemu {
         }
 
         public void Start() {
-            controllerCheck = new System.Timers.Timer(5000); // check for new controllers every 5 seconds
+            controllerCheck = new System.Timers.Timer(2000); // check for new controllers every 5 seconds
             controllerCheck.Elapsed += CheckForNewControllersTime;
             controllerCheck.AutoReset = false;
             controllerCheck.Start();
@@ -323,6 +323,7 @@ namespace BetterJoyForCemu {
                     }
                 }
             }
+            controllerCheck.Interval = 5000;
             controllerCheck.Start();
         }
 
