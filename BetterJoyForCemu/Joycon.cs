@@ -145,18 +145,22 @@ namespace BetterJoyForCemu {
         private const uint report_len = 49;
 
         private struct Rumble {
-            public Queue<float[]> queue;
+            private Queue<float[]> queue;
+            private Lock queueLock;
 
             public void set_vals(float low_freq, float high_freq, float amplitude) {
                 float[] rumbleQueue = new float[] {low_freq, high_freq, amplitude};
                 // Keep a queue of 15 items, discard oldest item if queue is full.
+                queueLock.waitLock();
                 if (queue.Count > 15) {
                     queue.Dequeue();
                 }
                 queue.Enqueue(rumbleQueue);
+                queueLock.unlock();
             }
             public Rumble(float[] rumble_info) {
                 queue = new Queue<float[]>();
+                queueLock = new Lock();
                 queue.Enqueue(rumble_info);
             }
             private float clamp(float x, float min, float max) {
@@ -181,8 +185,14 @@ namespace BetterJoyForCemu {
             }
 
             public byte[] GetData() {
-                byte[] rumble_data = new byte[8];
+                queueLock.waitLock();
+                if (queue.Count <= 0) {
+                    queueLock.unlock();
+                    return null;
+                }
                 float[] queued_data = queue.Dequeue();
+                queueLock.unlock();
+                byte[] rumble_data = new byte[8];
 
                 if (queued_data[2] == 0.0f) {
                     rumble_data[0] = 0x0;
@@ -813,8 +823,11 @@ namespace BetterJoyForCemu {
             stop_polling = false;
             int attempts = 0;
             while (!stop_polling & state > state_.NO_JOYCONS) {
-                if (rumble_obj.queue.Count > 0) {
-                    SendRumble(rumble_obj.GetData());
+                {
+                    byte[] data = rumble_obj.GetData();
+                    if(data != null) {
+                        SendRumble(data);
+                    }
                 }
                 int a = ReceiveRaw();
 
