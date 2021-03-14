@@ -323,7 +323,8 @@ namespace BetterJoyForCemu {
 
                     jc.Begin();
                     if (form.allowCalibration) {
-                        jc.getActiveData();
+                        jc.getActiveIMUData();
+                        jc.getActiveSticksData();
                     }
                 }
             }

@@ -19,11 +19,14 @@ namespace BetterJoyForCemu {
         public bool nonOriginal;
         public bool allowCalibration = Boolean.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
         public List<Button> con, loc;
-        public bool calibrate;
-        public List<KeyValuePair<string, float[]>> caliData;
+        public bool calibrateIMU;
+        public bool calibrateSticks;
+        public List<KeyValuePair<string, float[]>> caliIMUData;
+        public List<KeyValuePair<string, ushort[]>> caliSticksData;
         private Timer countDown;
         private int count;
         public List<int> xG, yG, zG, xA, yA, zA;
+        public List<ushort> xS1, yS1, xS2, yS2;
         public bool shakeInputEnabled = Boolean.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
         public float shakeSesitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
         public float shakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
@@ -37,8 +40,14 @@ namespace BetterJoyForCemu {
         public MainForm() {
             xG = new List<int>(); yG = new List<int>(); zG = new List<int>();
             xA = new List<int>(); yA = new List<int>(); zA = new List<int>();
-            caliData = new List<KeyValuePair<string, float[]>> {
+            caliIMUData = new List<KeyValuePair<string, float[]>> {
                 new KeyValuePair<string, float[]>("0", new float[6] {0,0,0,-710,0,0})
+            };
+
+            xS1 = new List<ushort>(); yS1 = new List<ushort>();
+            xS2 = new List<ushort>(); yS2 = new List<ushort>();
+            caliSticksData = new List<KeyValuePair<string, ushort[]>> {
+                new KeyValuePair<string, ushort[]>("0", new ushort[12] {2048,2048,2048,2048,2048,2048,2048,2048,2048,2048,2048,2048})
             };
             SetNonOriginalControllerSettings();
 
@@ -346,19 +355,19 @@ namespace BetterJoyForCemu {
             this.AutoCalibrate.Enabled = false;
             countDown = new Timer();
             this.count = 4;
-            this.CountDown(null, null);
-            countDown.Tick += new EventHandler(CountDown);
+            this.CountDownIMU(null, null);
+            countDown.Tick += new EventHandler(CountDownIMU);
             countDown.Interval = 1000;
             countDown.Enabled = true;
         }
 
-        private void StartGetData() {
+        private void StartGetIMUData() {
             this.xG.Clear(); this.yG.Clear(); this.zG.Clear();
             this.xA.Clear(); this.yA.Clear(); this.zA.Clear();
             countDown = new Timer();
             this.count = 3;
-            this.calibrate = true;
-            countDown.Tick += new EventHandler(CalcData);
+            this.calibrateIMU = true;
+            countDown.Tick += new EventHandler(CalcIMUData);
             countDown.Interval = 1000;
             countDown.Enabled = true;
         }
@@ -368,31 +377,31 @@ namespace BetterJoyForCemu {
             mapForm.ShowDialog();
         }
 
-        private void CountDown(object sender, EventArgs e) {
+        private void CountDownIMU(object sender, EventArgs e) {
             if (this.count == 0) {
-                this.console.Text = "Calibrating...";
+                this.console.Text = "Calibrating IMU...";
                 countDown.Stop();
-                this.StartGetData();
+                this.StartGetIMUData();
             } else {
-                this.console.Text = "Plese keep the controller flat." + "\r\n";
+                this.console.Text = "Please keep the controller flat." + "\r\n";
                 this.console.Text += "Calibration will start in " + this.count + " seconds.";
                 this.count--;
             }
         }
-        private void CalcData(object sender, EventArgs e) {
+        private void CalcIMUData(object sender, EventArgs e) {
             if (this.count == 0) {
                 countDown.Stop();
-                this.calibrate = false;
+                this.calibrateIMU = false;
                 string serNum = Program.mgr.j.First().serial_number;
-                int serIndex = this.findSer(serNum);
+                int serIndex = this.findSerIMU(serNum);
                 float[] Arr = new float[6] { 0, 0, 0, 0, 0, 0 };
                 if (serIndex == -1) {
-                    this.caliData.Add(new KeyValuePair<string, float[]>(
+                    this.caliIMUData.Add(new KeyValuePair<string, float[]>(
                          serNum,
                          Arr
                     ));
                 } else {
-                    Arr = this.caliData[serIndex].Value;
+                    Arr = this.caliIMUData[serIndex].Value;
                 }
                 Random rnd = new Random();
                 Arr[0] = (float)quickselect_median(this.xG, rnd.Next);
@@ -401,14 +410,128 @@ namespace BetterJoyForCemu {
                 Arr[3] = (float)quickselect_median(this.xA, rnd.Next);
                 Arr[4] = (float)quickselect_median(this.yA, rnd.Next);
                 Arr[5] = (float)quickselect_median(this.zA, rnd.Next) - 4010; //Joycon.cs acc_sen 16384
-                this.console.Text += "Calibration completed!!!" + "\r\n";
-                Config.SaveCaliData(this.caliData);
-                Program.mgr.j.First().getActiveData();
-                this.AutoCalibrate.Enabled = true;
+                this.console.Text += "IMU Calibration completed!!!" + "\r\n";
+                Config.SaveCaliIMUData(this.caliIMUData);
+                Program.mgr.j.First().getActiveIMUData();
+
+                countDown = new Timer();
+                this.count = 5;
+                this.CountDownSticksCenter(null, null);
+                countDown.Tick += new EventHandler(CountDownSticksCenter);
+                countDown.Interval = 1000;
+                countDown.Enabled = true;
             } else {
                 this.count--;
             }
 
+        }
+        private void CountDownSticksCenter(object sender, EventArgs e) {
+            if (this.count == 0) {
+                this.console.Text = "Calibrating Sticks center position...";
+                countDown.Stop();
+                this.StartGetSticksCenterData();
+            } else {
+                this.console.Text = "Please keep the sticks at the center position." + "\r\n";
+                this.console.Text += "Calibration will start in " + this.count + " seconds.";
+                this.count--;
+            }
+        }
+        private void StartGetSticksCenterData() {
+            this.xS1.Clear(); this.yS1.Clear();
+            this.xS2.Clear(); this.yS2.Clear();
+            countDown = new Timer();
+            this.count = 3;
+            this.calibrateSticks = true;
+            countDown.Tick += new EventHandler(CalcSticksCenterData);
+            countDown.Interval = 1000;
+            countDown.Enabled = true;
+        }
+        private void CalcSticksCenterData(object sender, EventArgs e) {
+            if (this.count == 0) {
+                countDown.Stop();
+                this.calibrateSticks = false;
+                string serNum = Program.mgr.j.First().serial_number;
+                int serIndex = this.findSerSticks(serNum);
+                const int stickCaliSize = 6;
+                ushort[] Arr = new ushort[stickCaliSize * 2] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                if (serIndex == -1) {
+                    this.caliSticksData.Add(new KeyValuePair<string, ushort[]>(
+                         serNum,
+                         Arr
+                    ));
+                } else {
+                    Arr = this.caliSticksData[serIndex].Value;
+                }
+                Random rnd = new Random();
+                Arr[2] = (ushort)Math.Round(quickselect_median(this.xS1.ConvertAll(x => (int) x), rnd.Next));
+                Arr[3] = (ushort)Math.Round(quickselect_median(this.yS1.ConvertAll(x => (int) x), rnd.Next));
+                Arr[2 + stickCaliSize] = (ushort)Math.Round(quickselect_median(this.xS2.ConvertAll(x => (int) x), rnd.Next));
+                Arr[3 + stickCaliSize] = (ushort)Math.Round(quickselect_median(this.yS2.ConvertAll(x => (int) x), rnd.Next));
+                this.console.Text += "Sticks center position Calibration completed!!!" + "\r\n";
+
+                countDown = new Timer();
+                this.count = 8;
+                this.CountDownSticksMinMax(null, null);
+                countDown.Tick += new EventHandler(CountDownSticksMinMax);
+                countDown.Interval = 1000;
+                countDown.Enabled = true;
+            } else {
+                this.count--;
+            }
+        }
+         private void CountDownSticksMinMax(object sender, EventArgs e) {
+            if (this.count == 0) {
+                this.console.Text = "Calibrating Sticks min and max position...";
+                countDown.Stop();
+                this.StartGetSticksMinMaxData();
+            } else {
+                this.console.Text = "Please move the sticks in a circle when the calibration starts." + "\r\n";
+                this.console.Text += "Calibration will start in " + this.count + " seconds.";
+                this.count--;
+            }
+        }
+        private void StartGetSticksMinMaxData() {
+            this.xS1.Clear(); this.yS1.Clear();
+            this.xS2.Clear(); this.yS2.Clear();
+            countDown = new Timer();
+            this.count = 5;
+            this.calibrateSticks = true;
+            countDown.Tick += new EventHandler(CalcSticksMinMaxData);
+            countDown.Interval = 1000;
+            countDown.Enabled = true;
+        }
+        private void CalcSticksMinMaxData(object sender, EventArgs e) {
+            if (this.count == 0) {
+                countDown.Stop();
+                this.calibrateSticks = false;
+                string serNum = Program.mgr.j.First().serial_number;
+                int serIndex = this.findSerSticks(serNum);
+                const int stickCaliSize = 6;
+                ushort[] Arr = new ushort[stickCaliSize * 2] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                if (serIndex == -1) {
+                    this.caliSticksData.Add(new KeyValuePair<string, ushort[]>(
+                         serNum,
+                         Arr
+                    ));
+                } else {
+                    Arr = this.caliSticksData[serIndex].Value;
+                }
+
+                Arr[0] = (ushort) Math.Abs(this.xS1.Max() - Arr[2]);
+                Arr[1] = (ushort) Math.Abs(this.yS1.Max()- Arr[3]);
+                Arr[4] = (ushort) Math.Abs(Arr[2] - this.xS1.Min());
+                Arr[5] = (ushort) Math.Abs(Arr[3] - this.yS1.Min());
+                Arr[0 + stickCaliSize] = (ushort) Math.Abs(this.xS2.Max() - Arr[2 + stickCaliSize]);
+                Arr[1 + stickCaliSize] = (ushort) Math.Abs(this.yS2.Max() - Arr[3 + stickCaliSize]);
+                Arr[4 + stickCaliSize] = (ushort) Math.Abs(Arr[2 + stickCaliSize] - this.xS2.Min());
+                Arr[5 + stickCaliSize] = (ushort) Math.Abs(Arr[3 + stickCaliSize] - this.yS2.Min());
+                this.console.Text += "Sticks min and max position Calibration completed!!!" + "\r\n";
+                Config.SaveCaliSticksData(this.caliSticksData);
+                Program.mgr.j.First().getActiveSticksData();
+                this.AutoCalibrate.Enabled = true;
+            } else {
+                this.count--;
+            }
         }
         private double quickselect_median(List<int> l, Func<int, int> pivot_fn) {
             int ll = l.Count;
@@ -436,18 +559,33 @@ namespace BetterJoyForCemu {
             }
         }
 
-        public float[] activeCaliData(string serNum) {
-            for (int i = 0; i < this.caliData.Count; i++) {
-                if (this.caliData[i].Key == serNum) {
-                    return this.caliData[i].Value;
+        public float[] activeCaliIMUData(string serNum) {
+            for (int i = 0; i < this.caliIMUData.Count; i++) {
+                if (this.caliIMUData[i].Key == serNum) {
+                    return this.caliIMUData[i].Value;
                 }
             }
-            return this.caliData[0].Value;
+            return this.caliIMUData[0].Value;
         }
-
-        private int findSer(string serNum) {
-            for (int i = 0; i < this.caliData.Count; i++) {
-                if (this.caliData[i].Key == serNum) {
+        public ushort[] activeCaliSticksData(string serNum) {
+            for (int i = 0; i < this.caliSticksData.Count; i++) {
+                if (this.caliSticksData[i].Key == serNum) {
+                    return this.caliSticksData[i].Value;
+                }
+            }
+            return this.caliSticksData[0].Value;
+        }
+        private int findSerIMU(string serNum) {
+            for (int i = 0; i < this.caliIMUData.Count; i++) {
+                if (this.caliIMUData[i].Key == serNum) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        private int findSerSticks(string serNum) {
+            for (int i = 0; i < this.caliSticksData.Count; i++) {
+                if (this.caliSticksData[i].Key == serNum) {
                     return i;
                 }
             }

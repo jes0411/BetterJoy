@@ -289,12 +289,14 @@ namespace BetterJoyForCemu {
         public string serial_number;
         bool thirdParty = false;
 
-        private float[] activeData;
+        private float[] activeIMUData;
+        private ushort[] activeSticksData;
         private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, 0.01f); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
         public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, int id = 0, bool isPro = false, bool isSnes = false, bool thirdParty = false) {
             serial_number = serialNum;
-            activeData = new float[6];
+            activeIMUData = new float[6];
+            activeSticksData = new ushort[12];
             handle = handle_;
             imu_enabled = imu;
             do_localize = localize;
@@ -328,10 +330,12 @@ namespace BetterJoyForCemu {
             }
         }
 
-        public void getActiveData() {
-            this.activeData = form.activeCaliData(serial_number);
+        public void getActiveIMUData() {
+            this.activeIMUData = form.activeCaliIMUData(serial_number);
         }
-
+        public void getActiveSticksData() {
+            this.activeSticksData = form.activeCaliSticksData(serial_number);
+        }
         public void ReceiveRumble(Xbox360FeedbackReceivedEventArgs e) {
             DebugPrint("Rumble data Recived: XInput", DebugType.RUMBLE);
             SetRumble(lowFreq, highFreq, (float)Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
@@ -375,6 +379,10 @@ namespace BetterJoyForCemu {
         public Vector3 GetAccel() {
             return acc_g;
         }
+        public void Reset() {
+            form.AppendTextBox("Resetting USB connection.\r\n");
+            Subcommand(0x06, new byte[] { 0x01 }, 1);
+        }
         public int Attach(byte leds_ = 0x0) {
             state = state_.ATTACHED;
 
@@ -394,8 +402,7 @@ namespace BetterJoyForCemu {
                 HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
 
                 if (a[0] != 0x81) { // can occur when USB connection isn't closed properly
-                    form.AppendTextBox("Resetting USB connection.\r\n");
-                    Subcommand(0x06, new byte[] { 0x01 }, 1);
+                    Reset();
                     throw new Exception("reset_usb");
                 }
 
@@ -422,7 +429,11 @@ namespace BetterJoyForCemu {
                 HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
 
             }
-            dump_calibration_data();
+            bool ok = dump_calibration_data();
+            if(!ok) {
+                Reset();
+                throw new Exception("reset_usb");
+            }
 
             // Bluetooth manual pairing
             byte[] btmac_host = Program.btMAC.GetAddressBytes();
@@ -601,7 +612,7 @@ namespace BetterJoyForCemu {
                     DebugPrint(string.Format("Duplicate timestamp enqueued. TS: {0:X2}", ts_en), DebugType.THREADING);
                 }
                 ts_en = raw_buf[1];
-                DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Timestamp: {1:X2}", ret, raw_buf[1]), DebugType.THREADING);
+                //DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Timestamp: {1:X2}", ret, raw_buf[1]), DebugType.THREADING);
             }
             return ret;
         }
@@ -871,15 +882,39 @@ namespace BetterJoyForCemu {
 
                 stick_precal[0] = (UInt16)(stick_raw[0] | ((stick_raw[1] & 0xf) << 8));
                 stick_precal[1] = (UInt16)((stick_raw[1] >> 4) | (stick_raw[2] << 4));
-                ushort[] cal = form.useControllerStickCalibration ? stick_cal : new ushort[6] { 2048, 2048, 2048, 2048, 2048, 2048 };
+                ushort[] cal = stick_cal;
+                if (form.allowCalibration) {
+                    cal = new ushort[6] { activeSticksData[0], activeSticksData[1], activeSticksData[2], activeSticksData[3], activeSticksData[4], activeSticksData[5] };
+                    if (form.calibrateSticks) {
+                        form.xS1.Add(stick_precal[0]);
+                        form.yS1.Add(stick_precal[1]);
+                    }
+                }
+                else if(form.useControllerStickCalibration) {
+                    cal = new ushort[6] { 2048, 2048, 2048, 2048, 2048, 2048 };
+                }
                 ushort dz = form.useControllerStickCalibration ? deadzone : (ushort)200;
                 stick = CenterSticks(stick_precal, cal, dz);
 
                 if (isPro) {
                     stick2_precal[0] = (UInt16)(stick2_raw[0] | ((stick2_raw[1] & 0xf) << 8));
                     stick2_precal[1] = (UInt16)((stick2_raw[1] >> 4) | (stick2_raw[2] << 4));
+                    if (form.allowCalibration) {
+                        cal = new ushort[6] { activeSticksData[6], activeSticksData[7], activeSticksData[8], activeSticksData[9], activeSticksData[10], activeSticksData[11] };
+                        if (form.calibrateSticks) {
+                            form.xS2.Add(stick2_precal[0]);
+                            form.yS2.Add(stick2_precal[1]);
+                        }
+                    }
+                    else if(form.useControllerStickCalibration) {
+                        cal = stick2_cal;
+                    }
                     ushort dz2 = form.useControllerStickCalibration ? deadzone2 : (ushort)200;
                     stick2 = CenterSticks(stick2_precal, form.useControllerStickCalibration ? stick2_cal : cal, dz2);
+
+                }
+                if (!form.calibrateSticks) {
+                    DebugPrint(string.Format("Stick1: X={0} Y={1}. Stick2: X={2} Y={3}", stick_precal[0], stick_precal[1], stick2_precal[0], stick2_precal[1]), DebugType.THREADING);
                 }
 
                 // Read other Joycon's sticks
@@ -986,25 +1021,25 @@ namespace BetterJoyForCemu {
                     for (int i = 0; i < 3; ++i) {
                         switch (i) {
                             case 0:
-                                acc_g.X = (acc_r[i] - activeData[3]) * (1.0f / acc_sen[i]) * 4.0f;
-                                gyr_g.X = (gyr_r[i] - activeData[0]) * (816.0f / gyr_sen[i]);
-                                if (form.calibrate) {
+                                acc_g.X = (acc_r[i] - activeIMUData[3]) * (1.0f / acc_sen[i]) * 4.0f;
+                                gyr_g.X = (gyr_r[i] - activeIMUData[0]) * (816.0f / gyr_sen[i]);
+                                if (form.calibrateIMU) {
                                     form.xA.Add(acc_r[i]);
                                     form.xG.Add(gyr_r[i]);
                                 }
                                 break;
                             case 1:
-                                acc_g.Y = (!isLeft ? -1 : 1) * (acc_r[i] - activeData[4]) * (1.0f / acc_sen[i]) * 4.0f;
-                                gyr_g.Y = -(!isLeft ? -1 : 1) * (gyr_r[i] - activeData[1]) * (816.0f / gyr_sen[i]);
-                                if (form.calibrate) {
+                                acc_g.Y = (!isLeft ? -1 : 1) * (acc_r[i] - activeIMUData[4]) * (1.0f / acc_sen[i]) * 4.0f;
+                                gyr_g.Y = -(!isLeft ? -1 : 1) * (gyr_r[i] - activeIMUData[1]) * (816.0f / gyr_sen[i]);
+                                if (form.calibrateIMU) {
                                     form.yA.Add(acc_r[i]);
                                     form.yG.Add(gyr_r[i]);
                                 }
                                 break;
                             case 2:
-                                acc_g.Z = (!isLeft ? -1 : 1) * (acc_r[i] - activeData[5]) * (1.0f / acc_sen[i]) * 4.0f;
-                                gyr_g.Z = -(!isLeft ? -1 : 1) * (gyr_r[i] - activeData[2]) * (816.0f / gyr_sen[i]);
-                                if (form.calibrate) {
+                                acc_g.Z = (!isLeft ? -1 : 1) * (acc_r[i] - activeIMUData[5]) * (1.0f / acc_sen[i]) * 4.0f;
+                                gyr_g.Z = -(!isLeft ? -1 : 1) * (gyr_r[i] - activeIMUData[2]) * (816.0f / gyr_sen[i]);
+                                if (form.calibrateIMU) {
                                     form.zA.Add(acc_r[i]);
                                     form.zG.Add(gyr_r[i]);
                                 }
