@@ -121,9 +121,7 @@ namespace BetterJoyForCemu {
         }
 
         private void MainForm_Load(object sender, EventArgs e) {
-            Config.Init(caliData);
-
-            Program.Start();
+            Config.Init(caliIMUData, caliSticksData);
 
             passiveScanBox.Checked = Config.IntValue("ProgressiveScan") == 1;
             startInTrayBox.Checked = Config.IntValue("StartInTray") == 1;
@@ -133,6 +131,7 @@ namespace BetterJoyForCemu {
             } else {
                 ShowFromTray();
             }
+            Program.Start();
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e) {
@@ -278,6 +277,7 @@ namespace BetterJoyForCemu {
             }
 
             ConfigurationManager.AppSettings["AutoPowerOff"] = "false";  // Prevent joycons poweroff when applying settings
+            Program.Stop();
             Application.Restart();
             Environment.Exit(0);
         }

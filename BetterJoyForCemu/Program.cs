@@ -48,9 +48,10 @@ namespace BetterJoyForCemu {
         }
 
         public void Start() {
-            controllerCheck = new System.Timers.Timer(2000); // check for new controllers every 5 seconds
+            controllerCheck = new System.Timers.Timer(5000); // check for new controllers every 5 seconds
             controllerCheck.Elapsed += CheckForNewControllersTime;
             controllerCheck.AutoReset = false;
+            CheckForNewControllers();
             controllerCheck.Start();
         }
 
@@ -95,6 +96,7 @@ namespace BetterJoyForCemu {
             if (Config.IntValue("ProgressiveScan") == 1) {
                 CheckForNewControllers();
             }
+            controllerCheck.Start();
         }
 
         private ushort TypeToProdId(byte type) {
@@ -300,6 +302,7 @@ namespace BetterJoyForCemu {
 
             HIDapi.hid_free_enumeration(top_ptr);
 
+            bool dropped = false;
             bool on = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None).AppSettings.Settings["HomeLEDOn"].Value.ToLower() == "true";
             foreach (Joycon jc in j) { // Connect device straight away
                 if (jc.state == Joycon.state_.NOT_ATTACHED) {
@@ -312,6 +315,7 @@ namespace BetterJoyForCemu {
                         jc.Attach(leds_: jc.LED);
                     } catch (Exception e) {
                         jc.state = Joycon.state_.DROPPED;
+                        dropped = true;
                         continue;
                     }
 
@@ -323,8 +327,12 @@ namespace BetterJoyForCemu {
                     }
                 }
             }
-            controllerCheck.Interval = 5000;
-            controllerCheck.Start();
+            if(dropped) {
+                controllerCheck.Interval = 500;
+            }
+            else {
+                controllerCheck.Interval = 5000;
+            }
         }
 
         public void OnApplicationQuit() {
@@ -333,14 +341,6 @@ namespace BetterJoyForCemu {
                     v.PowerOff();
 
                 v.Detach();
-
-                if (v.out_xbox != null) {
-                    v.out_xbox.Disconnect();
-                }
-
-                if (v.out_ds4 != null) {
-                    v.out_ds4.Disconnect();
-                }
             }
 
             controllerCheck.Stop();
@@ -396,6 +396,15 @@ namespace BetterJoyForCemu {
                         response = (HttpWebResponse)WebRequest.Create(@"http://localhost:26762/api/v1/hidguardian/whitelist/purge/").GetResponse(); // remove all programs allowed to see controller
                     } catch (Exception e) {
                         form.console.AppendText("Unable to purge whitelist.\r\n");
+                        useHIDG = false;
+                    }
+                }
+
+                if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
+                    try {
+                        HttpWebResponse r1 = (HttpWebResponse)WebRequest.Create(@"http://localhost:26762/api/v1/hidguardian/affected/purge/").GetResponse();
+                    } catch (Exception e) {
+                        form.console.AppendText("Unable to purge affected devices.\r\n");
                         useHIDG = false;
                     }
                 }
