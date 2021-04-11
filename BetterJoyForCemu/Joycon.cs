@@ -21,7 +21,7 @@ namespace BetterJoyForCemu {
         public Joycon other {
             get {
                 return _other;
-            } 
+            }
             set {
                 _other = value;
 
@@ -29,13 +29,12 @@ namespace BetterJoyForCemu {
                 if (_other == null || _other == this) {
                     // Set LED to current Pad ID
                     SetLEDByPlayerNum(PadId);
-                }
-                else {
+                } else {
                     // Set LED to current Joycon Pair
                     int lowestPadId = Math.Min(_other.PadId, PadId);
                     SetLEDByPlayerNum(lowestPadId);
                 }
-            } 
+            }
         }
         public bool active_gyro = false;
 
@@ -149,7 +148,7 @@ namespace BetterJoyForCemu {
             private Lock queueLock;
 
             public void set_vals(float low_freq, float high_freq, float amplitude) {
-                float[] rumbleQueue = new float[] {low_freq, high_freq, amplitude};
+                float[] rumbleQueue = new float[] { low_freq, high_freq, amplitude };
                 // Keep a queue of 15 items, discard oldest item if queue is full.
                 queueLock.waitLock();
                 if (queue.Count > 15) {
@@ -300,7 +299,7 @@ namespace BetterJoyForCemu {
             handle = handle_;
             imu_enabled = imu;
             do_localize = localize;
-            rumble_obj = new Rumble(new float[] {lowFreq, highFreq, 0});
+            rumble_obj = new Rumble(new float[] { lowFreq, highFreq, 0 });
             for (int i = 0; i < buttons_down_timestamp.Length; i++)
                 buttons_down_timestamp[i] = -1;
             filterweight = alpha;
@@ -542,7 +541,7 @@ namespace BetterJoyForCemu {
                 HIDapi.hid_set_nonblocking(handle, 0);
 
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
-                                                         //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
+                //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
                 if (isUSB) {
                     byte[] a = Enumerable.Repeat((byte)0, 64).ToArray();
@@ -1439,7 +1438,7 @@ namespace BetterJoyForCemu {
             return output;
         }
 
-        private static OutputControllerDualShock4InputState MapToDualShock4Input(Joycon input) {
+        public static OutputControllerDualShock4InputState MapToDualShock4Input(Joycon input) {
             var output = new OutputControllerDualShock4InputState();
 
             var swapAB = input.swapAB;
@@ -1492,10 +1491,10 @@ namespace BetterJoyForCemu {
                 output.thumb_right = buttons[(int)Button.STICK2];
             } else {
                 if (other != null) { // no need for && other != this
-                    output.circle = !swapAB ? buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)] : buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)];
-                    output.cross = swapAB ? buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)] : buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)];
+                    output.cross = !swapAB ? buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)] : buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)];
+                    output.circle = swapAB ? buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)] : buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)];
                     output.triangle = !swapXY ? buttons[(int)(isLeft ? Button.X : Button.DPAD_UP)] : buttons[(int)(isLeft ? Button.Y : Button.DPAD_LEFT)];
-                    output.triangle = swapXY ? buttons[(int)(isLeft ? Button.X : Button.DPAD_UP)] : buttons[(int)(isLeft ? Button.Y : Button.DPAD_LEFT)];
+                    output.square = swapXY ? buttons[(int)(isLeft ? Button.X : Button.DPAD_UP)] : buttons[(int)(isLeft ? Button.Y : Button.DPAD_LEFT)];
 
                     if (buttons[(int)(isLeft ? Button.DPAD_UP : Button.X)])
                         if (buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.Y)])
@@ -1530,7 +1529,7 @@ namespace BetterJoyForCemu {
                     output.triangle = !swapXY ? buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.DPAD_LEFT)] : buttons[(int)(isLeft ? Button.DPAD_UP : Button.DPAD_DOWN)];
                     output.square = swapXY ? buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.DPAD_LEFT)] : buttons[(int)(isLeft ? Button.DPAD_UP : Button.DPAD_DOWN)];
 
-                    output.square = buttons[(int)Button.MINUS] | buttons[(int)Button.HOME];
+                    output.ps = buttons[(int)Button.MINUS] | buttons[(int)Button.HOME];
                     output.options = buttons[(int)Button.PLUS] | buttons[(int)Button.CAPTURE];
 
                     output.shoulder_left = buttons[(int)Button.SL];
