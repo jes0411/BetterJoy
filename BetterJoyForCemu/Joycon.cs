@@ -290,12 +290,14 @@ namespace BetterJoyForCemu {
 
         private float[] activeIMUData;
         private ushort[] activeSticksData;
+        private ushort[] activeSticksDeadZoneData;
         private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, 0.01f); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
         public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, int id = 0, bool isPro = false, bool isSnes = false, bool thirdParty = false) {
             serial_number = serialNum;
             activeIMUData = new float[6];
             activeSticksData = new ushort[12];
+            activeSticksDeadZoneData = new ushort[2];
             handle = handle_;
             imu_enabled = imu;
             do_localize = localize;
@@ -334,6 +336,15 @@ namespace BetterJoyForCemu {
         }
         public void getActiveSticksData() {
             this.activeSticksData = form.activeCaliSticksData(serial_number);
+
+            const double defaultDeadzone = 0.05;
+            ushort deadzone1 = (ushort) Math.Round(Math.Abs(activeSticksData[0] + activeSticksData[4]) * defaultDeadzone);
+            ushort deadzone2 = (ushort) Math.Round(Math.Abs(activeSticksData[1] + activeSticksData[5]) * defaultDeadzone);
+            this.activeSticksDeadZoneData[0] = deadzone1 > deadzone2 ? deadzone1 : deadzone2;
+
+            deadzone1 = (ushort) Math.Round(Math.Abs(activeSticksData[6] + activeSticksData[10]) * defaultDeadzone);
+            deadzone2 = (ushort) Math.Round(Math.Abs(activeSticksData[7] + activeSticksData[11]) * defaultDeadzone);
+            this.activeSticksDeadZoneData[1] = deadzone1 > deadzone2 ? deadzone1 : deadzone2;
         }
         public void ReceiveRumble(Xbox360FeedbackReceivedEventArgs e) {
             DebugPrint("Rumble data Recived: XInput", DebugType.RUMBLE);
@@ -882,17 +893,19 @@ namespace BetterJoyForCemu {
                 stick_precal[0] = (UInt16)(stick_raw[0] | ((stick_raw[1] & 0xf) << 8));
                 stick_precal[1] = (UInt16)((stick_raw[1] >> 4) | (stick_raw[2] << 4));
                 ushort[] cal = stick_cal;
+                ushort dz = deadzone;
                 if (form.allowCalibration) {
                     cal = new ushort[6] { activeSticksData[0], activeSticksData[1], activeSticksData[2], activeSticksData[3], activeSticksData[4], activeSticksData[5] };
+                    dz = activeSticksDeadZoneData[0];
                     if (form.calibrateSticks) {
                         form.xS1.Add(stick_precal[0]);
                         form.yS1.Add(stick_precal[1]);
                     }
                 }
-                else if(form.useControllerStickCalibration) {
+                else if(!form.useControllerStickCalibration) {
                     cal = new ushort[6] { 2048, 2048, 2048, 2048, 2048, 2048 };
+                    dz = 200;
                 }
-                ushort dz = form.useControllerStickCalibration ? deadzone : (ushort)200;
                 stick = CenterSticks(stick_precal, cal, dz);
 
                 if (isPro) {
@@ -900,6 +913,7 @@ namespace BetterJoyForCemu {
                     stick2_precal[1] = (UInt16)((stick2_raw[1] >> 4) | (stick2_raw[2] << 4));
                     if (form.allowCalibration) {
                         cal = new ushort[6] { activeSticksData[6], activeSticksData[7], activeSticksData[8], activeSticksData[9], activeSticksData[10], activeSticksData[11] };
+                        dz = activeSticksDeadZoneData[1];
                         if (form.calibrateSticks) {
                             form.xS2.Add(stick2_precal[0]);
                             form.yS2.Add(stick2_precal[1]);
@@ -907,10 +921,9 @@ namespace BetterJoyForCemu {
                     }
                     else if(form.useControllerStickCalibration) {
                         cal = stick2_cal;
+                        dz = deadzone2;
                     }
-                    ushort dz2 = form.useControllerStickCalibration ? deadzone2 : (ushort)200;
-                    stick2 = CenterSticks(stick2_precal, form.useControllerStickCalibration ? stick2_cal : cal, dz2);
-
+                    stick2 = CenterSticks(stick2_precal, cal, dz);
                 }
                 if (!form.calibrateSticks) {
                     DebugPrint(string.Format("Stick1: X={0} Y={1}. Stick2: X={2} Y={3}", stick_precal[0], stick_precal[1], stick2_precal[0], stick2_precal[1]), DebugType.THREADING);
