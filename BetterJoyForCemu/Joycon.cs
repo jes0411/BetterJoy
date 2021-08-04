@@ -526,9 +526,9 @@ namespace BetterJoyForCemu {
                 }
             }
 
-            if (battery <= 1) {
+            if (!isUSB && battery <= 1) {
                 form.notifyIcon.Visible = true;
-                form.notifyIcon.BalloonTipText = String.Format("Controller {0} ({1}) - low battery notification!", PadId, isPro ? "Pro Controller" : (isSnes ? "SNES Controller" : (isLeft ? "Joycon Left" : "Joycon Right")));
+                form.notifyIcon.BalloonTipText = String.Format("Controller {0} ({1}) - low battery notification!", PadId, getControllerName());
                 form.notifyIcon.ShowBalloonTip(0);
             }
         }
@@ -852,6 +852,11 @@ namespace BetterJoyForCemu {
                 }
                 int a = ReceiveRaw();
 
+                if(isUSB && battery == 0) {
+                    state = state_.DROPPED;
+                    form.AppendTextBox(String.Format("Controller {0} ({1}) powered down.\r\n", PadId, getControllerName()));
+                    break;
+                }
                 if (a > 0 && state > state_.DROPPED) {
                     state = state_.IMU_DATA_OK;
                     attempts = 0;
@@ -1579,6 +1584,10 @@ namespace BetterJoyForCemu {
             }
 
             return output;
+        }
+
+        public string getControllerName() {
+            return isPro ? "Pro Controller" : (isSnes ? "SNES Controller" : (isLeft ? "Joycon Left" : "Joycon Right"));
         }
     }
 }
