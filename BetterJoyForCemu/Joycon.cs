@@ -236,7 +236,6 @@ namespace BetterJoyForCemu {
         private Rumble rumble_obj;
 
         private byte global_count = 0;
-        private string debug_str;
 
         // For UdpServer
         public int PadId = 0;
@@ -251,8 +250,6 @@ namespace BetterJoyForCemu {
 
         public OutputControllerXbox360 out_xbox;
         public OutputControllerDualShock4 out_ds4;
-        ushort ds4_ts = 0;
-        ulong lag;
 
         int lowFreq = Int32.Parse(ConfigurationManager.AppSettings["LowFreqRumble"]);
         int highFreq = Int32.Parse(ConfigurationManager.AppSettings["HighFreqRumble"]);
