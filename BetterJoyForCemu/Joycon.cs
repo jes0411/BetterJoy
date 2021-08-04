@@ -271,7 +271,7 @@ namespace BetterJoyForCemu {
                 id = 3;
             }
 
-            if (ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None).AppSettings.Settings["UseJoyconIncrementalLights"].Value.ToLower() == "true") {
+            if (ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None).AppSettings.Settings["UseIncrementalLights"].Value.ToLower() == "true") {
                 // Set all LEDs from 0 to the given id to lit
                 int ledId = id;
                 LED = 0x0;
@@ -291,7 +291,8 @@ namespace BetterJoyForCemu {
         private float[] activeIMUData;
         private ushort[] activeSticksData;
         private ushort[] activeSticksDeadZoneData;
-        private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, 0.01f); // for getting filtered Euler angles of rotation; 5ms sampling rate
+        static float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
+        private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, AHRS_beta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
         public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, int id = 0, bool isPro = false, bool isSnes = false, bool thirdParty = false) {
             serial_number = serialNum;
@@ -393,7 +394,7 @@ namespace BetterJoyForCemu {
             form.AppendTextBox("Resetting USB connection.\r\n");
             Subcommand(0x06, new byte[] { 0x01 }, 1);
         }
-        public int Attach(byte leds_ = 0x0) {
+        public int Attach() {
             state = state_.ATTACHED;
 
             // Make sure command is received
@@ -454,7 +455,7 @@ namespace BetterJoyForCemu {
             //Subcommand(0x01, new byte[] { 0x03 }, 1, true);
 
             BlinkHomeLight();
-            SetPlayerLED(leds_);
+            SetLEDByPlayerNum(PadId);
 
             Subcommand(0x40, new byte[] { (imu_enabled ? (byte)0x1 : (byte)0x0) }, 1);
             Subcommand(0x48, new byte[] { 0x01 }, 1);
@@ -472,6 +473,8 @@ namespace BetterJoyForCemu {
         }
 
         public void BlinkHomeLight() { // do not call after initial setup
+            if (thirdParty)
+                return;
             byte[] a = Enumerable.Repeat((byte)0xFF, 25).ToArray();
             a[0] = 0x18;
             a[1] = 0x01;
@@ -479,6 +482,8 @@ namespace BetterJoyForCemu {
         }
 
         public void SetHomeLight(bool on) {
+            if (thirdParty)
+                return;
             byte[] a = Enumerable.Repeat((byte)0xFF, 25).ToArray();
             if (on) {
                 a[0] = 0x1F;
@@ -710,13 +715,21 @@ namespace BetterJoyForCemu {
         bool HomeLongPowerOff = Boolean.Parse(ConfigurationManager.AppSettings["HomeLongPowerOff"]);
         long PowerOffInactivityMins = Int32.Parse(ConfigurationManager.AppSettings["PowerOffInactivity"]);
 
+        bool ChangeOrientationDoubleClick = Boolean.Parse(ConfigurationManager.AppSettings["ChangeOrientationDoubleClick"]);
+        long lastDoubleClick = -1;
+
         string extraGyroFeature = ConfigurationManager.AppSettings["GyroToJoyOrMouse"];
+        bool UseFilteredIMU = Boolean.Parse(ConfigurationManager.AppSettings["UseFilteredIMU"]);
         int GyroMouseSensitivityX = Int32.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityX"]);
         int GyroMouseSensitivityY = Int32.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityY"]);
+        float GyroStickSensitivityX = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityX"]);
+        float GyroStickSensitivityY = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityY"]);
+        float GyroStickReduction = float.Parse(ConfigurationManager.AppSettings["GyroStickReduction"]);
         bool GyroHoldToggle = Boolean.Parse(ConfigurationManager.AppSettings["GyroHoldToggle"]);
         bool GyroAnalogSliders = Boolean.Parse(ConfigurationManager.AppSettings["GyroAnalogSliders"]);
         int GyroAnalogSensitivity = Int32.Parse(ConfigurationManager.AppSettings["GyroAnalogSensitivity"]);
         byte[] sliderVal = new byte[] { 0, 0 };
+
         private void DoThingsWithButtons() {
             int powerOffButton = (int)((isPro || !isLeft || other != null) ? Button.HOME : Button.CAPTURE);
 
@@ -728,6 +741,20 @@ namespace BetterJoyForCemu {
 
                     PowerOff();
                     return;
+                }
+            }
+
+            if(!isPro) {
+                if (ChangeOrientationDoubleClick && buttons_down[(int)Button.STICK] && lastDoubleClick != -1) {
+                    if ((buttons_down_timestamp[(int)Button.STICK] - lastDoubleClick) < 3000000) {
+                        form.conBtnClick(form.con[PadId], EventArgs.Empty); // trigger connection button click
+
+                        lastDoubleClick = buttons_down_timestamp[(int)Button.STICK];
+                        return;
+                    }
+                    lastDoubleClick = buttons_down_timestamp[(int)Button.STICK];
+                } else if (ChangeOrientationDoubleClick && buttons_down[(int)Button.STICK]) {
+                    lastDoubleClick = buttons_down_timestamp[(int)Button.STICK];
                 }
             }
 
@@ -782,13 +809,21 @@ namespace BetterJoyForCemu {
 
             // Filtered IMU data
             this.cur_rotation = AHRS.GetEulerAngles();
+            float dt = 0.015f; // 15ms
 
             if (GyroAnalogSliders && (other != null || isPro)) {
                 Button leftT = isLeft ? Button.SHOULDER_2 : Button.SHOULDER2_2;
                 Button rightT = isLeft ? Button.SHOULDER2_2 : Button.SHOULDER_2;
                 Joycon left = isLeft ? this : (isPro ? this : this.other); Joycon right = !isLeft ? this : (isPro ? this : this.other);
-                int ldy = (int)(GyroAnalogSensitivity * (left.cur_rotation[0] - left.cur_rotation[3]));
-                int rdy = (int)(GyroAnalogSensitivity * (right.cur_rotation[0] - right.cur_rotation[3]));
+
+                int ldy, rdy;
+                if (UseFilteredIMU) {
+                    ldy = (int)(GyroAnalogSensitivity * (left.cur_rotation[0] - left.cur_rotation[3]));
+                    rdy = (int)(GyroAnalogSensitivity * (right.cur_rotation[0] - right.cur_rotation[3]));
+                } else {
+                    ldy = (int)(GyroAnalogSensitivity * (left.gyr_g.Y * dt));
+                    rdy = (int)(GyroAnalogSensitivity * (right.gyr_g.Y * dt));
+                }
 
                 if (buttons[(int)leftT]) {
                     sliderVal[0] = (byte)Math.Min(Byte.MaxValue, Math.Max(0, (int)sliderVal[0] + ldy));
@@ -803,28 +838,48 @@ namespace BetterJoyForCemu {
                 }
             }
 
-            if (extraGyroFeature == "joy") {
-                // TODO
-            } else if (extraGyroFeature == "mouse" && (isPro || (other == null) || (other != null && (Boolean.Parse(ConfigurationManager.AppSettings["GyroMouseLeftHanded"]) ? isLeft : !isLeft)))) {
-                string res_val = Config.Value("active_gyro");
-
-                if (res_val.StartsWith("joy_")) {
-                    int i = Int32.Parse(res_val.Substring(4));
-                    if (GyroHoldToggle) {
-                        if (buttons_down[i] || (other != null && other.buttons_down[i]))
-                            active_gyro = true;
-                        else if (buttons_up[i] || (other != null && other.buttons_up[i]))
-                            active_gyro = false;
-                    } else {
-                        if (buttons_down[i] || (other != null && other.buttons_down[i]))
-                            active_gyro = !active_gyro;
-                    }
+            string res_val = Config.Value("active_gyro");
+            if (res_val.StartsWith("joy_")) {
+                int i = Int32.Parse(res_val.Substring(4));
+                if (GyroHoldToggle) {
+                    if (buttons_down[i] || (other != null && other.buttons_down[i]))
+                        active_gyro = true;
+                    else if (buttons_up[i] || (other != null && other.buttons_up[i]))
+                        active_gyro = false;
+                } else {
+                    if (buttons_down[i] || (other != null && other.buttons_down[i]))
+                        active_gyro = !active_gyro;
                 }
+            }
 
+            if (extraGyroFeature.Substring(0, 3) == "joy") {
+                if (Config.Value("active_gyro") == "0" || active_gyro) {
+                    float[] control_stick = (extraGyroFeature == "joy_left") ? stick : stick2;
+
+                    float dx, dy;
+                    if (UseFilteredIMU) {
+                        dx = (GyroStickSensitivityX * (cur_rotation[1] - cur_rotation[4])); // yaw
+                        dy = -(GyroStickSensitivityY * (cur_rotation[0] - cur_rotation[3])); // pitch
+                    } else {
+                        dx = (GyroStickSensitivityX * (gyr_g.Z * dt)); // yaw
+                        dy = -(GyroStickSensitivityY * (gyr_g.Y * dt)); // pitch
+                    }
+
+                    control_stick[0] = Math.Max(-1.0f, Math.Min(1.0f, control_stick[0] / GyroStickReduction + dx));
+                    control_stick[1] = Math.Max(-1.0f, Math.Min(1.0f, control_stick[1] / GyroStickReduction + dy));
+                }
+            } else if (extraGyroFeature == "mouse" && (isPro || (other == null) || (other != null && (Boolean.Parse(ConfigurationManager.AppSettings["GyroMouseLeftHanded"]) ? isLeft : !isLeft)))) {
                 // gyro data is in degrees/s
                 if (Config.Value("active_gyro") == "0" || active_gyro) {
-                    int dx = (int)(GyroMouseSensitivityX * (cur_rotation[1] - cur_rotation[4])); // yaw
-                    int dy = (int)-(GyroMouseSensitivityY * (cur_rotation[0] - cur_rotation[3])); // pitch
+                    int dx, dy;
+
+                    if (UseFilteredIMU) {
+                        dx = (int)(GyroMouseSensitivityX * (cur_rotation[1] - cur_rotation[4])); // yaw
+                        dy = (int)-(GyroMouseSensitivityY * (cur_rotation[0] - cur_rotation[3])); // pitch
+                    } else {
+                        dx = (int)(GyroMouseSensitivityX * (gyr_g.Z * dt));
+                        dy = (int)-(GyroMouseSensitivityY * (gyr_g.Y * dt));
+                    }
 
                     WindowsInput.Simulate.Events().MoveBy(dx, dy).Invoke();
                 }
@@ -1193,8 +1248,10 @@ namespace BetterJoyForCemu {
         }
 
         private bool dump_calibration_data() {
-            if (isSnes || thirdParty)
-                return false;
+            if (isSnes || thirdParty) {
+                return true;
+            }
+
             //HIDapi.hid_set_nonblocking(handle, 0);
             bool ok = true;
             byte[] buf_ = ReadSPICheck(0x80, (isLeft ? (byte)0x12 : (byte)0x1d), 9, ref ok); // get user calibration data if possible
