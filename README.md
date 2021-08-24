@@ -2,7 +2,13 @@
   <img src="title.png">
 </p>
 
-# BetterJoy v6.4α
+# BetterJoy v6.4α Edited
+Fork changes :
+ - fix some bugs, crashes, controller connection/disconnect issues.
+ - hidapi updated
+ - added the calibration of the controller with the calibrate button (have to be enabled in the config).
+I only tested the changes with the pro controller.
+
 Allows the Nintendo Switch Pro Controller, Joycons, and Switch SNES controller to be used with [Cemu](http://cemu.info/) using [Cemuhook](https://sshnuke.net/cemuhook/), [Citra](https://citra-emu.org/), [Dolphin](https://dolphin-emu.org/), [Yuzu](https://yuzu-emu.org/), and system-wide with generic XInput support.
 
 It also allows using the gyro to control your mouse and remap the special buttons (SL, SR, Capture) to key bindings of your choice.
