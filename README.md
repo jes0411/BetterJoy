@@ -7,6 +7,7 @@ Fork changes :
  - fix some bugs, crashes, controller connection/disconnect issues.
  - hidapi updated
  - added the calibration of the controller with the calibrate button (have to be enabled in the config).
+ - Use HidHide instead of the outdated HIDGuardian
 I only tested the changes with the pro controller.
 
 Allows the Nintendo Switch Pro Controller, Joycons, and Switch SNES controller to be used with [Cemu](http://cemu.info/) using [Cemuhook](https://sshnuke.net/cemuhook/), [Citra](https://citra-emu.org/), [Dolphin](https://dolphin-emu.org/), [Yuzu](https://yuzu-emu.org/), and system-wide with generic XInput support.
