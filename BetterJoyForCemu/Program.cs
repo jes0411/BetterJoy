@@ -238,7 +238,7 @@ namespace BetterJoyForCemu {
                     try {
                         for (int n = 0; n < 6; n++)
                             mac[n] = byte.Parse(enumerate.serial_number.Substring(n * 2, 2), System.Globalization.NumberStyles.HexNumber);
-                    } catch (Exception e) {
+                    } catch (Exception /*e*/) {
                         // could not parse mac address
                     }
                     j[j.Count - 1].PadMacAddress = new PhysicalAddress(mac);
@@ -268,14 +268,14 @@ namespace BetterJoyForCemu {
                         if (temp.out_xbox != null) {
                             try {
                                 temp.out_xbox.Disconnect();
-                            } catch (Exception e) {
+                            } catch (Exception /*e*/) {
                                 // it wasn't connected in the first place, go figure
                             }
                         }
                         if (temp.out_ds4 != null) {
                             try {
                                 temp.out_ds4.Disconnect();
-                            } catch (Exception e) {
+                            } catch (Exception /*e*/) {
                                 // it wasn't connected in the first place, go figure
                             }
                         }
@@ -306,7 +306,7 @@ namespace BetterJoyForCemu {
 
                     try {
                         jc.Attach();
-                    } catch (Exception e) {
+                    } catch (Exception /*e*/) {
                         jc.state = Joycon.state_.DROPPED;
                         dropped = true;
                         continue;
@@ -366,7 +366,7 @@ namespace BetterJoyForCemu {
                 if (useHidHide && Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
                     try {
                         HidHide.blacklistDevices(new List<string>(), false);
-                    } catch (Exception e) {
+                    } catch (Exception /*e*/) {
                         form.console.AppendText("Unable to purge blacklisted devices.\r\n");
                         useHidHide = false;
                     }
@@ -382,7 +382,7 @@ namespace BetterJoyForCemu {
                             keepExisting = false;
                         }
                         HidHide.whitelistApplications(applications, keepExisting);
-                    } catch (Exception e) {
+                    } catch (Exception /*e*/) {
                         form.console.AppendText("Unable to add program to whitelist.\r\n");
                         useHidHide = false;
                     }
@@ -392,7 +392,7 @@ namespace BetterJoyForCemu {
                 {
                     try {
                         HidHide.setStatus(true);
-                    } catch (Exception e) {
+                    } catch (Exception /*e*/) {
                         form.console.AppendText("Unable to hide devices.\r\n");
                         useHidHide = false;
                     }
@@ -489,20 +489,20 @@ namespace BetterJoyForCemu {
             if (Program.useHidHide) {
                 try {
                     HidHide.whitelistApplications(new List<string>(), false);
-                } catch (Exception e) {
+                } catch (Exception /*e*/) {
                     form.console.AppendText("Unable to purge whitelist.\r\n");
                 }
 
                 try {
                     HidHide.setStatus(false);
-                } catch (Exception e) {
+                } catch (Exception /*e*/) {
                     form.console.AppendText("Unable to disable HidHide.\r\n");
                 }
 
                 if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
                     try {
                         HidHide.blacklistDevices(new List<string>(), false);
-                    } catch (Exception e) {
+                    } catch (Exception /*e*/) {
                         form.console.AppendText("Unable to purge blacklisted devices.\r\n");
                     }
                 }

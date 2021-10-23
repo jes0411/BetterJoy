@@ -81,21 +81,21 @@ namespace BetterJoyForCemu {
 
         private void SetNonOriginalControllerSettings() {
             Enum.TryParse(ConfigurationManager.AppSettings["NonOriginalController"], true, out NonOriginalController nonOriginalController);
-            switch ((int)nonOriginalController) {
-                case 0:
+            switch (nonOriginalController) {
+                case NonOriginalController.Disabled:
                     nonOriginal = false;
                     break;
-                case 1:
-                case 2:
+                case NonOriginalController.DefaultCalibration:
+                case NonOriginalController.ControllerCalibration:
                     nonOriginal = true;
                     break;       
             }
-            switch ((int)nonOriginalController) {
-                case 0:
-                case 2:
+            switch (nonOriginalController) {
+                case NonOriginalController.Disabled:
+                case NonOriginalController.ControllerCalibration:
                     useControllerStickCalibration = true;
                     break;
-                case 1:
+                case NonOriginalController.DefaultCalibration:
                     useControllerStickCalibration = false;
                     break;
             }
