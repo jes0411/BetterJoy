@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Numerics;
 using Force.Crc32;
 
 namespace BetterJoyForCemu {
@@ -383,7 +384,7 @@ namespace BetterJoyForCemu {
             //accelerometer
             {
                 var accel = hidReport.GetAccel();
-                if (accel != null) {
+                if (accel != Vector3.Zero) {
                     Array.Copy(BitConverter.GetBytes(accel.Y), 0, outputData, outIdx, 4);
                     outIdx += 4;
                     Array.Copy(BitConverter.GetBytes(-accel.Z), 0, outputData, outIdx, 4);
@@ -399,7 +400,7 @@ namespace BetterJoyForCemu {
             //gyroscope
             {
                 var gyro = hidReport.GetGyro();
-                if (gyro != null) {
+                if (gyro != Vector3.Zero) {
                     Array.Copy(BitConverter.GetBytes(gyro.Y), 0, outputData, outIdx, 4);
                     outIdx += 4;
                     Array.Copy(BitConverter.GetBytes(gyro.Z), 0, outputData, outIdx, 4);

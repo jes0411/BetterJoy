@@ -22,8 +22,6 @@ class Lock {
 
 class Utils {
     public static string getApplicationFullPath() {
-        string uriPath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-        System.Uri uri = new System.Uri(Path.GetDirectoryName(uriPath) + @"\" + Path.GetFileName(uriPath));
-        return uri.LocalPath;
+        return System.Environment.ProcessPath;
     }
 }
