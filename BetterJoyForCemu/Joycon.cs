@@ -1641,8 +1641,8 @@ namespace BetterJoyForCemu {
                 output.trigger_right_value = (byte)(buttons[(int)(isLeft ? Button.SHOULDER_1 : Button.SHOULDER_2)] ? Byte.MaxValue : 0);
             }
             // Output digital L2 / R2 in addition to analog L2 / R2
-            output.trigger_left = output.trigger_left_value > 0 ? output.trigger_left = true : output.trigger_left = false;
-            output.trigger_right = output.trigger_right_value > 0 ? output.trigger_right = true : output.trigger_right = false;
+            output.trigger_left = output.trigger_left_value > 0;
+            output.trigger_right = output.trigger_right_value > 0;
 
             return output;
         }
