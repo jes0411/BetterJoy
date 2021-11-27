@@ -146,21 +146,28 @@ namespace BetterJoyForCemu {
 
         private struct Rumble {
             private Queue<float[]> queue;
-            private Lock queueLock;
+            private SpinLock queueLock;
 
             public void set_vals(float low_freq, float high_freq, float amplitude) {
                 float[] rumbleQueue = new float[] { low_freq, high_freq, amplitude };
                 // Keep a queue of 15 items, discard oldest item if queue is full.
-                queueLock.waitLock();
-                if (queue.Count > 15) {
-                    queue.Dequeue();
+                bool lockTaken = false;
+                try {
+                    queueLock.Enter(ref lockTaken);
+                    if (queue.Count > 15) {
+                        queue.Dequeue();
+                    }
+                    queue.Enqueue(rumbleQueue);
                 }
-                queue.Enqueue(rumbleQueue);
-                queueLock.unlock();
+                finally {
+                    if (lockTaken) {
+                        queueLock.Exit();
+                    }
+                }
             }
             public Rumble(float[] rumble_info) {
                 queue = new Queue<float[]>();
-                queueLock = new Lock();
+                queueLock = new SpinLock();
                 queue.Enqueue(rumble_info);
             }
             private float clamp(float x, float min, float max) {
@@ -185,13 +192,21 @@ namespace BetterJoyForCemu {
             }
 
             public byte[] GetData() {
-                queueLock.waitLock();
-                if (queue.Count <= 0) {
-                    queueLock.unlock();
+                float[] queued_data = null;
+                bool lockTaken = false;
+                try {
+                    queueLock.Enter(ref lockTaken);
+                    if (queue.Count > 0) {
+                        queued_data = queue.Dequeue();
+                    }
+                } finally {
+                    if (lockTaken) {
+                        queueLock.Exit();
+                    }
+                }
+                if (queued_data == null) {
                     return null;
                 }
-                float[] queued_data = queue.Dequeue();
-                queueLock.unlock();
                 byte[] rumble_data = new byte[8];
 
                 if (queued_data[2] == 0.0f) {

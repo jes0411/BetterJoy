@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -377,7 +375,7 @@ namespace BetterJoyForCemu {
                 {
                     try {
                         List<string> applications = new List<string>();
-                        applications.Add(Utils.getApplicationFullPath());
+                        applications.Add(System.Environment.ProcessPath);
                         bool keepExisting = true;
                         if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeWhitelist"])) {
                             keepExisting = false;

@@ -10,7 +10,7 @@ namespace BetterJoyForCemu {
 		const int settingsNum = 11; // currently - ProgressiveScan, StartInTray + special buttons
 
         static Config() {
-            path = Path.GetDirectoryName(Utils.getApplicationFullPath()) + "\\settings";
+            path = Path.GetDirectoryName(System.Environment.ProcessPath) + "\\settings";
         }
 
 		public static string GetDefaultValue(string s) {
