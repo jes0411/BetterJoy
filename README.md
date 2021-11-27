@@ -8,6 +8,7 @@ Fork changes :
  - hidapi updated
  - added the calibration of the controller with the calibrate button (have to be enabled in the config).
  - Use HidHide instead of the outdated HIDGuardian
+ - updated to .NET 6
 I only tested the changes with the pro controller.
 
 Allows the Nintendo Switch Pro Controller, Joycons, and Switch SNES controller to be used with [Cemu](http://cemu.info/) using [Cemuhook](https://sshnuke.net/cemuhook/), [Citra](https://citra-emu.org/), [Dolphin](https://dolphin-emu.org/), [Yuzu](https://yuzu-emu.org/), and system-wide with generic XInput support.
@@ -65,8 +66,8 @@ Check out the [wiki](https://github.com/Davidobot/BetterJoy/wiki)! There, you'll
 
 ## Visual Studio (IDE)
 
-1. If you didn't already, install **Visual Studio Community 2019** via
-   [the official guide](https://docs.microsoft.com/en-us/visualstudio/install/install-visual-studio?view=vs-2019).
+1. If you didn't already, install **Visual Studio Community 2022** via
+   [the official guide](https://docs.microsoft.com/en-us/visualstudio/install/install-visual-studio?view=vs-2022).
    When asked about the workloads, select **.NET Desktop Development**.
 2. Get the code project via Git or by using the *Download ZIP* button.
 3. Open Visual Studio Community and open the solution file (*BetterJoy.sln*).
@@ -76,7 +77,7 @@ Check out the [wiki](https://github.com/Davidobot/BetterJoy/wiki)! There, you'll
 
 ## Visual Studio Build Tools (CLI)
 1. Download **Visual Studio Build Tools** via
-   [the official link](https://visualstudio.microsoft.com/it/downloads/#build-tools-for-visual-studio-2019).
+   [the official link](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022).
 2. Install **NuGet** by following
    [the official guide](https://docs.microsoft.com/en-us/nuget/install-nuget-client-tools#nugetexe-cli).
    You should follow the section for ***nuget.exe***.
