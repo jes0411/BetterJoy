@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -515,6 +516,9 @@ namespace BetterJoyForCemu {
 
         private static string appGuid = "1bf709e9-c133-41df-933a-c9ff3f664c7b"; // randomly-generated
         static void Main(string[] args) {
+
+            // Setting the culturesettings so float gets parsed correctly
+            CultureInfo.CurrentCulture = new CultureInfo("en-US", false);
 
             // Set the correct DLL for the current OS
             SetupDlls();
