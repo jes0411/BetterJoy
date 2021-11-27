@@ -10,7 +10,6 @@ using System.Windows.Forms;
 using BetterJoyForCemu.Controller;
 using Nefarius.ViGEm.Client.Targets.DualShock4;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
-using System.Globalization;
 
 namespace BetterJoyForCemu {
     public class Joycon {
@@ -294,8 +293,8 @@ namespace BetterJoyForCemu {
         private ushort activeStick1DeadZoneData;
         private ushort activeStick2DeadZoneData;
         private ushort noCalibrationDeadzone;
-        private float defaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"], CultureInfo.InvariantCulture);
-        static float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"], CultureInfo.InvariantCulture);
+        private float defaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
+        static float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
         private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, AHRS_beta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
         public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, int id = 0, bool isPro = false, bool isSnes = false, bool thirdParty = false) {
@@ -733,9 +732,9 @@ namespace BetterJoyForCemu {
         bool GyroMouseLeftHanded = Boolean.Parse(ConfigurationManager.AppSettings["GyroMouseLeftHanded"]);
         int GyroMouseSensitivityX = Int32.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityX"]);
         int GyroMouseSensitivityY = Int32.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityY"]);
-        float GyroStickSensitivityX = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityX"], CultureInfo.InvariantCulture);
-        float GyroStickSensitivityY = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityY"], CultureInfo.InvariantCulture);
-        float GyroStickReduction = float.Parse(ConfigurationManager.AppSettings["GyroStickReduction"], CultureInfo.InvariantCulture);
+        float GyroStickSensitivityX = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityX"]);
+        float GyroStickSensitivityY = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityY"]);
+        float GyroStickReduction = float.Parse(ConfigurationManager.AppSettings["GyroStickReduction"]);
         bool GyroHoldToggle = Boolean.Parse(ConfigurationManager.AppSettings["GyroHoldToggle"]);
         bool GyroAnalogSliders = Boolean.Parse(ConfigurationManager.AppSettings["GyroAnalogSliders"]);
         int GyroAnalogSensitivity = Int32.Parse(ConfigurationManager.AppSettings["GyroAnalogSensitivity"]);
