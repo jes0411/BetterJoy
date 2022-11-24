@@ -568,6 +568,7 @@ namespace BetterJoyForCemu {
 
         public void Detach(bool close = false) {
             stop_polling = true;
+            PollThreadObj.Join();
 
             if (out_xbox != null) {
                 out_xbox.Disconnect();
