@@ -597,6 +597,13 @@ namespace BetterJoyForCemu {
             state = state_.NOT_ATTACHED;
         }
 
+        public void Drop()
+        {
+            stop_polling = true;
+            PollThreadObj.Join();
+            state = state_.DROPPED;
+        }
+
         private byte ts_en;
         private int ReceiveRaw() {
             ref var raw_buf = ref hid_buf;

@@ -10,6 +10,7 @@ using System.Threading;
 using System.Timers;
 using System.Windows.Forms;
 using BetterJoyForCemu.Collections;
+using Microsoft.Win32;
 using Nefarius.ViGEm.Client;
 using static BetterJoyForCemu._3rdPartyControllers;
 using static BetterJoyForCemu.HIDapi;
@@ -31,7 +32,7 @@ namespace BetterJoyForCemu {
         public MainForm form;
 
         System.Timers.Timer controllerCheck;
-        
+
         public static JoyconManager Instance {
             get { return instance; }
         }
@@ -43,11 +44,23 @@ namespace BetterJoyForCemu {
         }
 
         public void Start() {
+            SystemEvents.PowerModeChanged += OnPowerChange;
             controllerCheck = new System.Timers.Timer(5000); // check for new controllers every 5 seconds
             controllerCheck.Elapsed += CheckForNewControllersTime;
             controllerCheck.AutoReset = false;
             CheckForNewControllers();
             controllerCheck.Start();
+        }
+
+        private void OnPowerChange(object s, PowerModeChangedEventArgs e) {
+            switch (e.Mode) {
+                case PowerModes.Resume:
+                    foreach (Joycon v in j)
+                        v.Drop();
+                    break;
+                case PowerModes.Suspend:
+                    break;
+            }
         }
 
         bool ControllerAlreadyAdded(string path) {
@@ -329,14 +342,15 @@ namespace BetterJoyForCemu {
         }
 
         public void OnApplicationQuit() {
+            SystemEvents.PowerModeChanged -= OnPowerChange;
+            controllerCheck.Stop();
+
             foreach (Joycon v in j) {
                 if (Boolean.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]))
                     v.PowerOff();
 
                 v.Detach();
             }
-
-            controllerCheck.Stop();
             HIDapi.hid_exit();
         }
     }
