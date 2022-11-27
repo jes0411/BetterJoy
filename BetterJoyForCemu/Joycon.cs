@@ -944,11 +944,11 @@ namespace BetterJoyForCemu {
                 }
                 int ret = ReceiveRaw();
 
-                if(isUSB && battery == 0) {
-                    state = state_.DROPPED;
-                    form.AppendTextBox(String.Format("Controller {0} ({1}) powered down.\r\n", PadId, getControllerName()));
-                    break;
-                }
+                //if (isUSB && battery == 0) {
+                //    state = state_.DROPPED;
+                //    form.AppendTextBox(String.Format("Controller {0} ({1}) powered down.\r\n", PadId, getControllerName()));
+                //    break;
+                //}
                 if (ret > 0 && state > state_.DROPPED) {
                     state = state_.IMU_DATA_OK;
                     attempts = 0;

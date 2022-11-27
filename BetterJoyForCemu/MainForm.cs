@@ -1,4 +1,5 @@
-﻿using Nefarius.ViGEm.Client.Targets;
+﻿using Microsoft.Win32;
+using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
 using System;
 using System.Collections.Generic;
@@ -140,14 +141,28 @@ namespace BetterJoyForCemu {
             } else {
                 ShowFromTray();
             }
+            SystemEvents.PowerModeChanged += OnPowerChange;
             Program.Start();
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e) {
             try {
                 Program.Stop();
+                SystemEvents.PowerModeChanged -= OnPowerChange;
                 Environment.Exit(0);
             } catch { }
+        }
+
+        private void OnPowerChange(object s, PowerModeChangedEventArgs e) {
+            switch (e.Mode) {
+                case PowerModes.Resume:
+                    AppendTextBox("Resume session.\r\n");
+                    Program.mgr.onResume();
+                    break;
+                case PowerModes.Suspend:
+                    AppendTextBox("Suspend session.\r\n");
+                    break;
+            }
         }
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e) { // this does not work, for some reason. Fix before release
