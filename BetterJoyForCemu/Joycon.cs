@@ -102,12 +102,12 @@ namespace BetterJoyForCemu {
 
         private byte[] stick_raw = { 0, 0, 0 };
         private UInt16[] stick_cal = { 0, 0, 0, 0, 0, 0 };
-        private UInt16 deadzone;
+        private UInt16 deadzone = 0;
         private UInt16[] stick_precal = { 0, 0 };
 
         private byte[] stick2_raw = { 0, 0, 0 };
         private UInt16[] stick2_cal = { 0, 0, 0, 0, 0, 0 };
-        private UInt16 deadzone2;
+        private UInt16 deadzone2 = 0;
         private UInt16[] stick2_precal = { 0, 0 };
 
         private bool stop_polling = true;
@@ -115,12 +115,12 @@ namespace BetterJoyForCemu {
         private Int16[] acc_r = { 0, 0, 0 };
         private Int16[] acc_neutral = { 0, 0, 0 };
         private Int16[] acc_sensiti = { 0, 0, 0 };
-        private Vector3 acc_g;
+        private Vector3 acc_g = Vector3.Zero;
 
         private Int16[] gyr_r = { 0, 0, 0 };
         private Int16[] gyr_neutral = { 0, 0, 0 };
         private Int16[] gyr_sensiti = { 0, 0, 0 };
-        private Vector3 gyr_g;
+        private Vector3 gyr_g = Vector3.Zero;
 
         private float[] cur_rotation; // Filtered IMU data
 
@@ -416,7 +416,7 @@ namespace BetterJoyForCemu {
         }
         public void Reset() {
             form.AppendTextBox("Resetting USB connection.\r\n");
-            Subcommand(0x06, new byte[] { 0x01 }, 1);
+            SetHCIState(0x01);
         }
         public int Attach() {
             state = state_.ATTACHED;
@@ -428,8 +428,8 @@ namespace BetterJoyForCemu {
                 a = Enumerable.Repeat((byte)0, 64).ToArray();
                 form.AppendTextBox("Using USB.\r\n");
 
-                a[0] = 0x80;
-                a[1] = 0x1;
+                // Get MAC
+                a[0] = 0x80; a[1] = 0x1;
                 HIDapi.hid_write(handle, a, new UIntPtr(2));
                 HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
 
@@ -478,12 +478,11 @@ namespace BetterJoyForCemu {
             BlinkHomeLight();
             SetLEDByPlayerNum(PadId);
 
-            Subcommand(0x40, new byte[] { (imu_enabled ? (byte)0x1 : (byte)0x0) }, 1);
-            Subcommand(0x48, new byte[] { 0x01 }, 1);
+            Subcommand(0x40, new byte[] { (imu_enabled ? (byte)0x1 : (byte)0x0) }, 1); // enable IMU
+            Subcommand(0x48, new byte[] { 0x01 }, 1); // enable vibrations
+            Subcommand(0x3, new byte[] { 0x30 }, 1); // set report mode to NPad standard mode
 
-            Subcommand(0x3, new byte[] { 0x30 }, 1);
             DebugPrint("Done with init.", DebugType.COMMS);
-
 
             return 0;
         }
@@ -649,7 +648,6 @@ namespace BetterJoyForCemu {
                         // ignore /shrug
                     }
                 }
-
 
                 if (ts_en == raw_buf[1] && !isSnes) {
                     form.AppendTextBox("Duplicate timestamp enqueued.\r\n");
@@ -844,7 +842,8 @@ namespace BetterJoyForCemu {
             if (GyroAnalogSliders && (other != null || isPro)) {
                 Button leftT = isLeft ? Button.SHOULDER_2 : Button.SHOULDER2_2;
                 Button rightT = isLeft ? Button.SHOULDER2_2 : Button.SHOULDER_2;
-                Joycon left = isLeft ? this : (isPro ? this : this.other); Joycon right = !isLeft ? this : (isPro ? this : this.other);
+                Joycon left = (isLeft || isPro) ? this : this.other;
+                Joycon right = (!isLeft || isPro) ? this : this.other;
 
                 int ldy, rdy;
                 if (UseFilteredIMU) {
@@ -1018,7 +1017,7 @@ namespace BetterJoyForCemu {
                     stick2 = CenterSticks(stick2_precal, cal, dz);
                 }
                 if (!form.calibrateSticks) {
-                    DebugPrint(string.Format("Stick1: X={0} Y={1}. Stick2: X={2} Y={3}", stick_precal[0], stick_precal[1], stick2_precal[0], stick2_precal[1]), DebugType.THREADING);
+                    DebugPrint(string.Format("Stick1: X={0} Y={1}. Stick2: X={2} Y={3}", stick[0], stick[1], stick2[0], stick2[1]), DebugType.THREADING);
                 }
 
                 // Read other Joycon's sticks

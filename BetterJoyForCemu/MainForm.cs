@@ -535,7 +535,7 @@ namespace BetterJoyForCemu {
                 }
 
                 Arr[0] = (ushort) Math.Abs(this.xS1.Max() - Arr[2]);
-                Arr[1] = (ushort) Math.Abs(this.yS1.Max()- Arr[3]);
+                Arr[1] = (ushort) Math.Abs(this.yS1.Max() - Arr[3]);
                 Arr[4] = (ushort) Math.Abs(Arr[2] - this.xS1.Min());
                 Arr[5] = (ushort) Math.Abs(Arr[3] - this.yS1.Min());
                 Arr[0 + stickCaliSize] = (ushort) Math.Abs(this.xS2.Max() - Arr[2 + stickCaliSize]);
