@@ -1262,7 +1262,7 @@ namespace BetterJoyForCemu {
                     PrintArray(response, DebugType.COMMS, report_len - 1, 1, "Response ID 0x" + string.Format("{0:X2}", response[0]) + ". Data: 0x{0:S}");
                 }
                 tries++;
-            } while (tries < 10 && response[0] != 0x21 && response[14] != sc);
+            } while (tries < 5 && response[0] != 0x21 && response[14] != sc);
 
             return response;
         }
