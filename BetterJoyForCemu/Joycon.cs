@@ -421,9 +421,6 @@ namespace BetterJoyForCemu {
         public int Attach() {
             state = state_.ATTACHED;
 
-            // Make sure command is received
-            HIDapi.hid_set_nonblocking(handle, 0);
-
             byte[] a = { 0x0 };
 
             // Connect
@@ -487,7 +484,6 @@ namespace BetterJoyForCemu {
             Subcommand(0x3, new byte[] { 0x30 }, 1);
             DebugPrint("Done with init.", DebugType.COMMS);
 
-            HIDapi.hid_set_nonblocking(handle, 1);
 
             return 0;
         }
@@ -526,7 +522,6 @@ namespace BetterJoyForCemu {
 
         public void PowerOff() {
             if (state > state_.DROPPED) {
-                HIDapi.hid_set_nonblocking(handle, 0);
                 SetHCIState(0x00);
                 state = state_.DROPPED;
             }
@@ -581,8 +576,6 @@ namespace BetterJoyForCemu {
             }
 
             if (state > state_.NO_JOYCONS) {
-                HIDapi.hid_set_nonblocking(handle, 0);
-
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
                 //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
@@ -1278,8 +1271,6 @@ namespace BetterJoyForCemu {
             if (isSnes || thirdParty) {
                 return true;
             }
-
-            //HIDapi.hid_set_nonblocking(handle, 0);
             bool ok = true;
             byte[] buf_ = ReadSPICheck(0x80, (isLeft ? (byte)0x12 : (byte)0x1d), 9, ref ok); // get user calibration data if possible
             bool found = false;
@@ -1391,7 +1382,6 @@ namespace BetterJoyForCemu {
             if(!ok) {
                 form.AppendTextBox("Error while reading calibration data.\r\n");
             }
-            //HIDapi.hid_set_nonblocking(handle, 1);
             return ok;
         }
 

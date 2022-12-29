@@ -195,12 +195,12 @@ namespace BetterJoyForCemu {
                     // -------------------- //
 
                     IntPtr handle = HIDapi.hid_open_path(enumerate.path);
-                    try {
-                        HIDapi.hid_set_nonblocking(handle, 1);
-                    } catch {
+                    if (handle == IntPtr.Zero) {
                         form.AppendTextBox("Unable to open path to device - are you using the correct (64 vs 32-bit) version for your PC?\r\n");
                         break;
                     }
+
+                    HIDapi.hid_set_nonblocking(handle, 1);
 
                     bool isPro = prod_id == product_pro;
                     bool isSnes = prod_id == product_snes;
