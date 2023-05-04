@@ -99,8 +99,10 @@ namespace BetterJoyForCemu.Controller {
 		}
 
 		private void FeedbackReceivedRcv(object _sender, DualShock4FeedbackReceivedEventArgs e) {
-			FeedbackReceived(e);
-		}
+            if (FeedbackReceived != null) {
+                FeedbackReceived(e);
+            }
+        }
 
 		public void Connect() {
 			controller.Connect();
