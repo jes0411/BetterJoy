@@ -1033,7 +1033,6 @@ namespace BetterJoyForCemu {
                     }
                 }
             }
-            //
 
             // Set button states both for server and ViGEm
             lock (buttons) {
