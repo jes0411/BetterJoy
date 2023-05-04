@@ -1229,6 +1229,8 @@ namespace BetterJoyForCemu {
 
         private void SendRumble(byte[] buf) {
             ref var buf_ = ref hid_buf;
+            Array.Clear(buf_);
+
             buf_[0] = 0x10;
             buf_[1] = global_count;
             if (global_count == 0xf) global_count = 0;
@@ -1240,6 +1242,8 @@ namespace BetterJoyForCemu {
 
         private byte[] Subcommand(byte sc, byte[] buf, uint len, bool print = true) {
             ref var buf_ = ref hid_buf;
+            Array.Clear(buf_);
+
             Array.Copy(default_buf, 0, buf_, 2, 8);
             Array.Copy(buf, 0, buf_, 11, len);
             buf_[10] = sc;
