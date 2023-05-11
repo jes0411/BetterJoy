@@ -157,7 +157,9 @@ namespace BetterJoyForCemu {
             switch (e.Mode) {
                 case PowerModes.Resume:
                     AppendTextBox("Resume session.\r\n");
-                    Program.mgr.onResume();
+                    Task.Run(() => {
+                        Program.mgr.onResume();
+                    });
                     break;
                 case PowerModes.Suspend:
                     AppendTextBox("Suspend session.\r\n");

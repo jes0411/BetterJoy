@@ -26,6 +26,9 @@ namespace BetterJoyForCemu {
         private const ushort product_pro = 0x2009;
         private const ushort product_snes = 0x2017;
 
+        private const double defaultCheckInterval = 5000;
+        private const double fastCheckInterval = 500;
+
         public ConcurrentList<Joycon> j { get; private set; } // Array of all connected Joy-Cons
         static JoyconManager instance;
 
@@ -33,6 +36,7 @@ namespace BetterJoyForCemu {
 
         private System.Timers.Timer controllerCheck;
         private bool dropControllers = false;
+        private readonly object lockCheckController = new object();
 
         public static JoyconManager Instance {
             get { return instance; }
@@ -45,7 +49,7 @@ namespace BetterJoyForCemu {
         }
 
         public void Start() {
-            controllerCheck = new System.Timers.Timer(5000); // check for new controllers every 5 seconds
+            controllerCheck = new System.Timers.Timer(defaultCheckInterval); // check for new controllers every 5 seconds
             controllerCheck.Elapsed += CheckForNewControllersTime;
             controllerCheck.AutoReset = false;
             CheckForNewControllers();
@@ -94,16 +98,38 @@ namespace BetterJoyForCemu {
         }
 
         private void CheckForNewControllersTime(Object source, ElapsedEventArgs e) {
-            CleanUp();
-            if (Config.IntValue("ProgressiveScan") == 1) {
-                CheckForNewControllers();
+            lock (lockCheckController) {
+                CleanUp();
+
+                if (Config.IntValue("ProgressiveScan") == 1) {
+                    double checkInterval = CheckForNewControllers();
+                    setControllerCheckInterval(checkInterval);
+                }                
+                controllerCheck.Start();
             }
-            controllerCheck.Start();
+        }
+
+        private void setControllerCheckInterval(double interval) {
+            if (interval == controllerCheck.Interval) {
+                return;
+            }
+            // Avoid triggering the elapsed event when changing the interval (see note in https://learn.microsoft.com/en-us/dotnet/api/system.timers.timer.interval?view=net-7.0)
+            bool wasEnabled = controllerCheck.Enabled;
+            if (!wasEnabled) {
+                controllerCheck.Enabled = true;
+            }
+            controllerCheck.Interval = interval;
+            if (!wasEnabled) {
+                controllerCheck.Enabled = false;
+            }
         }
 
         public void onResume() {
-            dropControllers = true;
-            controllerCheck.Interval = 500;
+            lock (lockCheckController) {
+                controllerCheck.Stop();
+                dropControllers = true;
+                CheckForNewControllersTime(null, null);
+            }
         }
 
         private ushort TypeToProdId(byte type) {
@@ -118,7 +144,7 @@ namespace BetterJoyForCemu {
             return 0;
         }
 
-        public void CheckForNewControllers() {
+        public double CheckForNewControllers() {
             // move all code for initializing devices here and well as the initial code from Start()
             bool isLeft = false;
             IntPtr ptr = HIDapi.hid_enumerate(0x0, 0x0);
@@ -332,12 +358,8 @@ namespace BetterJoyForCemu {
                     }
                 }
             }
-            if (dropped) {
-                controllerCheck.Interval = 500;
-            }
-            else {
-                controllerCheck.Interval = 5000;
-            }
+            double checkInterval = dropped ? fastCheckInterval : defaultCheckInterval;
+            return checkInterval;
         }
 
         public void OnApplicationQuit() {
