@@ -10,7 +10,6 @@ using System.Threading;
 using System.Timers;
 using System.Windows.Forms;
 using BetterJoyForCemu.Collections;
-using Microsoft.Win32;
 using Nefarius.ViGEm.Client;
 using static BetterJoyForCemu._3rdPartyControllers;
 using static BetterJoyForCemu.HIDapi;
