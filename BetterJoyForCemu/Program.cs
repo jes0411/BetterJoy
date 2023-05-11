@@ -336,12 +336,11 @@ namespace BetterJoyForCemu {
             bool on = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None).AppSettings.Settings["HomeLEDOn"].Value.ToLower() == "true";
             foreach (Joycon jc in j) { // Connect device straight away
                 if (jc.state == Joycon.state_.NOT_ATTACHED) {
-                    if (jc.out_xbox != null)
-                        jc.out_xbox.Connect();
-                    if (jc.out_ds4 != null)
-                        jc.out_ds4.Connect();
-
                     try {
+                        if (jc.out_xbox != null)
+                            jc.out_xbox.Connect();
+                        if (jc.out_ds4 != null)
+                            jc.out_ds4.Connect();
                         jc.Attach();
                     } catch (Exception /*e*/) {
                         jc.state = Joycon.state_.DROPPED;
