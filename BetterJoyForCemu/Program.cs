@@ -10,6 +10,7 @@ using System.Threading;
 using System.Timers;
 using System.Windows.Forms;
 using BetterJoyForCemu.Collections;
+using Nefarius.Drivers.HidHide;
 using Nefarius.ViGEm.Client;
 using static BetterJoyForCemu._3rdPartyControllers;
 using static BetterJoyForCemu.HIDapi;
@@ -198,20 +199,18 @@ namespace BetterJoyForCemu {
 
                     // Add controller to block-list for HidHide
                     if (Program.useHidHide) {
-                        List<string> devices = new List<string>();
                         var pathTokens = enumerate.path.Split('#');
                         if (pathTokens.Length < 2) {
                             form.AppendTextBox("Unable to add controller to block-list : incorrect device path.\r\n");
                         }
                         else
                         {
-                            string device = @"HID\" + pathTokens[1].ToUpper() + @"\" + pathTokens[2].ToLower();
-                            devices.Add(device);
-                            device = @"USB\" + pathTokens[1].ToUpper() + @"\" + enumerate.serial_number;
-                            devices.Add(device);
-
                             try {
-                                HidHide.blacklistDevices(devices);
+                                List<string> devices = new List<string>() {
+                                    @"HID\" + pathTokens[1].ToUpper() + @"\" + pathTokens[2].ToLower(),
+                                    @"USB\" + pathTokens[1].ToUpper() + @"\" + enumerate.serial_number
+                                };
+                                Program.blockDevices(devices);
                             } catch {
                                 form.AppendTextBox("Unable to add controller to block-list.\r\n");
                             }
@@ -385,52 +384,17 @@ namespace BetterJoyForCemu {
 
         static MainForm form;
 
-        static public bool useHidHide = Boolean.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
-
         public static List<SController> thirdPartyCons = new List<SController>();
+
+        public static bool useHidHide = Boolean.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
 
         private static WindowsInput.Events.Sources.IKeyboardEventSource keyboard;
         private static WindowsInput.Events.Sources.IMouseEventSource mouse;
 
+        private static HashSet<string> blockedDevices = new HashSet<string>();
+
         public static void Start() {
-            if (useHidHide) {
-                form.console.AppendText("HidHide is enabled.\r\n");
-
-                if (useHidHide && Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
-                    try {
-                        HidHide.blacklistDevices(new List<string>(), false);
-                    } catch (Exception /*e*/) {
-                        form.console.AppendText("Unable to purge blacklisted devices.\r\n");
-                        useHidHide = false;
-                    }
-                }
-
-                if (useHidHide)
-                {
-                    try {
-                        List<string> applications = new List<string>();
-                        applications.Add(System.Environment.ProcessPath);
-                        bool keepExisting = true;
-                        if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeWhitelist"])) {
-                            keepExisting = false;
-                        }
-                        HidHide.whitelistApplications(applications, keepExisting);
-                    } catch (Exception /*e*/) {
-                        form.console.AppendText("Unable to add program to whitelist.\r\n");
-                        useHidHide = false;
-                    }
-                }
-
-                if (useHidHide)
-                {
-                    try {
-                        HidHide.setStatus(true);
-                    } catch (Exception /*e*/) {
-                        form.console.AppendText("Unable to hide devices.\r\n");
-                        useHidHide = false;
-                    }
-                }
-            }
+            useHidHide = startHidHide();
 
             if (Boolean.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]) || Boolean.Parse(ConfigurationManager.AppSettings["ShowAsDS4"])) {
                 try {
@@ -470,6 +434,62 @@ namespace BetterJoyForCemu {
 
             form.console.AppendText("All systems go\r\n");
             mgr.Start();
+        }
+
+        private static bool startHidHide() {
+            if (!useHidHide) {
+                return false;
+            }
+
+            HidHideControlService hidHideService = new HidHideControlService();
+            if (!hidHideService.IsInstalled) {
+                form.console.AppendText("HidHide is not installed.\r\n");
+                return false;
+            }
+
+            try {
+                hidHideService.IsAppListInverted = false;
+            } catch (Exception /*e*/) {
+                form.console.AppendText("Unable to set HidHide in whitelist mode.\r\n");
+                return false;
+            }
+
+            //if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
+            //    try {
+            //        hidHideService.ClearBlockedInstancesList();
+            //    } catch (Exception /*e*/) {
+            //        form.console.AppendText("Unable to purge blacklisted devices.\r\n");
+            //        return false;
+            //    }
+            //}
+
+            try {
+                if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeWhitelist"])) {
+                    hidHideService.ClearApplicationsList();
+                }
+                hidHideService.AddApplicationPath(Environment.ProcessPath);
+            } catch (Exception /*e*/) {
+                form.console.AppendText("Unable to add program to whitelist.\r\n");
+                return false;
+            }
+
+            try {
+                hidHideService.IsActive = true;
+            } catch (Exception /*e*/) {
+                form.console.AppendText("Unable to hide devices.\r\n");
+                return false;
+            }
+
+            form.console.AppendText("HidHide is enabled.\r\n");
+            return true;
+        }
+
+        public static void blockDevices(IList<string> devices) {
+            HidHideControlService hidHideService = new HidHideControlService();
+            foreach (var device in devices) {
+                hidHideService.AddBlockedInstanceId(device);
+                blockedDevices.Add(device);
+            }
         }
 
         private static void Mouse_MouseEvent(object sender, WindowsInput.Events.Sources.EventSourceEventArgs<WindowsInput.Events.Sources.MouseEvent> e) {
@@ -519,31 +539,42 @@ namespace BetterJoyForCemu {
         }
 
         public static void Stop() {
-            if (Program.useHidHide) {
-                try {
-                    HidHide.whitelistApplications(new List<string>(), false);
-                } catch (Exception /*e*/) {
-                    form.console.AppendText("Unable to purge whitelist.\r\n");
-                }
+            stopHidHide();
 
-                try {
-                    HidHide.setStatus(false);
-                } catch (Exception /*e*/) {
-                    form.console.AppendText("Unable to disable HidHide.\r\n");
-                }
+            keyboard.Dispose();
+            mouse.Dispose();
+            server.Stop();
+            mgr.OnApplicationQuit();
+        }
 
-                if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
-                    try {
-                        HidHide.blacklistDevices(new List<string>(), false);
-                    } catch (Exception /*e*/) {
-                        form.console.AppendText("Unable to purge blacklisted devices.\r\n");
+        public static void stopHidHide() {
+            if (!useHidHide) {
+                return;
+            }
+
+            HidHideControlService hidHideService = new HidHideControlService();
+
+            try {
+                hidHideService.RemoveApplicationPath(Environment.ProcessPath);
+            } catch (Exception /*e*/) {
+                form.console.AppendText("Unable to remove program from whitelist.\r\n");
+            }
+
+            if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
+                try {
+                    foreach (var device in blockedDevices) {
+                        hidHideService.RemoveBlockedInstanceId(device);
                     }
+                } catch (Exception /*e*/) {
+                    form.console.AppendText("Unable to purge blacklisted devices.\r\n");
                 }
             }
 
-            keyboard.Dispose(); mouse.Dispose();
-            server.Stop();
-            mgr.OnApplicationQuit();
+            try {
+                hidHideService.IsActive = false;
+            } catch (Exception /*e*/) {
+                form.console.AppendText("Unable to disable HidHide.\r\n");
+            }
         }
 
         private static string appGuid = "1bf709e9-c133-41df-933a-c9ff3f664c7b"; // randomly-generated
