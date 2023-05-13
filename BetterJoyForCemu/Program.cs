@@ -361,8 +361,10 @@ namespace BetterJoyForCemu {
         }
 
         public void OnApplicationQuit() {
-            controllerCheck.Stop();
-
+            lock (lockCheckController) {
+                controllerCheck.Stop();
+                controllerCheck.Dispose();
+            }
             foreach (Joycon v in j) {
                 if (Boolean.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]))
                     v.PowerOff();
