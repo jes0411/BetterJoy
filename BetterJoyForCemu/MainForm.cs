@@ -301,8 +301,15 @@ namespace BetterJoyForCemu {
 
             ConfigurationManager.AppSettings["AutoPowerOff"] = "false";  // Prevent joycons poweroff when applying settings
             Program.Stop();
-            Application.Restart();
-            Environment.Exit(0);
+
+            ProcessStartInfo Info = new ProcessStartInfo();
+            Info.Arguments = "/c ping 127.0.0.1 -n 2 && \"" + Application.ExecutablePath + "\"";
+            Info.WorkingDirectory = Environment.CurrentDirectory;
+            Info.WindowStyle = ProcessWindowStyle.Hidden;
+            Info.CreateNoWindow = true;
+            Info.FileName = "cmd.exe";
+            Process.Start(Info);
+            Application.Exit();
         }
 
         void ReenableViGEm(Joycon v) {
