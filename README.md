@@ -7,6 +7,7 @@
  - fix some bugs, crashes, controller connection/disconnect issues.
  - hidapi updated
  - added the calibration of the controller with the calibrate button (have to be enabled in the config).
+ - added a deadzone setting
  - Use HidHide instead of the outdated HIDGuardian
  - updated to .NET 7
 
