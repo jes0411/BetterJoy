@@ -8,8 +8,15 @@ namespace BetterJoyForCemu {
 #else
 		const string dll = "hidapi.dll";
 #endif
+        public enum BusType {
+            UNKNOWN = 0x00,
+            USB = 0x01,
+            BLUETOOTH = 0x02,
+            I2C = 0x03,
+            SPI = 0x04
+        }
 
-		public struct hid_device_info {
+        public struct hid_device_info {
 			[MarshalAs(UnmanagedType.LPStr)]
 			public string path;
 			public ushort vendor_id;
@@ -25,7 +32,8 @@ namespace BetterJoyForCemu {
 			public ushort usage;
 			public int interface_number;
 			public IntPtr next;
-		};
+            public BusType bus_type; // >= 0.13.0
+        };
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
 		public static extern int hid_init();

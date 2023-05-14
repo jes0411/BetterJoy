@@ -13,10 +13,28 @@ using Nefarius.ViGEm.Client.Targets.Xbox360;
 
 namespace BetterJoyForCemu {
     public class Joycon {
+        public enum ControllerType : int {
+            JOYCON,
+            PRO,
+            SNES
+        }
+
+        public ControllerType type = ControllerType.JOYCON;
+
+        public bool isPro {
+            get {
+                return (type == ControllerType.PRO || type == ControllerType.SNES);
+            }
+        }
+        public bool isSnes {
+            get {
+                return (type == ControllerType.SNES);
+            }
+        }
+        public bool isThirdparty = false;
+        public bool isUSB = false;
         public string path = String.Empty;
-        public bool isPro = false;
-        public bool isSnes = false;
-        bool isUSB = false;
+        
         private Joycon _other = null;
         public Joycon other {
             get {
@@ -312,7 +330,7 @@ namespace BetterJoyForCemu {
         static float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
         private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, AHRS_beta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
-        public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, int id = 0, bool isPro = false, bool isSnes = false, bool thirdParty = false) {
+        public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, bool isUSB, int id = 0, ControllerType type = ControllerType.JOYCON, bool isThirdparty = false) {
             serial_number = serialNum;
             activeIMUData = new float[6];
             activeStick1Data = new ushort[6];
@@ -330,11 +348,10 @@ namespace BetterJoyForCemu {
 
             PadId = id;
             LED = (byte)(0x1 << PadId);
-            this.isPro = isPro || isSnes;
-            this.isSnes = isSnes;
-            isUSB = serialNum == "000000000001";
-            this.thirdParty = thirdParty;
 
+            this.isUSB = isUSB;
+            this.type = type;
+            this.isThirdparty = isThirdparty;
             this.path = path;
 
             connection = isUSB ? 0x01 : 0x02;

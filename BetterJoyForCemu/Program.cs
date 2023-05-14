@@ -226,9 +226,15 @@ namespace BetterJoyForCemu {
 
                     HIDapi.hid_set_nonblocking(handle, 1);
 
-                    bool isPro = prod_id == product_pro;
-                    bool isSnes = prod_id == product_snes;
-                    j.Add(new Joycon(handle, EnableIMU, EnableLocalize & EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, j.Count, isPro, isSnes, thirdParty != null));
+                    Joycon.ControllerType type = Joycon.ControllerType.JOYCON;
+                    if (prod_id == product_pro) {
+                        type = Joycon.ControllerType.PRO;
+                    } else if (prod_id == product_snes) {
+                        type = Joycon.ControllerType.SNES;
+                    }
+                    bool isUsb = enumerate.bus_type == BusType.USB;
+
+                    j.Add(new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUsb, j.Count, type, thirdParty != null));
 
                     foundNew = true;
                     j.Last().form = form;
