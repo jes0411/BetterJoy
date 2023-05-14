@@ -101,10 +101,11 @@ namespace BetterJoyForCemu {
             lock (lockCheckController) {
                 CleanUp();
 
+                double checkInterval = defaultCheckInterval;
                 if (Config.IntValue("ProgressiveScan") == 1) {
-                    double checkInterval = CheckForNewControllers();
-                    setControllerCheckInterval(checkInterval);
-                }                
+                    checkInterval = CheckForNewControllers();
+                }
+                setControllerCheckInterval(checkInterval);
                 controllerCheck.Start();
             }
         }
