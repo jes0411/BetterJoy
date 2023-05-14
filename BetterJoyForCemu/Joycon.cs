@@ -599,11 +599,13 @@ namespace BetterJoyForCemu {
                 //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
                 if (isUSB) {
-                    byte[] a = Enumerable.Repeat((byte)0, 64).ToArray();
-                    a[0] = 0x80; a[1] = 0x5; // Allow device to talk to BT again
-                    HIDapi.hid_write(handle, a, new UIntPtr(2));
-                    a[0] = 0x80; a[1] = 0x6; // Allow device to talk to BT again
-                    HIDapi.hid_write(handle, a, new UIntPtr(2));
+                    ref var buf = ref hid_buf;
+                    Array.Clear(buf);
+
+                    buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
+                    HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                    buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
+                    HIDapi.hid_write(handle, buf, new UIntPtr(2));
                 }
             }
             if (close || state > state_.DROPPED) {
