@@ -159,7 +159,7 @@ namespace BetterJoyForCemu {
 
         private bool do_localize;
         private float filterweight;
-        private const uint report_len = 49;
+        private const int report_len = 49;
         private byte[] hid_buf = new byte[report_len];
 
         private struct Rumble {
@@ -437,44 +437,48 @@ namespace BetterJoyForCemu {
         public int Attach() {
             state = state_.ATTACHED;
 
-            byte[] a = { 0x0 };
-
             // Connect
             if (isUSB) {
-                a = Enumerable.Repeat((byte)0, 64).ToArray();
                 form.AppendTextBox("Using USB.\r\n");
 
-                // Get MAC
-                a[0] = 0x80; a[1] = 0x1;
-                HIDapi.hid_write(handle, a, new UIntPtr(2));
-                HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
+                ref var buf = ref hid_buf;
+                Array.Clear(buf);
 
-                if (a[0] != 0x81) { // can occur when USB connection isn't closed properly
+                // Get MAC
+                buf[0] = 0x80; buf[1] = 0x1;
+                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                int length = HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
+
+
+                if (length < 10 || buf[0] != 0x81) { // can occur when USB connection isn't closed properly
                     Reset();
                     throw new Exception("reset_usb");
                 }
 
-                if (a[3] == 0x3) {
-                    PadMacAddress = new PhysicalAddress(new byte[] { a[9], a[8], a[7], a[6], a[5], a[4] });
+                if (buf[3] == 0x3) {
+                    PadMacAddress = new PhysicalAddress(new byte[] { buf[9], buf[8], buf[7], buf[6], buf[5], buf[4] });
                 }
 
                 // USB Pairing
-                a = Enumerable.Repeat((byte)0, 64).ToArray();
-                a[0] = 0x80; a[1] = 0x2; // Handshake
-                HIDapi.hid_write(handle, a, new UIntPtr(2));
-                HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
+                Array.Clear(buf);
+                buf[0] = 0x80; buf[1] = 0x2; // Handshake
+                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
-                a[0] = 0x80; a[1] = 0x3; // 3Mbit baud rate
-                HIDapi.hid_write(handle, a, new UIntPtr(2));
-                HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
+                Array.Clear(buf);
+                buf[0] = 0x80; buf[1] = 0x3; // 3Mbit baud rate
+                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
-                a[0] = 0x80; a[1] = 0x2; // Handshake at new baud rate
-                HIDapi.hid_write(handle, a, new UIntPtr(2));
-                HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
+                Array.Clear(buf);
+                buf[0] = 0x80; buf[1] = 0x2; // Handshake at new baud rate
+                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
-                a[0] = 0x80; a[1] = 0x4; // Prevent HID timeout
-                HIDapi.hid_write(handle, a, new UIntPtr(2)); // doesn't actually prevent timout...
-                HIDapi.hid_read_timeout(handle, a, new UIntPtr(64), 100);
+                Array.Clear(buf);
+                buf[0] = 0x80; buf[1] = 0x4; // Prevent HID timeout
+                HIDapi.hid_write(handle, buf, new UIntPtr(2)); // doesn't actually prevent timout...
+                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
             }
             bool ok = dump_calibration_data();
