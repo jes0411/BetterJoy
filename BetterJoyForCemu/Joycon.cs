@@ -622,27 +622,34 @@ namespace BetterJoyForCemu {
         }
 
         private byte ts_en;
-        private int ReceiveRaw() {
-            ref var raw_buf = ref hid_buf;
+
+        // Run from poll thread
+        private int ReceiveRaw(byte[] buf) {
             if (handle == IntPtr.Zero) {
                 return -2;
             }
-            int length = HIDapi.hid_read_timeout(handle, raw_buf, new UIntPtr(report_len), 5);
+            int length = HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 5);
+
+            if (length > 0) {
+                // clear remaining of buffer just to be safe
+                if (length < report_len) {
+                    Array.Clear(buf, length, report_len - length);
+                }
 
                 // Process packets as soon as they come
                 for (int n = 0; n < 3; n++) {
-                    ExtractIMUValues(raw_buf, n);
+                    ExtractIMUValues(buf, n);
 
-                    byte lag = (byte)Math.Max(0, raw_buf[1] - ts_en - 3);
+                    byte lag = (byte)Math.Max(0, buf[1] - ts_en - 3);
                     if (n == 0) {
                         Timestamp += (ulong)lag * 5000; // add lag once
-                        ProcessButtonsAndStick(raw_buf);
+                        ProcessButtonsAndStick(buf);
 
                         // process buttons here to have them affect DS4
                         DoThingsWithButtons();
 
                         int newbat = battery;
-                        battery = (raw_buf[2] >> 4) / 2;
+                        battery = (buf[2] >> 4) / 2;
                         if (newbat != battery)
                             BatteryChanged();
                     }
@@ -670,11 +677,11 @@ namespace BetterJoyForCemu {
                     }
                 }
 
-                if (ts_en == raw_buf[1] && !isSnes) {
+                if (ts_en == buf[1] && !isSnes) {
                     form.AppendTextBox("Duplicate timestamp enqueued.\r\n");
                     DebugPrint(string.Format("Duplicate timestamp enqueued. TS: {0:X2}", ts_en), DebugType.THREADING);
                 }
-                ts_en = raw_buf[1];
+                ts_en = buf[1];
                 //DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Timestamp: {1:X2}", ret, raw_buf[1]), DebugType.THREADING);
             }
             return length;
@@ -946,23 +953,24 @@ namespace BetterJoyForCemu {
 
         private Thread PollThreadObj;
         private void Poll() {
+            byte[] buf = new byte[report_len];
             stop_polling = false;
             int attempts = 0;
             while (!stop_polling & state > state_.NO_JOYCONS) {
                 {
                     byte[] data = rumble_obj.GetData();
                     if(data != null) {
-                        SendRumble(data);
+                        SendRumble(buf, data);
                     }
                 }
-                int ret = ReceiveRaw();
+                int length = ReceiveRaw(buf);
 
                 //if (isUSB && battery == 0) {
                 //    state = state_.DROPPED;
                 //    form.AppendTextBox(String.Format("Controller {0} ({1}) powered down.\r\n", PadId, getControllerName()));
                 //    break;
                 //}
-                if (ret > 0 && state > state_.DROPPED) {
+                if (length > 0 && state > state_.DROPPED) {
                     state = state_.IMU_DATA_OK;
                     attempts = 0;
                 } else if (attempts > 240) {
@@ -971,12 +979,12 @@ namespace BetterJoyForCemu {
 
                     DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.ALL);
                     break;
-                } else if (ret < 0) {
+                } else if (length < 0) {
                     // An error on read.
                     //form.AppendTextBox("Pause 5ms");
                     Thread.Sleep((Int32)5);
                     ++attempts;
-                } else if (ret == 0) {
+                } else if (length == 0) {
                     // The non-blocking read timed out. No need to sleep.
                     // No need to increase attempts because it's not an error.
                 }
@@ -1250,17 +1258,17 @@ namespace BetterJoyForCemu {
             rumble_obj.set_vals(low_freq, high_freq, amp);
         }
 
-        private void SendRumble(byte[] buf) {
-            ref var buf_ = ref hid_buf;
-            Array.Clear(buf_);
+        // Run from poll thread
+        private void SendRumble(byte[] buf, byte[] data) {
+            Array.Clear(buf);
 
-            buf_[0] = 0x10;
-            buf_[1] = global_count;
+            buf[0] = 0x10;
+            buf[1] = global_count;
             if (global_count == 0xf) global_count = 0;
             else ++global_count;
-            Array.Copy(buf, 0, buf_, 2, 8);
-            PrintArray(buf_, DebugType.RUMBLE, format: "Rumble data sent: {0:S}");
-            HIDapi.hid_write(handle, buf_, new UIntPtr(report_len));
+            Array.Copy(data, 0, buf, 2, 8);
+            PrintArray(buf, DebugType.RUMBLE, format: "Rumble data sent: {0:S}");
+            HIDapi.hid_write(handle, buf, new UIntPtr(report_len));
         }
 
         private byte[] Subcommand(byte sc, byte[] buf, uint len, bool print = true) {
