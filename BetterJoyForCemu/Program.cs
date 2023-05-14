@@ -17,6 +17,7 @@ using static BetterJoyForCemu.HIDapi;
 
 namespace BetterJoyForCemu {
     public class JoyconManager {
+        public bool isRunning = false;
         public bool EnableIMU = true;
         public bool EnableLocalize = false;
 
@@ -54,6 +55,7 @@ namespace BetterJoyForCemu {
             controllerCheck.AutoReset = false;
             CheckForNewControllers();
             controllerCheck.Start();
+            isRunning = true;
         }
 
         bool ControllerAlreadyAdded(string path) {
@@ -127,6 +129,9 @@ namespace BetterJoyForCemu {
 
         public void onResume() {
             lock (lockCheckController) {
+                if (!isRunning) {
+                    return;
+                }
                 controllerCheck.Stop();
                 dropControllers = true;
                 CheckForNewControllersTime(null, null);
@@ -370,7 +375,9 @@ namespace BetterJoyForCemu {
             lock (lockCheckController) {
                 controllerCheck.Stop();
                 controllerCheck.Dispose();
+                isRunning = false;
             }
+
             foreach (Joycon v in j) {
                 if (Boolean.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]))
                     v.PowerOff();
