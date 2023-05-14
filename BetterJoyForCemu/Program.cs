@@ -232,9 +232,9 @@ namespace BetterJoyForCemu {
                     } else if (prod_id == product_snes) {
                         type = Joycon.ControllerType.SNES;
                     }
-                    bool isUsb = enumerate.bus_type == BusType.USB;
+                    bool isUSB = enumerate.bus_type == BusType.USB;
 
-                    j.Add(new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUsb, j.Count, type, thirdParty != null));
+                    j.Add(new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUSB, j.Count, type, thirdParty != null));
 
                     foundNew = true;
                     j.Last().form = form;

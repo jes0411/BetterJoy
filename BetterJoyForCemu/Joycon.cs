@@ -478,13 +478,13 @@ namespace BetterJoyForCemu {
 
             }
             bool ok = dump_calibration_data();
-            if(!ok) {
+            if (!ok) {
                 Reset();
                 throw new Exception("reset_usb");
             }
 
             // Bluetooth manual pairing
-            byte[] btmac_host = Program.btMAC.GetAddressBytes();
+            //byte[] btmac_host = Program.btMAC.GetAddressBytes();
             // send host MAC and acquire Joycon MAC
             //byte[] reply = Subcommand(0x01, new byte[] { 0x01, btmac_host[5], btmac_host[4], btmac_host[3], btmac_host[2], btmac_host[1], btmac_host[0] }, 7, true);
             //byte[] LTKhash = Subcommand(0x01, new byte[] { 0x02 }, 1, true);
@@ -620,10 +620,11 @@ namespace BetterJoyForCemu {
         private byte ts_en;
         private int ReceiveRaw() {
             ref var raw_buf = ref hid_buf;
-            if (handle == IntPtr.Zero) return -2;
-            int ret = HIDapi.hid_read_timeout(handle, raw_buf, new UIntPtr(report_len), 5);
+            if (handle == IntPtr.Zero) {
+                return -2;
+            }
+            int length = HIDapi.hid_read_timeout(handle, raw_buf, new UIntPtr(report_len), 5);
 
-            if (ret > 0) {
                 // Process packets as soon as they come
                 for (int n = 0; n < 3; n++) {
                     ExtractIMUValues(raw_buf, n);
@@ -672,7 +673,7 @@ namespace BetterJoyForCemu {
                 ts_en = raw_buf[1];
                 //DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Timestamp: {1:X2}", ret, raw_buf[1]), DebugType.THREADING);
             }
-            return ret;
+            return length;
         }
 
         private readonly Stopwatch shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
@@ -983,7 +984,10 @@ namespace BetterJoyForCemu {
         bool swapAB = Boolean.Parse(ConfigurationManager.AppSettings["SwapAB"]);
         bool swapXY = Boolean.Parse(ConfigurationManager.AppSettings["SwapXY"]);
         private int ProcessButtonsAndStick(byte[] report_buf) {
-            if (report_buf[0] == 0x00) throw new ArgumentException("received undefined report. This is probably a bug");
+            if (report_buf[0] == 0x00) {
+                throw new ArgumentException("received undefined report. This is probably a bug");
+            }
+
             if (!isSnes) {
                 int reportOffset = (isLeft ? 0 : 3);
                 stick_raw[0] = report_buf[6 + reportOffset];
@@ -1272,8 +1276,8 @@ namespace BetterJoyForCemu {
             ref var response = ref hid_buf;
             int tries = 0;
             do {
-                int res = HIDapi.hid_read_timeout(handle, response, new UIntPtr(report_len), 100);
-                if (res < 1) {
+                int length = HIDapi.hid_read_timeout(handle, response, new UIntPtr(report_len), 100);
+                if (length < 1) {
                     DebugPrint("No response.", DebugType.COMMS);
                 }
                 else if (print) {
@@ -1397,19 +1401,15 @@ namespace BetterJoyForCemu {
                 PrintArray(gyr_neutral, len: 3, d: DebugType.IMU, format: "Factory gyro neutral position: {0:S}");
             }
 
-            if(!ok) {
+            if (!ok) {
                 form.AppendTextBox("Error while reading calibration data.\r\n");
             }
             return ok;
         }
 
-        private byte[] ReadSPI(byte addr1, byte addr2, uint len, bool print = false) {
-            bool ok = true;
-            return ReadSPICheck(addr1, addr2, len, ref ok, print);
-        }
         private byte[] ReadSPICheck(byte addr1, byte addr2, uint len, ref bool ok, bool print = false) {
             byte[] read_buf = new byte[len];
-            if(!ok) {
+            if (!ok) {
                 return read_buf;
             }
 
@@ -1424,7 +1424,7 @@ namespace BetterJoyForCemu {
                     break;
                 }
             }
-            if(ok) {
+            if (ok) {
                 Array.Copy(buf_, 20, read_buf, 0, len);
                 if (print) PrintArray(read_buf, DebugType.COMMS, len);
             }
