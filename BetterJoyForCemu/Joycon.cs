@@ -176,8 +176,7 @@ namespace BetterJoyForCemu {
                         queue.Dequeue();
                     }
                     queue.Enqueue(rumbleQueue);
-                }
-                finally {
+                } finally {
                     if (lockTaken) {
                         queueLock.Exit();
                     }
@@ -514,29 +513,30 @@ namespace BetterJoyForCemu {
         public void BlinkHomeLight() { // do not call after initial setup
             if (isThirdParty)
                 return;
-            byte[] a = Enumerable.Repeat((byte)0xFF, 25).ToArray();
-            a[0] = 0x18;
-            a[1] = 0x01;
-            Subcommand(0x38, a, 25);
+
+            byte[] buf = Enumerable.Repeat((byte)0xFF, 25).ToArray();
+            buf[0] = 0x18;
+            buf[1] = 0x01;
+            Subcommand(0x38, buf, 25);
         }
 
         public void SetHomeLight(bool on) {
             if (isThirdParty)
                 return;
-            byte[] a = Enumerable.Repeat((byte)0xFF, 25).ToArray();
+
+            byte[] buf = Enumerable.Repeat((byte)0xFF, 25).ToArray();
             if (on) {
-                a[0] = 0x1F;
-                a[1] = 0xF0;
+                buf[0] = 0x1F;
+                buf[1] = 0xF0;
             } else {
-                a[0] = 0x10;
-                a[1] = 0x01;
+                buf[0] = 0x10;
+                buf[1] = 0x01;
             }
-            Subcommand(0x38, a, 25);
+            Subcommand(0x38, buf, 25);
         }
 
         private void SetHCIState(byte state) {
-            byte[] a = { state };
-            Subcommand(0x06, a, 1);
+            Subcommand(0x06, new byte[] { state }, 1);
         }
 
         public void PowerOff() {
@@ -1308,7 +1308,7 @@ namespace BetterJoyForCemu {
             bool ok = true;
             byte[] buf_ = ReadSPICheck(0x80, (isLeft ? (byte)0x12 : (byte)0x1d), 9, ref ok); // get user calibration data if possible
             bool found = false;
-            if(ok)
+            if (ok)
             {
                 for (int i = 0; i < 9; ++i) {
                     if (buf_[i] != 0xff) {
@@ -1335,7 +1335,7 @@ namespace BetterJoyForCemu {
             if (isPro) {
                 buf_ = ReadSPICheck(0x80, (!isLeft ? (byte)0x12 : (byte)0x1d), 9, ref ok); // get user calibration data if possible
                 found = false;
-                if(ok)
+                if (ok)
                 {
                     for (int i = 0; i < 9; ++i) {
                         if (buf_[i] != 0xff) {
