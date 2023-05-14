@@ -31,7 +31,7 @@ namespace BetterJoyForCemu {
                 return (type == ControllerType.SNES);
             }
         }
-        public bool isThirdparty = false;
+        public bool isThirdParty = false;
         public bool isUSB = false;
         public string path = String.Empty;
         
@@ -317,7 +317,6 @@ namespace BetterJoyForCemu {
         }
 
         public string serial_number;
-        bool thirdParty = false;
 
         private float[] activeIMUData;
         private ushort[] activeStick1Data;
@@ -330,7 +329,7 @@ namespace BetterJoyForCemu {
         static float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
         private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, AHRS_beta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
-        public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, bool isUSB, int id = 0, ControllerType type = ControllerType.JOYCON, bool isThirdparty = false) {
+        public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, bool isUSB, int id = 0, ControllerType type = ControllerType.JOYCON, bool isThirdParty = false) {
             serial_number = serialNum;
             activeIMUData = new float[6];
             activeStick1Data = new ushort[6];
@@ -351,7 +350,7 @@ namespace BetterJoyForCemu {
 
             this.isUSB = isUSB;
             this.type = type;
-            this.isThirdparty = isThirdparty;
+            this.isThirdParty = isThirdParty;
             this.path = path;
 
             connection = isUSB ? 0x01 : 0x02;
@@ -509,7 +508,7 @@ namespace BetterJoyForCemu {
         }
 
         public void BlinkHomeLight() { // do not call after initial setup
-            if (thirdParty)
+            if (isThirdParty)
                 return;
             byte[] a = Enumerable.Repeat((byte)0xFF, 25).ToArray();
             a[0] = 0x18;
@@ -518,7 +517,7 @@ namespace BetterJoyForCemu {
         }
 
         public void SetHomeLight(bool on) {
-            if (thirdParty)
+            if (isThirdParty)
                 return;
             byte[] a = Enumerable.Repeat((byte)0xFF, 25).ToArray();
             if (on) {
@@ -1287,7 +1286,7 @@ namespace BetterJoyForCemu {
         }
 
         private bool dump_calibration_data() {
-            if (isSnes || thirdParty) {
+            if (isSnes || isThirdParty) {
                 return true;
             }
             bool ok = true;
