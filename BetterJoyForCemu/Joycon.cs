@@ -459,22 +459,18 @@ namespace BetterJoyForCemu {
                 }
 
                 // USB Pairing
-                Array.Clear(buf);
                 buf[0] = 0x80; buf[1] = 0x2; // Handshake
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
                 HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
-                Array.Clear(buf);
                 buf[0] = 0x80; buf[1] = 0x3; // 3Mbit baud rate
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
                 HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
-                Array.Clear(buf);
                 buf[0] = 0x80; buf[1] = 0x2; // Handshake at new baud rate
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
                 HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
-                Array.Clear(buf);
                 buf[0] = 0x80; buf[1] = 0x4; // Prevent HID timeout
                 HIDapi.hid_write(handle, buf, new UIntPtr(2)); // doesn't actually prevent timout...
                 HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
