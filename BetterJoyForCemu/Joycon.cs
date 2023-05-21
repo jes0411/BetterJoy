@@ -585,7 +585,7 @@ namespace BetterJoyForCemu {
                 PollThreadObj.Join();
             }
 
-            DisconnectVigem();
+            DisconnectViGEm();
 
             if (state > state_.NO_JOYCONS) {
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
@@ -617,7 +617,7 @@ namespace BetterJoyForCemu {
             state = state_.DROPPED;
         }
 
-        public void ConnectVigem()
+        public void ConnectViGEm()
         {
             if (out_xbox != null) {
                 out_xbox.Connect();
@@ -627,7 +627,7 @@ namespace BetterJoyForCemu {
             }
         }
 
-        public void DisconnectVigem()
+        public void DisconnectViGEm()
         {
             try {
                 if (out_xbox != null) {

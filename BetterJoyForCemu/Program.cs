@@ -312,7 +312,7 @@ namespace BetterJoyForCemu {
                         temp.other = v;
                         v.other = temp;
 
-                        temp.DisconnectVigem();
+                        temp.DisconnectViGEm();
 
                         foreach (Button b in form.con)
                             if (b.Tag == v || b.Tag == temp) {
@@ -332,7 +332,7 @@ namespace BetterJoyForCemu {
             foreach (Joycon jc in j) { // Connect device straight away
                 if (jc.state == Joycon.state_.NOT_ATTACHED) {
                     try {
-                        jc.ConnectVigem();
+                        jc.ConnectViGEm();
                         jc.Attach();
                     } catch (Exception e) {
                         jc.Drop();

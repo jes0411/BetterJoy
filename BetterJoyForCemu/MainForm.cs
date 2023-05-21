@@ -227,15 +227,7 @@ namespace BetterJoyForCemu {
                                 v.other = jc;
                                 jc.other = v;
 
-                                if (v.out_xbox != null) {
-                                    v.out_xbox.Disconnect();
-                                    v.out_xbox = null;
-                                }
-
-                                if (v.out_ds4 != null) {
-                                    v.out_ds4.Disconnect();
-                                    v.out_ds4 = null;
-                                }
+                                v.DisconnectViGEm();
 
                                 // setting the other joycon's button image
                                 foreach (Button b in con)
@@ -301,7 +293,11 @@ namespace BetterJoyForCemu {
 
             ConfigurationManager.AppSettings["AutoPowerOff"] = "false";  // Prevent joycons poweroff when applying settings
             Program.Stop();
+            Restart();
+        }
 
+        private void Restart()
+        {
             ProcessStartInfo Info = new ProcessStartInfo();
             Info.Arguments = "/c ping 127.0.0.1 -n 2 && \"" + Application.ExecutablePath + "\"";
             Info.WorkingDirectory = Environment.CurrentDirectory;
@@ -312,7 +308,7 @@ namespace BetterJoyForCemu {
             Application.Exit();
         }
 
-        void ReenableViGEm(Joycon v) {
+        private void ReenableViGEm(Joycon v) {
             if (showAsXInput && v.out_xbox == null) {
                 v.out_xbox = new Controller.OutputControllerXbox360();
 
