@@ -978,7 +978,7 @@ namespace BetterJoyForCemu {
             byte[] buf = new byte[report_len];
             stop_polling = false;
             int attempts = 0;
-            while (!stop_polling & state > state_.NO_JOYCONS) {
+            while (!stop_polling && state > state_.NO_JOYCONS) {
                 {
                     byte[] data = rumble_obj.GetData();
                     if(data != null) {
