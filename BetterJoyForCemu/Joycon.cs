@@ -576,19 +576,13 @@ namespace BetterJoyForCemu {
             filterweight = a;
         }
 
-        public void Detach(bool close = false) {
+        public void Detach(bool close = true) {
             stop_polling = true;
             if (PollThreadObj != null) {
                 PollThreadObj.Join();
             }
 
-            if (out_xbox != null) {
-                out_xbox.Disconnect();
-            }
-
-            if (out_ds4 != null) {
-                out_ds4.Disconnect();
-            }
+            DisconnectVigem();
 
             if (state > state_.NO_JOYCONS) {
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
@@ -604,7 +598,7 @@ namespace BetterJoyForCemu {
                     HIDapi.hid_write(handle, buf, new UIntPtr(2));
                 }
             }
-            if (close || state > state_.DROPPED) {
+            if (close && handle != IntPtr.Zero) {
                 HIDapi.hid_close(handle);
             }
             state = state_.NOT_ATTACHED;
@@ -617,6 +611,32 @@ namespace BetterJoyForCemu {
                 PollThreadObj.Join();
             }
             state = state_.DROPPED;
+        }
+
+        public void ConnectVigem()
+        {
+            if (out_xbox != null) {
+                out_xbox.Connect();
+            }
+            if (out_ds4 != null) {
+                out_ds4.Connect();
+            }
+        }
+
+        public void DisconnectVigem()
+        {
+            try {
+                if (out_xbox != null) {
+                    out_xbox.Disconnect();
+                }
+                if (out_ds4 != null) {
+                    out_ds4.Disconnect();
+                }
+            } catch (Exception /*e*/) {
+                // nothing we can do, might not be connected in the first place
+            }
+            out_xbox = null;
+            out_ds4 = null;
         }
 
         private byte ts_en;

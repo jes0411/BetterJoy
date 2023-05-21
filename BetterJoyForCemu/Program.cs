@@ -77,7 +77,7 @@ namespace BetterJoyForCemu {
                     if (joycon.other != null)
                         joycon.other.other = null; // The other of the other is the joycon itself
 
-                    joycon.Detach(true);
+                    joycon.Detach();
                     rem.Add(joycon);
 
                     foreach (Button b in form.con) {
@@ -312,22 +312,7 @@ namespace BetterJoyForCemu {
                         temp.other = v;
                         v.other = temp;
 
-                        if (temp.out_xbox != null) {
-                            try {
-                                temp.out_xbox.Disconnect();
-                            } catch (Exception /*e*/) {
-                                // it wasn't connected in the first place, go figure
-                            }
-                        }
-                        if (temp.out_ds4 != null) {
-                            try {
-                                temp.out_ds4.Disconnect();
-                            } catch (Exception /*e*/) {
-                                // it wasn't connected in the first place, go figure
-                            }
-                        }
-                        temp.out_xbox = null;
-                        temp.out_ds4 = null;
+                        temp.DisconnectVigem();
 
                         foreach (Button b in form.con)
                             if (b.Tag == v || b.Tag == temp) {
@@ -347,14 +332,13 @@ namespace BetterJoyForCemu {
             foreach (Joycon jc in j) { // Connect device straight away
                 if (jc.state == Joycon.state_.NOT_ATTACHED) {
                     try {
-                        if (jc.out_xbox != null)
-                            jc.out_xbox.Connect();
-                        if (jc.out_ds4 != null)
-                            jc.out_ds4.Connect();
+                        jc.ConnectVigem();
                         jc.Attach();
-                    } catch (Exception /*e*/) {
-                        jc.state = Joycon.state_.DROPPED;
+                    } catch (Exception e) {
+                        jc.Drop();
                         dropped = true;
+
+                        form.AppendTextBox(String.Format("Could not connect {0} ({1}). Dropped.\r\n", jc.getControllerName(), e.Message));
                         continue;
                     }
 
