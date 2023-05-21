@@ -1345,7 +1345,7 @@ namespace BetterJoyForCemu {
                 }
                 if (!found) {
                     form.AppendTextBox("Using factory stick calibration data.\r\n");
-                    buf_ = ReadSPICheck(0x60, (isLeft ? (byte)0x3d : (byte)0x46), 9, ref ok); // get user calibration data if possible
+                    buf_ = ReadSPICheck(0x60, (isLeft ? (byte)0x3d : (byte)0x46), 9, ref ok);
                 }
             }
 
@@ -1372,7 +1372,7 @@ namespace BetterJoyForCemu {
                     }
                     if (!found) {
                         form.AppendTextBox("Using factory stick calibration data.\r\n");
-                        buf_ = ReadSPICheck(0x60, (!isLeft ? (byte)0x3d : (byte)0x46), 9, ref ok); // get user calibration data if possible
+                        buf_ = ReadSPICheck(0x60, (!isLeft ? (byte)0x3d : (byte)0x46), 9, ref ok);
                     }
                 }
 
