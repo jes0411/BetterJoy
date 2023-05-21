@@ -441,17 +441,20 @@ namespace BetterJoyForCemu {
                 form.AppendTextBox("Using USB.\r\n");
 
                 ref var buf = ref hid_buf;
-                Array.Clear(buf);
+
+                var response = Subcommand(0x3, new byte[] { 0x3F }, 1); // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
+                if (response != null) {
+                    while (HIDapi.hid_read_timeout(handle, buf, report_len, 100) > 0) ; // clear read queue
+                }
 
                 // Get MAC
                 buf[0] = 0x80; buf[1] = 0x1;
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
                 int length = HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
-
-
+                
                 if (length < 10 || buf[0] != 0x81) { // can occur when USB connection isn't closed properly
                     Reset();
-                    throw new Exception("reset_usb");
+                    throw new Exception("reset_usb connection");
                 }
 
                 if (buf[3] == 0x3) {
@@ -479,7 +482,7 @@ namespace BetterJoyForCemu {
             bool ok = dump_calibration_data();
             if (!ok) {
                 Reset();
-                throw new Exception("reset_usb");
+                throw new Exception("reset_usb calibration");
             }
 
             // Bluetooth manual pairing
@@ -592,10 +595,11 @@ namespace BetterJoyForCemu {
                     ref var buf = ref hid_buf;
                     Array.Clear(buf);
 
-                    buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
-                    HIDapi.hid_write(handle, buf, new UIntPtr(2));
-                    buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
-                    HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                    // Commented because you need to restart the controller to reconnect in usb again with the following
+                    //buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
+                    //HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                    //buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
+                    //HIDapi.hid_write(handle, buf, new UIntPtr(2));
                 }
             }
             if (close && handle != IntPtr.Zero) {
@@ -1305,17 +1309,21 @@ namespace BetterJoyForCemu {
             
             ref var response = ref hid_buf;
             int tries = 0;
+            int length = 0;
+            bool responseFound = false;
             do {
-                int length = HIDapi.hid_read_timeout(handle, response, new UIntPtr(report_len), 100);
-                if (length < 1) {
-                    DebugPrint("No response.", DebugType.COMMS);
-                }
-                else if (print) {
-                    PrintArray(response, DebugType.COMMS, report_len - 1, 1, "Response ID 0x" + string.Format("{0:X2}", response[0]) + ". Data: 0x{0:S}");
-                }
+                length = HIDapi.hid_read_timeout(handle, response, new UIntPtr(report_len), 100);
+                responseFound = (length >= 20 && response[0] == 0x21 && response[14] == sc);
                 tries++;
-            } while (tries < 5 && response[0] != 0x21 && response[14] != sc);
+            } while (tries < 5 && !responseFound);
 
+            if (!responseFound) {
+                DebugPrint("No response.", DebugType.COMMS);
+                return null;
+            }
+            if (print) {
+                PrintArray(response, DebugType.COMMS, (uint)length - 1, 1, "Response ID 0x" + string.Format("{0:X2}", response[0]) + ". Data: 0x{0:S}");
+            } 
             return response;
         }
 
@@ -1444,12 +1452,12 @@ namespace BetterJoyForCemu {
             }
 
             byte[] buf = { addr2, addr1, 0x00, 0x00, (byte)len };
-            byte[] buf_ = new byte[len + 20];
+            byte[] buf_ = null;
 
             ok = false;
             for (int i = 0; i < 5; ++i) {
                 buf_ = Subcommand(0x10, buf, 5, false);
-                if (buf_[15] == addr2 && buf_[16] == addr1) {
+                if (buf_ != null && buf_[15] == addr2 && buf_[16] == addr1) {
                     ok = true;
                     break;
                 }
