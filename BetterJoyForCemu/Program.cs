@@ -91,7 +91,7 @@ namespace BetterJoyForCemu {
                         }
                     }
 
-                    form.AppendTextBox("Removed dropped controller. Can be reconnected.\r\n");
+                    form.AppendTextBox(String.Format("Removed dropped {0}. Can be reconnected.\r\n", joycon.getControllerName()));
                 }
             }
 

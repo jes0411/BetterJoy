@@ -981,7 +981,7 @@ namespace BetterJoyForCemu {
             while (!stop_polling && state > state_.NO_JOYCONS) {
                 {
                     byte[] data = rumble_obj.GetData();
-                    if(data != null) {
+                    if (data != null) {
                         SendRumble(buf, data);
                     }
                 }
@@ -1289,7 +1289,7 @@ namespace BetterJoyForCemu {
             if (global_count == 0xf) global_count = 0;
             else ++global_count;
             Array.Copy(data, 0, buf, 2, 8);
-            PrintArray(buf, DebugType.RUMBLE, format: "Rumble data sent: {0:S}");
+            PrintArray(buf, DebugType.RUMBLE, len: 10, format: "Rumble data sent: {0:S}");
             HIDapi.hid_write(handle, buf, new UIntPtr(report_len));
         }
 
