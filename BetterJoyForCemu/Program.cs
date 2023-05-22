@@ -123,17 +123,6 @@ namespace BetterJoyForCemu {
             }
         }
 
-        public void onResume() {
-            lock (lockCheckController) {
-                if (!isRunning) {
-                    return;
-                }
-                controllerCheck.Stop();
-                dropControllers = true;
-                CheckForNewControllersTrigger(true);
-            }
-        }
-
         private ushort TypeToProdId(byte type) {
             switch (type) {
                 case 1:
