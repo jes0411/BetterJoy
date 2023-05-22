@@ -73,6 +73,8 @@ namespace BetterJoyForCemu {
                 childControl.MouseClick += cbBox_Changed;
                 settingsTable.Controls.Add(childControl, 1, i);
             }
+
+            Shown += new EventHandler(MainForm_Shown);
         }
 
         private void SetNonOriginalControllerSettings() {
@@ -137,6 +139,10 @@ namespace BetterJoyForCemu {
                 ShowFromTray();
             }
             SystemEvents.PowerModeChanged += OnPowerChange;
+            Refresh();
+        }
+
+        private void MainForm_Shown(object sender, EventArgs e) {
             Program.Start();
         }
 

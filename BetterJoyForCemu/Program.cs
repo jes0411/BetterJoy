@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
 using BetterJoyForCemu.Collections;
@@ -49,12 +50,14 @@ namespace BetterJoyForCemu {
         }
 
         public void Start() {
-            controllerCheck = new System.Timers.Timer(defaultCheckInterval); // check for new controllers every 5 seconds
+            controllerCheck = new System.Timers.Timer();
             controllerCheck.Elapsed += CheckForNewControllersTime;
             controllerCheck.AutoReset = false;
-            CheckForNewControllers();
-            controllerCheck.Start();
-            isRunning = true;
+
+            Task.Run(() => {
+                CheckForNewControllersTrigger(true);
+                isRunning = true;
+            });
         }
 
         bool ControllerAlreadyAdded(string path) {
@@ -89,11 +92,15 @@ namespace BetterJoyForCemu {
         }
 
         private void CheckForNewControllersTime(Object source, ElapsedEventArgs e) {
+            CheckForNewControllersTrigger();
+        }
+
+        private void CheckForNewControllersTrigger(bool forceScan = false) {
             lock (lockCheckController) {
                 CleanUp();
 
                 double checkInterval = defaultCheckInterval;
-                if (Config.IntValue("ProgressiveScan") == 1) {
+                if (Config.IntValue("ProgressiveScan") == 1 || forceScan) {
                     checkInterval = CheckForNewControllers();
                 }
                 setControllerCheckInterval(checkInterval);
@@ -123,7 +130,7 @@ namespace BetterJoyForCemu {
                 }
                 controllerCheck.Stop();
                 dropControllers = true;
-                CheckForNewControllersTime(null, null);
+                CheckForNewControllersTrigger(true);
             }
         }
 
@@ -344,6 +351,8 @@ namespace BetterJoyForCemu {
 
         private static HashSet<string> blockedDevices = new HashSet<string>();
 
+        private static bool isRunning = false;
+
         public static void Start() {
             useHidHide = startHidHide();
 
@@ -385,6 +394,7 @@ namespace BetterJoyForCemu {
 
             form.AppendTextBox("All systems go\r\n");
             mgr.Start();
+            isRunning = true;
         }
 
         private static bool startHidHide() {
@@ -490,6 +500,9 @@ namespace BetterJoyForCemu {
         }
 
         public static void Stop() {
+            if (!isRunning) {
+                return;
+            }
             stopHidHide();
 
             keyboard.Dispose();
