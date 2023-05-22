@@ -324,8 +324,8 @@ namespace BetterJoyForCemu {
         private ushort activeStick1DeadZoneData;
         private ushort activeStick2DeadZoneData;
         private ushort noCalibrationDeadzone;
-        private float defaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
-        static float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
+        static private float defaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
+        static private float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
         private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, AHRS_beta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
         public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, bool isUSB, int id = 0, ControllerType type = ControllerType.JOYCON, bool isThirdParty = false) {
@@ -405,7 +405,7 @@ namespace BetterJoyForCemu {
         public void DebugPrint(String s, DebugType d) {
             if (debug_type == DebugType.NONE) return;
             if (d == DebugType.ALL || d == debug_type || debug_type == DebugType.ALL) {
-                form.AppendTextBox(s + "\r\n");
+                form.AppendTextBox("[J" + (PadId + 1) + "] " + s + "\r\n");
             }
         }
         public bool GetButtonDown(Button b) {
@@ -625,67 +625,70 @@ namespace BetterJoyForCemu {
         private byte ts_en;
 
         // Run from poll thread
-        private int ReceiveRaw(byte[] buf) {
+        private bool ReceiveRaw(byte[] buf) {
             if (handle == IntPtr.Zero) {
-                return -2;
+                return false;
             }
             int length = HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 5);
 
-            if (length > 0) {
-                // clear remaining of buffer just to be safe
-                if (length < report_len) {
-                    Array.Clear(buf, length, report_len - length);
+            if (length <= 0 || buf[0] != 0x30) { // 0x30 = standard full mode report
+                return false;
+            }
+
+            // clear remaining of buffer just to be safe
+            if (length < report_len) {
+                Array.Clear(buf, length, report_len - length);
+            }
+
+            // Process packets as soon as they come
+            for (int n = 0; n < 3; n++) {
+                ExtractIMUValues(buf, n);
+
+                byte lag = (byte)Math.Max(0, buf[1] - ts_en - 3);
+                if (n == 0) {
+                    Timestamp += (ulong)lag * 5000; // add lag once
+                    ProcessButtonsAndStick(buf);
+
+                    // process buttons here to have them affect DS4
+                    DoThingsWithButtons();
+
+                    int prevBattery = battery;
+                    battery = (buf[2] >> 4) / 2;
+                    if (prevBattery != battery)
+                        BatteryChanged();
                 }
+                Timestamp += 5000; // 5ms difference
 
-                // Process packets as soon as they come
-                for (int n = 0; n < 3; n++) {
-                    ExtractIMUValues(buf, n);
+                packetCounter++;
+                if (Program.server != null)
+                    Program.server.NewReportIncoming(this);
 
-                    byte lag = (byte)Math.Max(0, buf[1] - ts_en - 3);
-                    if (n == 0) {
-                        Timestamp += (ulong)lag * 5000; // add lag once
-                        ProcessButtonsAndStick(buf);
-
-                        // process buttons here to have them affect DS4
-                        DoThingsWithButtons();
-
-                        int prevBattery = battery;
-                        battery = (buf[2] >> 4) / 2;
-                        if (prevBattery != battery)
-                            BatteryChanged();
-                    }
-                    Timestamp += 5000; // 5ms difference
-
-                    packetCounter++;
-                    if (Program.server != null)
-                        Program.server.NewReportIncoming(this);
-
-                    if (out_ds4 != null) {
-                        try {
-                            out_ds4.UpdateInput(MapToDualShock4Input(this));
-                        } catch (Exception /*e*/) {
-                            // ignore /shrug
-                        }
-                    }
-                }
-
-                // no reason to send XInput reports so often
-                if (out_xbox != null) {
+                if (out_ds4 != null) {
                     try {
-                        out_xbox.UpdateInput(MapToXbox360Input(this));
+                        out_ds4.UpdateInput(MapToDualShock4Input(this));
                     } catch (Exception /*e*/) {
                         // ignore /shrug
                     }
                 }
-
-                if (ts_en == buf[1] && !isSnes) {
-                    form.AppendTextBox("Duplicate timestamp enqueued.\r\n");
-                    DebugPrint(string.Format("Duplicate timestamp enqueued. TS: {0:X2}", ts_en), DebugType.THREADING);
-                }
-                ts_en = buf[1];
-                //DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Timestamp: {1:X2}", ret, raw_buf[1]), DebugType.THREADING);
             }
-            return length;
+
+            // no reason to send XInput reports so often
+            if (out_xbox != null) {
+                try {
+                    out_xbox.UpdateInput(MapToXbox360Input(this));
+                } catch (Exception /*e*/) {
+                    // ignore /shrug
+                }
+            }
+
+            if (ts_en == buf[1] && !isSnes) {
+                form.AppendTextBox("Duplicate timestamp enqueued.\r\n");
+                DebugPrint(string.Format("Duplicate timestamp enqueued. TS: {0:X2}", ts_en), DebugType.THREADING);
+            }
+            ts_en = buf[1];
+            //DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Type: {1:X2} Timestamp: {2:X2}", length, buf[0], buf[1]), DebugType.THREADING);
+            
+            return true;
         }
 
         private readonly Stopwatch shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
@@ -964,30 +967,20 @@ namespace BetterJoyForCemu {
                         SendRumble(buf, data);
                     }
                 }
-                int length = ReceiveRaw(buf);
+                bool receiveOk = ReceiveRaw(buf);
 
-                //if (isUSB && battery == 0) {
-                //    state = state_.DROPPED;
-                //    form.AppendTextBox(String.Format("Controller {0} ({1}) powered down.\r\n", PadId, getControllerName()));
-                //    break;
-                //}
-                if (length > 0 && state > state_.DROPPED) {
+                if (receiveOk && state > state_.DROPPED) {
                     state = state_.IMU_DATA_OK;
                     attempts = 0;
                 } else if (attempts > 240) {
                     state = state_.DROPPED;
                     form.AppendTextBox("Dropped.\r\n");
-
                     DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.ALL);
-                    break;
-                } else if (length < 0) {
-                    // An error on read.
-                    //form.AppendTextBox("Pause 5ms");
+                } else if (!receiveOk) {
+                    // No data read or read error
+                    // The controller should report back at 60hz or 120hz for the pro controller
                     Thread.Sleep((Int32)5);
                     ++attempts;
-                } else if (length == 0) {
-                    // The non-blocking read timed out. No need to sleep.
-                    // No need to increase attempts because it's not an error.
                 }
             }
         }
