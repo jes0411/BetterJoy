@@ -498,14 +498,13 @@ namespace BetterJoyForCemu {
 
             if (!ReportToBuffer(hidReport, outputData, ref outIdx))
                 return;
-            else
-                FinishPacket(outputData);
+
+            FinishPacket(outputData);
 
             foreach (var cl in clientsList) {
                 try { udpSock.SendTo(outputData, cl); } catch (SocketException /*e*/) { }
             }
             clientsList.Clear();
-            clientsList = null;
         }
     }
 }

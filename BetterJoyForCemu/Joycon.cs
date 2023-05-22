@@ -1304,7 +1304,9 @@ namespace BetterJoyForCemu {
             buf_[0] = 0x1;
             if (global_count == 0xf) global_count = 0;
             else ++global_count;
-            if (print) { PrintArray(buf_, DebugType.COMMS, len, 11, "Subcommand 0x" + string.Format("{0:X2}", sc) + " sent. Data: 0x{0:S}"); };
+            if (print) {
+                PrintArray(buf_, DebugType.COMMS, len, 11, "Subcommand 0x" + string.Format("{0:X2}", sc) + " sent. Data: 0x{0:S}");
+            }
             HIDapi.hid_write(handle, buf_, new UIntPtr(len + 11));
             
             ref var response = ref hid_buf;

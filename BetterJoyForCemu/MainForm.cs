@@ -84,7 +84,7 @@ namespace BetterJoyForCemu {
                 case NonOriginalController.DefaultCalibration:
                 case NonOriginalController.ControllerCalibration:
                     nonOriginal = true;
-                    break;       
+                    break;
             }
             switch (nonOriginalController) {
                 case NonOriginalController.Disabled:
@@ -182,7 +182,7 @@ namespace BetterJoyForCemu {
 
         public void AppendTextBox(string value) { // https://stackoverflow.com/questions/519233/writing-to-a-textbox-from-another-thread
             if (InvokeRequired) {
-                this.BeginInvoke(new Action<string>(AppendTextBox), new object[] { value });
+                BeginInvoke(new Action<string>(AppendTextBox), new object[] { value });
                 return;
             }
             console.AppendText(value);
@@ -230,30 +230,35 @@ namespace BetterJoyForCemu {
                                 v.DisconnectViGEm();
 
                                 // setting the other joycon's button image
-                                foreach (Button b in con)
-                                    if (b.Tag == jc)
+                                foreach (Button b in con) {
+                                    if (b.Tag == jc) {
                                         b.BackgroundImage = jc.isLeft ? Properties.Resources.jc_left : Properties.Resources.jc_right;
-
+                                    }
+                                }
                                 succ = true;
                                 break;
                             }
                         }
                     }
 
-                    if (succ)
-                        foreach (Button b in con)
-                            if (b.Tag == v)
+                    if (succ) {
+                        foreach (Button b in con) {
+                            if (b.Tag == v) {
                                 b.BackgroundImage = v.isLeft ? Properties.Resources.jc_left : Properties.Resources.jc_right;
+                            }
+                        }
+                    }
                 } else if (v.other != null && !v.isPro) { // needs disconnecting from other joycon
                     ReenableViGEm(v);
                     ReenableViGEm(v.other);
 
                     button.BackgroundImage = v.isLeft ? Properties.Resources.jc_left_s : Properties.Resources.jc_right_s;
 
-                    foreach (Button b in con)
-                        if (b.Tag == v.other)
+                    foreach (Button b in con) {
+                        if (b.Tag == v.other) {
                             b.BackgroundImage = v.other.isLeft ? Properties.Resources.jc_left_s : Properties.Resources.jc_right_s;
-
+                        }
+                    }
                     v.other.other = null;
                     v.other = null;
                 }
@@ -296,8 +301,7 @@ namespace BetterJoyForCemu {
             Restart();
         }
 
-        private void Restart()
-        {
+        private void Restart() {
             ProcessStartInfo Info = new ProcessStartInfo();
             Info.Arguments = "/c ping 127.0.0.1 -n 2 && \"" + Application.ExecutablePath + "\"";
             Info.WorkingDirectory = Environment.CurrentDirectory;
@@ -496,7 +500,7 @@ namespace BetterJoyForCemu {
                 this.count--;
             }
         }
-         private void CountDownSticksMinMax(object sender, EventArgs e) {
+        private void CountDownSticksMinMax(object sender, EventArgs e) {
             if (this.count == 0) {
                 this.console.Text = "Calibrating Sticks min and max position...";
                 countDown.Stop();
