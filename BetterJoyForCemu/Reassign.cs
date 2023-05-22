@@ -12,6 +12,10 @@ namespace BetterJoyForCemu {
 
         public Reassign() {
             InitializeComponent();
+            
+            ToolStripMenuItem menuItem = new ToolStripMenuItem("None");
+            menuItem.Tag = -1;
+            menu_joy_buttons.Items.Add(menuItem);
 
             foreach (int i in Enum.GetValues(typeof(Joycon.Button))) {
                 ToolStripMenuItem temp = new ToolStripMenuItem(Enum.GetName(typeof(Joycon.Button), i));
@@ -38,7 +42,14 @@ namespace BetterJoyForCemu {
             ToolStripItem clickedItem = e.ClickedItem;
 
             SplitButton caller = (SplitButton)c.Tag;
-            Config.SetValue((string)caller.Tag, "joy_" + (clickedItem.Tag));
+
+            string value;
+            if ((int)clickedItem.Tag == -1) {
+                value = "0";
+            } else {
+                value = "joy_" + clickedItem.Tag;
+            }
+            Config.SetValue((string)caller.Tag, value);
             GetPrettyName(caller);
         }
 
