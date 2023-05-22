@@ -546,32 +546,11 @@ namespace BetterJoyForCemu {
         }
 
         private void BatteryChanged() { // battery changed level
-            foreach (var v in form.con) {
-                if (v.Tag == this) {
-                    switch (battery) {
-                        case 4:
-                            v.BackColor = System.Drawing.Color.FromArgb(0xAA, System.Drawing.Color.Green);
-                            break;
-                        case 3:
-                            v.BackColor = System.Drawing.Color.FromArgb(0xAA, System.Drawing.Color.Green);
-                            break;
-                        case 2:
-                            v.BackColor = System.Drawing.Color.FromArgb(0xAA, System.Drawing.Color.GreenYellow);
-                            break;
-                        case 1:
-                            v.BackColor = System.Drawing.Color.FromArgb(0xAA, System.Drawing.Color.Orange);
-                            break;
-                        default:
-                            v.BackColor = System.Drawing.Color.FromArgb(0xAA, System.Drawing.Color.Red);
-                            break;
-                    }
-                }
-            }
+            form.setBatteryColor(this, battery);
 
             if (!isUSB && battery <= 1) {
-                form.notifyIcon.Visible = true;
-                form.notifyIcon.BalloonTipText = String.Format("Controller {0} ({1}) - low battery notification!", PadId, getControllerName());
-                form.notifyIcon.ShowBalloonTip(0);
+                string msg = String.Format("Controller {0} ({1}) - low battery notification!", PadId, getControllerName());
+                form.tooltip(msg);
             }
         }
 
@@ -670,9 +649,9 @@ namespace BetterJoyForCemu {
                         // process buttons here to have them affect DS4
                         DoThingsWithButtons();
 
-                        int newbat = battery;
+                        int prevBattery = battery;
                         battery = (buf[2] >> 4) / 2;
-                        if (newbat != battery)
+                        if (prevBattery != battery)
                             BatteryChanged();
                     }
                     Timestamp += 5000; // 5ms difference
@@ -825,7 +804,7 @@ namespace BetterJoyForCemu {
             if(!isPro) {
                 if (ChangeOrientationDoubleClick && buttons_down[(int)Button.STICK] && lastDoubleClick != -1) {
                     if ((buttons_down_timestamp[(int)Button.STICK] - lastDoubleClick) < 3000000) {
-                        form.conBtnClick(form.con[PadId], EventArgs.Empty); // trigger connection button click
+                        form.conBtnClick(PadId); // trigger connection button click
 
                         lastDoubleClick = buttons_down_timestamp[(int)Button.STICK];
                         return;

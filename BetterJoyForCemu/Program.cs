@@ -79,17 +79,7 @@ namespace BetterJoyForCemu {
                     joycon.Detach();
                     rem.Add(joycon);
 
-                    foreach (Button b in form.con) {
-                        if (b.Enabled & b.Tag == joycon) {
-                            b.Invoke(new MethodInvoker(delegate {
-                                b.BackColor = System.Drawing.Color.FromArgb(0x00, System.Drawing.SystemColors.Control);
-                                b.Enabled = false;
-                                b.BackgroundImage = Properties.Resources.cross;
-                            }));
-                            break;
-                        }
-                    }
-
+                    form.removeController(joycon);
                     form.AppendTextBox(String.Format("Removed dropped {0}. Can be reconnected.\r\n", joycon.getControllerName()));
                 }
             }
@@ -239,45 +229,14 @@ namespace BetterJoyForCemu {
                     }
                     bool isUSB = enumerate.bus_type == BusType.USB;
 
-                    j.Add(new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUSB, j.Count, type, thirdParty != null));
+                    Joycon controller = new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUSB, j.Count, type, thirdParty != null);
+                    controller.form = form;
+                    j.Add(controller);
 
                     foundNew = true;
-                    j.Last().form = form;
 
                     if (j.Count < 5) {
-                        int ii = -1;
-                        foreach (Button v in form.con) {
-                            ii++;
-                            if (!v.Enabled) {
-                                System.Drawing.Bitmap temp;
-                                switch (prod_id) {
-                                    case (product_l):
-                                        temp = Properties.Resources.jc_left_s; break;
-                                    case (product_r):
-                                        temp = Properties.Resources.jc_right_s; break;
-                                    case (product_pro):
-                                        temp = Properties.Resources.pro; break;
-                                    case (product_snes):
-                                        temp = Properties.Resources.snes; break;
-                                    default:
-                                        temp = Properties.Resources.cross; break;
-                                }
-
-                                v.Invoke(new MethodInvoker(delegate {
-                                    v.Tag = j.Last(); // assign controller to button
-                                    v.Enabled = true;
-                                    v.Click += new EventHandler(form.conBtnClick);
-                                    v.BackgroundImage = temp;
-                                }));
-
-                                form.loc[ii].Invoke(new MethodInvoker(delegate {
-                                    form.loc[ii].Tag = v;
-                                    form.loc[ii].Click += new EventHandler(form.locBtnClickAsync);
-                                }));
-
-                                break;
-                            }
-                        }
+                        form.addController(controller);
                     }
 
                     byte[] mac = new byte[6];
@@ -312,12 +271,7 @@ namespace BetterJoyForCemu {
                         v.other = temp;
 
                         temp.DisconnectViGEm();
-
-                        foreach (Button b in form.con)
-                            if (b.Tag == v || b.Tag == temp) {
-                                Joycon tt = (b.Tag == v) ? v : (b.Tag == temp) ? temp : v;
-                                b.BackgroundImage = tt.isLeft ? Properties.Resources.jc_left : Properties.Resources.jc_right;
-                            }
+                        form.joinJoycon(v, temp);
 
                         temp = null;    // repeat
                     }
@@ -397,7 +351,7 @@ namespace BetterJoyForCemu {
                 try {
                     emClient = new ViGEmClient(); // Manages emulated XInput
                 } catch (Nefarius.ViGEm.Client.Exceptions.VigemBusNotFoundException) {
-                    form.console.AppendText("Could not start VigemBus. Make sure drivers are installed correctly.\r\n");
+                    form.AppendTextBox("Could not start VigemBus. Make sure drivers are installed correctly.\r\n");
                 }
             }
 
@@ -429,7 +383,7 @@ namespace BetterJoyForCemu {
             mouse = WindowsInput.Capture.Global.MouseAsync();
             mouse.MouseEvent += Mouse_MouseEvent;
 
-            form.console.AppendText("All systems go\r\n");
+            form.AppendTextBox("All systems go\r\n");
             mgr.Start();
         }
 
@@ -440,14 +394,14 @@ namespace BetterJoyForCemu {
 
             HidHideControlService hidHideService = new HidHideControlService();
             if (!hidHideService.IsInstalled) {
-                form.console.AppendText("HidHide is not installed.\r\n");
+                form.AppendTextBox("HidHide is not installed.\r\n");
                 return false;
             }
 
             try {
                 hidHideService.IsAppListInverted = false;
             } catch (Exception /*e*/) {
-                form.console.AppendText("Unable to set HidHide in whitelist mode.\r\n");
+                form.AppendTextBox("Unable to set HidHide in whitelist mode.\r\n");
                 return false;
             }
 
@@ -455,7 +409,7 @@ namespace BetterJoyForCemu {
             //    try {
             //        hidHideService.ClearBlockedInstancesList();
             //    } catch (Exception /*e*/) {
-            //        form.console.AppendText("Unable to purge blacklisted devices.\r\n");
+            //        form.AppendTextBox("Unable to purge blacklisted devices.\r\n");
             //        return false;
             //    }
             //}
@@ -466,18 +420,18 @@ namespace BetterJoyForCemu {
                 }
                 hidHideService.AddApplicationPath(Environment.ProcessPath);
             } catch (Exception /*e*/) {
-                form.console.AppendText("Unable to add program to whitelist.\r\n");
+                form.AppendTextBox("Unable to add program to whitelist.\r\n");
                 return false;
             }
 
             try {
                 hidHideService.IsActive = true;
             } catch (Exception /*e*/) {
-                form.console.AppendText("Unable to hide devices.\r\n");
+                form.AppendTextBox("Unable to hide devices.\r\n");
                 return false;
             }
 
-            form.console.AppendText("HidHide is enabled.\r\n");
+            form.AppendTextBox("HidHide is enabled.\r\n");
             return true;
         }
 
@@ -554,7 +508,7 @@ namespace BetterJoyForCemu {
             try {
                 hidHideService.RemoveApplicationPath(Environment.ProcessPath);
             } catch (Exception /*e*/) {
-                form.console.AppendText("Unable to remove program from whitelist.\r\n");
+                form.AppendTextBox("Unable to remove program from whitelist.\r\n");
             }
 
             if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
@@ -563,14 +517,14 @@ namespace BetterJoyForCemu {
                         hidHideService.RemoveBlockedInstanceId(device);
                     }
                 } catch (Exception /*e*/) {
-                    form.console.AppendText("Unable to purge blacklisted devices.\r\n");
+                    form.AppendTextBox("Unable to purge blacklisted devices.\r\n");
                 }
             }
 
             try {
                 hidHideService.IsActive = false;
             } catch (Exception /*e*/) {
-                form.console.AppendText("Unable to disable HidHide.\r\n");
+                form.AppendTextBox("Unable to disable HidHide.\r\n");
             }
         }
 

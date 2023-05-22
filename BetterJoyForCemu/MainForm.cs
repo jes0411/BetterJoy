@@ -14,7 +14,7 @@ namespace BetterJoyForCemu {
         public bool useControllerStickCalibration;
         public bool nonOriginal;
         public bool allowCalibration = Boolean.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
-        public List<Button> con, loc;
+        private List<Button> con, loc;
         public bool calibrateIMU;
         public bool calibrateSticks;
         public List<KeyValuePair<string, float[]>> caliIMUData;
@@ -192,7 +192,7 @@ namespace BetterJoyForCemu {
         bool showAsXInput = Boolean.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
         bool showAsDS4 = Boolean.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
 
-        public async void locBtnClickAsync(object sender, EventArgs e) {
+        private async void locBtnClickAsync(object sender, EventArgs e) {
             Button bb = sender as Button;
 
             if (bb.Tag.GetType() == typeof(Button)) {
@@ -209,7 +209,15 @@ namespace BetterJoyForCemu {
 
         bool doNotRejoin = Boolean.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
 
-        public void conBtnClick(object sender, EventArgs e) {
+        public void conBtnClick(int padId) {
+            if (InvokeRequired) {
+                Invoke(new Action<int>(conBtnClick), new object[] { padId });
+            }
+            Button button = con[padId];
+            conBtnClick(button, EventArgs.Empty);
+        }
+
+        private void conBtnClick(object sender, EventArgs e) {
             Button button = sender as Button;
 
             if (button.Tag.GetType() == typeof(Joycon)) {
@@ -611,6 +619,114 @@ namespace BetterJoyForCemu {
                 }
             }
             return -1;
+        }
+
+        public void tooltip(string msg) {
+            if (InvokeRequired) {
+                BeginInvoke(new Action<string>(tooltip), new object[] { msg });
+                return;
+            }
+            notifyIcon.Visible = true;
+            notifyIcon.BalloonTipText = msg;
+            notifyIcon.ShowBalloonTip(0);
+        }
+
+        public void setBatteryColor(Joycon j, int batteryLevel) {
+            if (InvokeRequired) {
+                BeginInvoke(new Action<Joycon, int>(setBatteryColor), new object[] { j, batteryLevel });
+                return;
+            }
+            foreach (Button b in con) {
+                if (b.Tag == j) {
+                    switch (batteryLevel) {
+                        case 4:
+                            b.BackColor = Color.FromArgb(0xAA, Color.Green);
+                            break;
+                        case 3:
+                            b.BackColor = Color.FromArgb(0xAA, Color.Green);
+                            break;
+                        case 2:
+                            b.BackColor = Color.FromArgb(0xAA, Color.GreenYellow);
+                            break;
+                        case 1:
+                            b.BackColor = Color.FromArgb(0xAA, Color.Orange);
+                            break;
+                        default:
+                            b.BackColor = Color.FromArgb(0xAA, Color.Red);
+                            break;
+                    }
+                }
+            }
+        }
+
+        public void addController(Joycon j) {
+            if (InvokeRequired) {
+                BeginInvoke(new Action<Joycon>(addController), new object[] { j });
+                return;
+            }
+            int i = 0;
+            foreach (Button b in con) {
+                if (!b.Enabled) {
+                    Bitmap temp;
+                    switch (j.type) {
+                        case (Joycon.ControllerType.JOYCON):
+                            if (j.isLeft) {
+                                temp = Properties.Resources.jc_left_s;
+                            } else {
+                                temp = Properties.Resources.jc_right_s;
+                            }
+                            break;
+                        case (Joycon.ControllerType.PRO):
+                            temp = Properties.Resources.pro;
+                            break;
+                        case (Joycon.ControllerType.SNES):
+                            temp = Properties.Resources.snes;
+                            break;
+                        default:
+                            temp = Properties.Resources.cross;
+                            break;
+                    }
+
+                    b.Tag = j; // assign controller to button
+                    b.Enabled = true;
+                    b.Click += new EventHandler(conBtnClick);
+                    b.BackgroundImage = temp;
+
+                    loc[i].Tag = b;
+                    loc[i].Click += new EventHandler(locBtnClickAsync);
+
+                    break;
+                }
+                i++;
+            }
+        }
+
+        public void removeController(Joycon j) {
+            if (InvokeRequired) {
+                BeginInvoke(new Action<Joycon>(removeController), new object[] { j });
+                return;
+            }
+            foreach (Button b in con) {
+                if (b.Enabled & b.Tag == j) {
+                    b.BackColor = Color.FromArgb(0x00, SystemColors.Control);
+                    b.Enabled = false;
+                    b.BackgroundImage = Properties.Resources.cross;
+                    break;
+                }
+            }
+        }
+
+        public void joinJoycon(Joycon j, Joycon other) {
+            if (InvokeRequired) {
+                BeginInvoke(new Action<Joycon, Joycon>(joinJoycon), new object[] { j, other });
+                return;
+            }
+            foreach (Button b in con) {
+                if (b.Tag == j || b.Tag == other) {
+                    Joycon currentJoycon = (b.Tag == j) ? j : other;
+                    b.BackgroundImage = currentJoycon.isLeft ? Properties.Resources.jc_left : Properties.Resources.jc_right;
+                }
+            }
         }
     }
 }
