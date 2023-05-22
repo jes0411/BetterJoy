@@ -377,11 +377,11 @@ namespace BetterJoyForCemu {
         }
         private void StartCalibrate(object sender, EventArgs e) {
             if (Program.mgr.j.Count == 0) {
-                this.console.Text = "Please connect a single pro controller.";
+                this.console.Text = "Please connect a single pro controller.\r\n";
                 return;
             }
             if (Program.mgr.j.Count > 1) {
-                this.console.Text = "Please calibrate one controller at a time (disconnect others).";
+                this.console.Text = "Please calibrate one controller at a time (disconnect others).\r\n";
                 return;
             }
             this.AutoCalibrate.Enabled = false;
@@ -411,12 +411,12 @@ namespace BetterJoyForCemu {
 
         private void CountDownIMU(object sender, EventArgs e) {
             if (this.count == 0) {
-                this.console.Text = "Calibrating IMU...";
+                this.console.Text = "Calibrating IMU...\r\n";
                 countDown.Stop();
                 this.StartGetIMUData();
             } else {
-                this.console.Text = "Please keep the controller flat." + "\r\n";
-                this.console.Text += "Calibration will start in " + this.count + " seconds.";
+                this.console.Text = "Please keep the controller flat.\r\n";
+                this.console.Text += "Calibration will start in " + this.count + " seconds.\r\n";
                 this.count--;
             }
         }
@@ -442,7 +442,7 @@ namespace BetterJoyForCemu {
                 Arr[3] = (float)quickselect_median(this.xA, rnd.Next);
                 Arr[4] = (float)quickselect_median(this.yA, rnd.Next);
                 Arr[5] = (float)quickselect_median(this.zA, rnd.Next) - 4010; //Joycon.cs acc_sen 16384
-                this.console.Text += "IMU Calibration completed!!!" + "\r\n";
+                this.console.Text += "IMU Calibration completed!!!\r\n";
                 Config.SaveCaliIMUData(this.caliIMUData);
                 Program.mgr.j.First().getActiveIMUData();
 
@@ -459,12 +459,12 @@ namespace BetterJoyForCemu {
         }
         private void CountDownSticksCenter(object sender, EventArgs e) {
             if (this.count == 0) {
-                this.console.Text = "Calibrating Sticks center position...";
+                this.console.Text = "Calibrating Sticks center position...\r\n";
                 countDown.Stop();
                 this.StartGetSticksCenterData();
             } else {
-                this.console.Text = "Please keep the sticks at the center position." + "\r\n";
-                this.console.Text += "Calibration will start in " + this.count + " seconds.";
+                this.console.Text = "Please keep the sticks at the center position.\r\n";
+                this.console.Text += "Calibration will start in " + this.count + " seconds.\r\n";
                 this.count--;
             }
         }
@@ -499,7 +499,7 @@ namespace BetterJoyForCemu {
                 Arr[3] = (ushort)Math.Round(quickselect_median(this.yS1.ConvertAll(x => (int) x), rnd.Next));
                 Arr[2 + stickCaliSize] = (ushort)Math.Round(quickselect_median(this.xS2.ConvertAll(x => (int) x), rnd.Next));
                 Arr[3 + stickCaliSize] = (ushort)Math.Round(quickselect_median(this.yS2.ConvertAll(x => (int) x), rnd.Next));
-                this.console.Text += "Sticks center position Calibration completed!!!" + "\r\n";
+                this.console.Text += "Sticks center position Calibration completed!!!\r\n";
 
                 countDown = new Timer();
                 this.count = 8;
@@ -513,12 +513,12 @@ namespace BetterJoyForCemu {
         }
         private void CountDownSticksMinMax(object sender, EventArgs e) {
             if (this.count == 0) {
-                this.console.Text = "Calibrating Sticks min and max position...";
+                this.console.Text = "Calibrating Sticks min and max position...\r\n";
                 countDown.Stop();
                 this.StartGetSticksMinMaxData();
             } else {
                 this.console.Text = "Please move the sticks in a circle when the calibration starts." + "\r\n";
-                this.console.Text += "Calibration will start in " + this.count + " seconds.";
+                this.console.Text += "Calibration will start in " + this.count + " seconds.\r\n";
                 this.count--;
             }
         }
@@ -557,7 +557,7 @@ namespace BetterJoyForCemu {
                 Arr[1 + stickCaliSize] = (ushort) Math.Abs(this.yS2.Max() - Arr[3 + stickCaliSize]);
                 Arr[4 + stickCaliSize] = (ushort) Math.Abs(Arr[2 + stickCaliSize] - this.xS2.Min());
                 Arr[5 + stickCaliSize] = (ushort) Math.Abs(Arr[3 + stickCaliSize] - this.yS2.Min());
-                this.console.Text += "Sticks min and max position Calibration completed!!!" + "\r\n";
+                this.console.Text += "Sticks min and max position Calibration completed!!!\r\n";
                 Config.SaveCaliSticksData(this.caliSticksData);
                 Program.mgr.j.First().getActiveSticksData();
                 this.AutoCalibrate.Enabled = true;
