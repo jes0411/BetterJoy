@@ -430,22 +430,21 @@ namespace BetterJoyForCemu {
             return acc_g;
         }
         public void Reset() {
-            form.AppendTextBox("Resetting USB connection.\r\n");
+            form.AppendTextBox("Resetting connection.\r\n");
             SetHCIState(0x01);
         }
         public int Attach() {
             state = state_.ATTACHED;
+
+            // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
+            // do not always send a response so we don't check if there is one
+            Subcommand(0x3, new byte[] { 0x3F }, 1);
 
             // Connect
             if (isUSB) {
                 form.AppendTextBox("Using USB.\r\n");
 
                 ref var buf = ref hid_buf;
-
-                var response = Subcommand(0x3, new byte[] { 0x3F }, 1); // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
-                if (response != null) {
-                    while (HIDapi.hid_read_timeout(handle, buf, report_len, 100) > 0) ; // clear read queue
-                }
 
                 // Get MAC
                 buf[0] = 0x80; buf[1] = 0x1;
@@ -454,7 +453,7 @@ namespace BetterJoyForCemu {
                 
                 if (length < 10 || buf[0] != 0x81) { // can occur when USB connection isn't closed properly
                     Reset();
-                    throw new Exception("reset_usb connection");
+                    throw new Exception("reset mac");
                 }
 
                 if (buf[3] == 0x3) {
@@ -478,11 +477,14 @@ namespace BetterJoyForCemu {
                 HIDapi.hid_write(handle, buf, new UIntPtr(2)); // doesn't actually prevent timout...
                 HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
 
+            } else {
+                form.AppendTextBox("Using Bluetooth.\r\n");
             }
+
             bool ok = dump_calibration_data();
             if (!ok) {
                 Reset();
-                throw new Exception("reset_usb calibration");
+                throw new Exception("reset calibration");
             }
 
             // Bluetooth manual pairing
@@ -1286,7 +1288,7 @@ namespace BetterJoyForCemu {
             int length = 0;
             bool responseFound = false;
             do {
-                length = HIDapi.hid_read_timeout(handle, response, new UIntPtr(report_len), 100);
+                length = HIDapi.hid_read_timeout(handle, response, new UIntPtr(report_len), 100); // don't set the timeout lower than 100 or might not always work
                 responseFound = (length >= 20 && response[0] == 0x21 && response[14] == sc);
                 tries++;
             } while (tries < 5 && !responseFound);
