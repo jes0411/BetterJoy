@@ -147,11 +147,11 @@ namespace BetterJoyForCemu {
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e) {
-            try {
+            if (e.CloseReason == CloseReason.UserClosing) {
                 Program.Stop();
                 SystemEvents.PowerModeChanged -= OnPowerChange;
-                Environment.Exit(0);
-            } catch { }
+                Application.Exit();
+            }
         }
 
         private void OnPowerChange(object s, PowerModeChangedEventArgs e) {
@@ -165,12 +165,8 @@ namespace BetterJoyForCemu {
             }
         }
 
-        private void exitToolStripMenuItem_Click(object sender, EventArgs e) { // this does not work, for some reason. Fix before release
-            try {
-                Program.Stop();
-                Close();
-                Environment.Exit(0);
-            } catch { }
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e) {
+            Close();
         }
 
         private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
@@ -309,16 +305,16 @@ namespace BetterJoyForCemu {
 
             ConfigurationManager.AppSettings["AutoPowerOff"] = "false";  // Prevent joycons poweroff when applying settings
             Program.Stop();
+            SystemEvents.PowerModeChanged -= OnPowerChange;
+            Program.allowAnotherInstance();
             Restart();
         }
 
         private void Restart() {
             ProcessStartInfo Info = new ProcessStartInfo();
-            Info.Arguments = "/c ping 127.0.0.1 -n 2 && \"" + Application.ExecutablePath + "\"";
+            Info.Arguments = "";
             Info.WorkingDirectory = Environment.CurrentDirectory;
-            Info.WindowStyle = ProcessWindowStyle.Hidden;
-            Info.CreateNoWindow = true;
-            Info.FileName = "cmd.exe";
+            Info.FileName = Application.ExecutablePath;
             Process.Start(Info);
             Application.Exit();
         }

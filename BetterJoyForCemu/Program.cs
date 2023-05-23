@@ -310,8 +310,8 @@ namespace BetterJoyForCemu {
 
         public void OnApplicationQuit() {
             lock (lockCheckController) {
-                controllerCheck.Stop();
-                controllerCheck.Dispose();
+                controllerCheck?.Stop();
+                controllerCheck?.Dispose();
                 isRunning = false;
             }
 
@@ -498,10 +498,15 @@ namespace BetterJoyForCemu {
             }
             stopHidHide();
 
-            keyboard.Dispose();
-            mouse.Dispose();
-            server.Stop();
-            mgr.OnApplicationQuit();
+            keyboard?.Dispose();
+            mouse?.Dispose();
+            server?.Stop();
+            mgr?.OnApplicationQuit();
+            isRunning = false;
+        }
+
+        public static void allowAnotherInstance() {
+            mutexInstance?.Close(); 
         }
 
         public static void stopHidHide() {
@@ -535,6 +540,8 @@ namespace BetterJoyForCemu {
         }
 
         private static string appGuid = "1bf709e9-c133-41df-933a-c9ff3f664c7b"; // randomly-generated
+        private static Mutex mutexInstance = null;
+
         static void Main(string[] args) {
 
             // Setting the culturesettings so float gets parsed correctly
@@ -543,8 +550,8 @@ namespace BetterJoyForCemu {
             // Set the correct DLL for the current OS
             SetupDlls();
 
-            using (Mutex mutex = new Mutex(false, "Global\\" + appGuid)) {
-                if (!mutex.WaitOne(0, false)) {
+            using (mutexInstance = new Mutex(false, "Global\\" + appGuid)) {
+                if (!mutexInstance.WaitOne(0, false)) {
                     MessageBox.Show("Instance already running.", "BetterJoy");
                     return;
                 }
