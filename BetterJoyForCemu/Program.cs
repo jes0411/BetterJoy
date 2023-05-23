@@ -502,8 +502,8 @@ namespace BetterJoyForCemu {
 
             keyboard?.Dispose();
             mouse?.Dispose();
-            server?.Stop();
             mgr?.OnApplicationQuit();
+            server?.Stop();
         }
 
         public static void allowAnotherInstance() {
