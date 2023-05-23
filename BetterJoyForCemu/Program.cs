@@ -496,13 +496,14 @@ namespace BetterJoyForCemu {
             if (!isRunning) {
                 return;
             }
+            isRunning = false;
+
             stopHidHide();
 
             keyboard?.Dispose();
             mouse?.Dispose();
             server?.Stop();
             mgr?.OnApplicationQuit();
-            isRunning = false;
         }
 
         public static void allowAnotherInstance() {

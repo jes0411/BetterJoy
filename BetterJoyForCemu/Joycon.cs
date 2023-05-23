@@ -1009,10 +1009,6 @@ namespace BetterJoyForCemu {
         bool swapAB = Boolean.Parse(ConfigurationManager.AppSettings["SwapAB"]);
         bool swapXY = Boolean.Parse(ConfigurationManager.AppSettings["SwapXY"]);
         private int ProcessButtonsAndStick(byte[] report_buf) {
-            if (report_buf[0] == 0x00) {
-                throw new ArgumentException("received undefined report. This is probably a bug");
-            }
-
             if (!isSnes) {
                 int reportOffset = (isLeft ? 0 : 3);
                 stick_raw[0] = report_buf[6 + reportOffset];

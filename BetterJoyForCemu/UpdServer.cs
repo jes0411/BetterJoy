@@ -262,12 +262,13 @@ namespace BetterJoyForCemu {
             }
         }
         private void StartReceive() {
+            if (!running) {
+                return;
+            }
             try {
-                if (running) {
-                    //Start listening for a new message.
-                    EndPoint newClientEP = new IPEndPoint(IPAddress.Any, 0);
-                    udpSock.BeginReceiveFrom(recvBuffer, 0, recvBuffer.Length, SocketFlags.None, ref newClientEP, ReceiveCallback, udpSock);
-                }
+                //Start listening for a new message.
+                EndPoint newClientEP = new IPEndPoint(IPAddress.Any, 0);
+                udpSock.BeginReceiveFrom(recvBuffer, 0, recvBuffer.Length, SocketFlags.None, ref newClientEP, ReceiveCallback, udpSock);
             } catch (SocketException /*e*/) {
                 uint IOC_IN = 0x80000000;
                 uint IOC_VENDOR = 0x18000000;
@@ -279,21 +280,19 @@ namespace BetterJoyForCemu {
         }
 
         public void Start(IPAddress ip, int port = 26760) {
+            if (running) {
+                return;
+            }
+
             if (!Boolean.Parse(ConfigurationManager.AppSettings["MotionServer"])) {
                 form.AppendTextBox("Motion server is OFF.\r\n");
                 return;
             }
 
-            if (running) {
-                if (udpSock != null) {
-                    udpSock.Close();
-                    udpSock = null;
-                }
-                running = false;
-            }
-
             udpSock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            try { udpSock.Bind(new IPEndPoint(ip, port)); } catch (SocketException /*e*/) {
+            try {
+                udpSock.Bind(new IPEndPoint(ip, port));
+            } catch (SocketException /*e*/) {
                 udpSock.Close();
                 udpSock = null;
 
