@@ -625,16 +625,28 @@ namespace BetterJoyForCemu {
         }
 
         private byte ts_en;
+        private enum ReceiveError {
+            None,
+            InvalidHandle,
+            ReadError,
+            InvalidPacket,
+            NoData
+        };
 
         // Run from poll thread
-        private bool ReceiveRaw(byte[] buf) {
+        private ReceiveError ReceiveRaw(byte[] buf) {
             if (handle == IntPtr.Zero) {
-                return false;
+                return ReceiveError.InvalidHandle;
             }
             int length = HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 5);
-
-            if (length <= 0 || buf[0] != 0x30) { // 0x30 = standard full mode report
-                return false;
+            if (length < 0) {
+                return ReceiveError.ReadError;
+            }
+            if (length == 0) {
+                return ReceiveError.NoData;
+            }
+            if (buf[0] != 0x30) { // 0x30 = standard full mode report
+                return ReceiveError.InvalidPacket;
             }
 
             // clear remaining of buffer just to be safe
@@ -690,7 +702,7 @@ namespace BetterJoyForCemu {
             ts_en = buf[1];
             //DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Type: {1:X2} Timestamp: {2:X2}", length, buf[0], buf[1]), DebugType.THREADING);
             
-            return true;
+            return ReceiveError.None;
         }
 
         private readonly Stopwatch shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
@@ -969,19 +981,24 @@ namespace BetterJoyForCemu {
                         SendRumble(buf, data);
                     }
                 }
-                bool receiveOk = ReceiveRaw(buf);
+                ReceiveError error = ReceiveRaw(buf);
 
-                if (receiveOk && state > state_.DROPPED) {
+                if (error == ReceiveError.None && state > state_.DROPPED) {
                     state = state_.IMU_DATA_OK;
                     attempts = 0;
                 } else if (attempts > 240) {
                     state = state_.DROPPED;
                     form.AppendTextBox("Dropped.\r\n");
                     DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.ALL);
-                } else if (!receiveOk) {
-                    // No data read or read error
+                } else if (error == ReceiveError.InvalidHandle) { // should not happen
+                    state = state_.DROPPED;
+                    form.AppendTextBox("Dropped (invalid handle).\r\n");
+                } else {
+                    // No data read, read error or invalid packet
                     // The controller should report back at 60hz or 120hz for the pro controller
-                    Thread.Sleep((Int32)5);
+                    if (error == ReceiveError.ReadError) {
+                        Thread.Sleep(5);
+                    }
                     ++attempts;
                 }
             }
