@@ -188,6 +188,8 @@ namespace BetterJoyForCemu {
                             form.AppendTextBox("Non Joy-Con Nintendo input device skipped.\r\n"); break;
                     }
 
+                    bool isUSB = enumerate.bus_type == BusType.USB;
+
                     // Add controller to block-list for HidHide
                     if (Program.useHidHide) {
                         var pathTokens = enumerate.path.Split('#');
@@ -199,15 +201,18 @@ namespace BetterJoyForCemu {
                             try {
                                 List<string> devices = new List<string>() {
                                     @"HID\" + pathTokens[1].ToUpper() + @"\" + pathTokens[2].ToLower(),
-                                    @"USB\" + pathTokens[1].ToUpper() + @"\" + enumerate.serial_number
                                 };
+
+                                // TODO: add the hardware id (starting with USB or BTHENUM), not possible without modifying hidapi to get it
+                                if (isUSB) {
+                                    devices.Add(@"USB\" + pathTokens[1].ToUpper() + @"\" + enumerate.serial_number);
+                                }
                                 Program.blockDevices(devices);
                             } catch {
                                 form.AppendTextBox("Unable to add controller to block-list.\r\n");
                             }
                         }
                     }
-                    // -------------------- //
 
                     IntPtr handle = HIDapi.hid_open_path(enumerate.path);
                     if (handle == IntPtr.Zero) {
@@ -223,7 +228,6 @@ namespace BetterJoyForCemu {
                     } else if (prod_id == product_snes) {
                         type = Joycon.ControllerType.SNES;
                     }
-                    bool isUSB = enumerate.bus_type == BusType.USB;
 
                     Joycon controller = new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUSB, j.Count, type, thirdParty != null);
                     controller.form = form;
