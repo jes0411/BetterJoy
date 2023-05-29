@@ -657,12 +657,11 @@ namespace BetterJoyForCemu {
             for (int n = 0; n < 3; n++) {
                 ExtractIMUValues(buf, n);
 
-                byte lag = (byte)Math.Max(0, buf[1] - ts_en - 3);
                 if (n == 0) {
+                    byte lag = (byte)Math.Max(0, buf[1] - ts_en - 3); // why -3 ?
                     Timestamp += (ulong)lag * 5000; // add lag once
                     ProcessButtonsAndStick(buf);
 
-                    // process buttons here to have them affect DS4
                     DoThingsWithButtons();
 
                     int prevBattery = battery;
@@ -673,19 +672,16 @@ namespace BetterJoyForCemu {
                 Timestamp += 5000; // 5ms difference
 
                 packetCounter++;
-                if (Program.server != null)
-                    Program.server.NewReportIncoming(this);
-
-                if (out_ds4 != null) {
-                    try {
-                        out_ds4.UpdateInput(MapToDualShock4Input(this));
-                    } catch (Exception /*e*/) {
-                        // ignore /shrug
-                    }
-                }
+                Program.server?.NewReportIncoming(this);
             }
 
-            // no reason to send XInput reports so often
+            if (out_ds4 != null) {
+                try {
+                    out_ds4.UpdateInput(MapToDualShock4Input(this));
+                } catch (Exception /*e*/) {
+                    // ignore /shrug
+                }
+            }
             if (out_xbox != null) {
                 try {
                     out_xbox.UpdateInput(MapToXbox360Input(this));
@@ -882,7 +878,7 @@ namespace BetterJoyForCemu {
 
             // Filtered IMU data
             this.cur_rotation = AHRS.GetEulerAngles();
-            float dt = 0.015f; // 15ms
+            const float dt = 0.015f; // 15ms
 
             if (GyroAnalogSliders && (other != null || isPro)) {
                 Button leftT = isLeft ? Button.SHOULDER_2 : Button.SHOULDER2_2;
