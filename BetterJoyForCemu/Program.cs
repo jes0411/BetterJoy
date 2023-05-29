@@ -229,17 +229,10 @@ namespace BetterJoyForCemu {
                         type = Joycon.ControllerType.SNES;
                     }
 
-                    Joycon controller = new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUSB, j.Count, type, thirdParty != null);
+                    int indexController = j.Count;
+                    Joycon controller = new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUSB, indexController, type, thirdParty != null);
                     controller.form = form;
-                    j.Add(controller);
-
-                    foundNew = true;
-                    int nbControllers = j.Count;
-
-                    if (nbControllers < 5) {
-                        form.addController(controller);
-                    }
-
+                    
                     byte[] mac = new byte[6];
                     try {
                         for (int n = 0; n < 6; n++)
@@ -247,7 +240,13 @@ namespace BetterJoyForCemu {
                     } catch (Exception /*e*/) {
                         // could not parse mac address
                     }
-                    j[nbControllers - 1].PadMacAddress = new PhysicalAddress(mac);
+                    controller.PadMacAddress = new PhysicalAddress(mac);
+
+                    j.Add(controller);
+                    if (indexController < 4) {
+                        form.addController(controller);
+                    }
+                    foundNew = true;
                 }
 
                 ptr = enumerate.next;
@@ -316,8 +315,9 @@ namespace BetterJoyForCemu {
                 isRunning = false;
             }
 
+            bool powerOff = Boolean.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]);
             foreach (Joycon v in j) {
-                if (Boolean.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]))
+                if (powerOff)
                     v.PowerOff();
 
                 v.Detach();
