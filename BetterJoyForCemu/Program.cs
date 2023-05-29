@@ -282,7 +282,7 @@ namespace BetterJoyForCemu {
             HIDapi.hid_free_enumeration(top_ptr);
 
             bool dropped = false;
-            bool on = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None).AppSettings.Settings["HomeLEDOn"].Value.ToLower() == "true";
+            bool on = Boolean.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
             foreach (Joycon jc in j) { // Connect device straight away
                 if (jc.state == Joycon.state_.NOT_ATTACHED) {
                     try {

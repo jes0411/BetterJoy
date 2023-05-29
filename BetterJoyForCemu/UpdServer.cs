@@ -114,8 +114,8 @@ namespace BetterJoyForCemu {
                 int currIdx = 0;
                 if (localMsg[0] != 'D' || localMsg[1] != 'S' || localMsg[2] != 'U' || localMsg[3] != 'C')
                     return;
-                else
-                    currIdx += 4;
+
+                currIdx += 4;
 
                 uint protocolVer = BitConverter.ToUInt16(localMsg, currIdx);
                 currIdx += 2;
@@ -132,7 +132,8 @@ namespace BetterJoyForCemu {
                 packetSize += 16; //size of header
                 if (packetSize > localMsg.Length)
                     return;
-                else if (packetSize < localMsg.Length) {
+                
+                if (packetSize < localMsg.Length) {
                     byte[] newMsg = new byte[packetSize];
                     Array.Copy(localMsg, newMsg, packetSize);
                     localMsg = newMsg;
@@ -209,7 +210,7 @@ namespace BetterJoyForCemu {
                             outputData[outIdx++] = 0;
                         }
 
-                        outputData[outIdx++] = (byte)padData.battery;//(byte)padData.BatteryStatus;
+                        outputData[outIdx++] = (byte)padData.battery;
                         outputData[outIdx++] = 0;
 
                         SendPacket(clientEP, outputData, 1001);

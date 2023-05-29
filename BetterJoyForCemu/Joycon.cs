@@ -284,13 +284,15 @@ namespace BetterJoyForCemu {
         public OutputControllerXbox360 out_xbox;
         public OutputControllerDualShock4 out_ds4;
 
-        int lowFreq = Int32.Parse(ConfigurationManager.AppSettings["LowFreqRumble"]);
-        int highFreq = Int32.Parse(ConfigurationManager.AppSettings["HighFreqRumble"]);
+        static int lowFreq = Int32.Parse(ConfigurationManager.AppSettings["LowFreqRumble"]);
+        static int highFreq = Int32.Parse(ConfigurationManager.AppSettings["HighFreqRumble"]);
 
-        bool toRumble = Boolean.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
+        static bool toRumble = Boolean.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
 
-        bool showAsXInput = Boolean.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
-        bool showAsDS4 = Boolean.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
+        static bool showAsXInput = Boolean.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
+        static bool showAsDS4 = Boolean.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
+
+        static bool useIncrementalLights = Boolean.Parse(ConfigurationManager.AppSettings["UseIncrementalLights"]);
 
         public MainForm form;
 
@@ -301,7 +303,7 @@ namespace BetterJoyForCemu {
                 id = 3;
             }
 
-            if (ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None).AppSettings.Settings["UseIncrementalLights"].Value.ToLower() == "true") {
+            if (useIncrementalLights) {
                 // Set all LEDs from 0 to the given id to lit
                 int ledId = id;
                 LED = 0x0;
