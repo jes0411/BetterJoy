@@ -264,18 +264,21 @@ namespace BetterJoyForCemu {
             if (!running) {
                 return;
             }
-            try {
-                //Start listening for a new message.
-                EndPoint newClientEP = new IPEndPoint(IPAddress.Any, 0);
-                udpSock.BeginReceiveFrom(recvBuffer, 0, recvBuffer.Length, SocketFlags.None, ref newClientEP, ReceiveCallback, udpSock);
-            } catch (SocketException /*e*/) {
-                uint IOC_IN = 0x80000000;
-                uint IOC_VENDOR = 0x18000000;
-                uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
-                udpSock.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
 
-                StartReceive();
-            }
+            bool ok = false;
+            do {
+                try {
+                    //Start listening for a new message.
+                    EndPoint newClientEP = new IPEndPoint(IPAddress.Any, 0);
+                    udpSock.BeginReceiveFrom(recvBuffer, 0, recvBuffer.Length, SocketFlags.None, ref newClientEP, ReceiveCallback, udpSock);
+                    ok = true;
+                } catch (SocketException /*e*/) {
+                    uint IOC_IN = 0x80000000;
+                    uint IOC_VENDOR = 0x18000000;
+                    uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+                    udpSock.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
+                }
+            } while (!ok);
         }
 
         public void Start(IPAddress ip, int port = 26760) {
@@ -309,6 +312,9 @@ namespace BetterJoyForCemu {
         }
 
         public void Stop() {
+            if (!running) {
+                return;
+            }
             running = false;
             if (udpSock != null) {
                 udpSock.Close();
