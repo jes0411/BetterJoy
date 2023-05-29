@@ -1,16 +1,50 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace BetterJoyForCemu.Collections {
+    /// A thread-safe IEnumerator implementation.
+    /// https://www.codeproject.com/Articles/56575/Thread-safe-enumeration-in-C
+    public class SafeEnumerator<T> : IEnumerator<T> {
+        private readonly IEnumerator<T> _inner;
+        private readonly object _lock;
+
+        public SafeEnumerator(IEnumerator<T> inner, object @lock) {
+            _inner = inner;
+            _lock = @lock;
+
+            Monitor.Enter(_lock);
+        }
+
+        public void Dispose() {
+            // called when foreach loop finishes
+            Monitor.Exit(_lock);
+        }
+
+        public bool MoveNext() {
+            return _inner.MoveNext();
+        }
+
+        public void Reset() {
+            _inner.Reset();
+        }
+
+        public T Current {
+            get { return _inner.Current; }
+        }
+
+        object IEnumerator.Current {
+            get { return Current; }
+        }
+    }
 
     // https://codereview.stackexchange.com/a/125341
     public class ConcurrentList<T> : IList<T> {
         #region Fields
 
         private IList<T> _internalList;
-
-        private readonly object lockObject = new object();
+        private readonly object _lock = new object();
 
         #endregion
 
@@ -67,10 +101,6 @@ namespace BetterJoyForCemu.Collections {
             LockInternalListAndCommand(l => l.CopyTo(array, arrayIndex));
         }
 
-        public IEnumerator<T> GetEnumerator() {
-            return LockInternalListAndQuery(l => l.GetEnumerator());
-        }
-
         public int IndexOf(T item) {
             return LockInternalListAndQuery(l => l.IndexOf(item));
         }
@@ -87,28 +117,36 @@ namespace BetterJoyForCemu.Collections {
             LockInternalListAndCommand(l => l.RemoveAt(index));
         }
 
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() {
+            return LockInternalAndEnumerate();
+        }
+
         IEnumerator IEnumerable.GetEnumerator() {
-            return LockInternalListAndQuery(l => l.GetEnumerator());
+            return LockInternalAndEnumerate();
         }
 
         #region Utilities
 
         protected virtual void LockInternalListAndCommand(Action<IList<T>> action) {
-            lock (lockObject) {
+            lock (_lock) {
                 action(_internalList);
             }
         }
 
         protected virtual T LockInternalListAndGet(Func<IList<T>, T> func) {
-            lock (lockObject) {
+            lock (_lock) {
                 return func(_internalList);
             }
         }
 
         protected virtual TObject LockInternalListAndQuery<TObject>(Func<IList<T>, TObject> query) {
-            lock (lockObject) {
+            lock (_lock) {
                 return query(_internalList);
             }
+        }
+
+        protected virtual IEnumerator<T> LockInternalAndEnumerate() {
+            return new SafeEnumerator<T>(_internalList.GetEnumerator(), _lock);
         }
 
         #endregion
