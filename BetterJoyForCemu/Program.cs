@@ -234,8 +234,9 @@ namespace BetterJoyForCemu {
                     j.Add(controller);
 
                     foundNew = true;
+                    int nbControllers = j.Count;
 
-                    if (j.Count < 5) {
+                    if (nbControllers < 5) {
                         form.addController(controller);
                     }
 
@@ -246,7 +247,7 @@ namespace BetterJoyForCemu {
                     } catch (Exception /*e*/) {
                         // could not parse mac address
                     }
-                    j[j.Count - 1].PadMacAddress = new PhysicalAddress(mac);
+                    j[nbControllers - 1].PadMacAddress = new PhysicalAddress(mac);
                 }
 
                 ptr = enumerate.next;

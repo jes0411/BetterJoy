@@ -372,11 +372,12 @@ namespace BetterJoyForCemu {
             }
         }
         private void StartCalibrate(object sender, EventArgs e) {
-            if (Program.mgr.j.Count == 0) {
+            int nbControllers = Program.mgr.j.Count;
+            if (nbControllers == 0) {
                 this.console.Text = "Please connect a single pro controller.\r\n";
                 return;
             }
-            if (Program.mgr.j.Count > 1) {
+            if (nbControllers > 1) {
                 this.console.Text = "Please calibrate one controller at a time (disconnect others).\r\n";
                 return;
             }
@@ -420,7 +421,9 @@ namespace BetterJoyForCemu {
             if (this.count == 0) {
                 countDown.Stop();
                 this.calibrateIMU = false;
-                string serNum = Program.mgr.j.First().serial_number;
+
+                Joycon j = Program.mgr.j.First();
+                string serNum = j.serial_number;
                 int serIndex = this.findSerIMU(serNum);
                 float[] Arr = new float[6] { 0, 0, 0, 0, 0, 0 };
                 if (serIndex == -1) {
@@ -440,7 +443,7 @@ namespace BetterJoyForCemu {
                 Arr[5] = (float)quickselect_median(this.zA, rnd.Next) - 4010; //Joycon.cs acc_sen 16384
                 this.console.Text += "IMU Calibration completed!!!\r\n";
                 Config.SaveCaliIMUData(this.caliIMUData);
-                Program.mgr.j.First().getActiveIMUData();
+                j.getActiveIMUData();
 
                 countDown = new Timer();
                 this.count = 5;
@@ -478,7 +481,9 @@ namespace BetterJoyForCemu {
             if (this.count == 0) {
                 countDown.Stop();
                 this.calibrateSticks = false;
-                string serNum = Program.mgr.j.First().serial_number;
+
+                Joycon j = Program.mgr.j.First();
+                string serNum = j.serial_number;
                 int serIndex = this.findSerSticks(serNum);
                 const int stickCaliSize = 6;
                 ushort[] Arr = new ushort[stickCaliSize * 2] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -532,7 +537,9 @@ namespace BetterJoyForCemu {
             if (this.count == 0) {
                 countDown.Stop();
                 this.calibrateSticks = false;
-                string serNum = Program.mgr.j.First().serial_number;
+
+                Joycon j = Program.mgr.j.First();
+                string serNum = j.serial_number;
                 int serIndex = this.findSerSticks(serNum);
                 const int stickCaliSize = 6;
                 ushort[] Arr = new ushort[stickCaliSize * 2] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -555,7 +562,7 @@ namespace BetterJoyForCemu {
                 Arr[5 + stickCaliSize] = (ushort) Math.Abs(Arr[3 + stickCaliSize] - this.yS2.Min());
                 this.console.Text += "Sticks min and max position Calibration completed!!!\r\n";
                 Config.SaveCaliSticksData(this.caliSticksData);
-                Program.mgr.j.First().getActiveSticksData();
+                j.getActiveSticksData();
                 this.AutoCalibrate.Enabled = true;
             } else {
                 this.count--;

@@ -170,20 +170,18 @@ namespace BetterJoyForCemu {
                     // Requested information on gamepads - return MAC address
                     int numPadRequests = BitConverter.ToInt32(localMsg, currIdx);
                     currIdx += 4;
-                    if (numPadRequests < 0 || numPadRequests > 4)
+                    if (numPadRequests <= 0)
                         return;
-
-                    int requestsIdx = currIdx;
-                    for (int i = 0; i < numPadRequests; i++) {
-                        byte currRequest = localMsg[requestsIdx + i];
-                        if (currRequest < 0 || currRequest > 4)
-                            return;
-                    }
 
                     byte[] outputData = new byte[16];
                     for (byte i = 0; i < numPadRequests; i++) {
-                        byte currRequest = localMsg[requestsIdx + i];
-                        var padData = controllers[i];//controllers[currRequest];
+                        byte currRequest = localMsg[currIdx + i];
+                        Joycon padData = null;
+                        try {
+                            padData = controllers[currRequest];
+                        } catch (ArgumentOutOfRangeException /*e*/) {
+                            continue;
+                        }
 
                         int outIdx = 0;
                         Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo), 0, outputData, outIdx, 4);
