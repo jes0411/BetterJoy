@@ -160,7 +160,6 @@ namespace BetterJoyForCemu {
         private bool do_localize;
         private float filterweight;
         private const int report_len = 49;
-        private byte[] hid_buf = new byte[report_len];
 
         private struct Rumble {
             private Queue<float[]> queue;
@@ -446,7 +445,7 @@ namespace BetterJoyForCemu {
             if (isUSB) {
                 form.AppendTextBox("Using USB.\r\n");
 
-                ref var buf = ref hid_buf;
+                var buf = new byte[report_len];
 
                 // Get MAC
                 buf[0] = 0x80; buf[1] = 0x1;
@@ -575,10 +574,8 @@ namespace BetterJoyForCemu {
                 //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
                 if (isUSB) {
-                    ref var buf = ref hid_buf;
-                    Array.Clear(buf);
-
                     // Commented because you need to restart the controller to reconnect in usb again with the following
+                    //var buf = new byte[report_len];
                     //buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
                     //HIDapi.hid_write(handle, buf, new UIntPtr(2));
                     //buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
@@ -1283,7 +1280,7 @@ namespace BetterJoyForCemu {
         }
 
         private byte[] Subcommand(byte sc, byte[] buf, uint len, bool print = true) {
-            ref var buf_ = ref hid_buf;
+            var buf_ = new byte[report_len];
             Array.Clear(buf_);
 
             Array.Copy(default_buf, 0, buf_, 2, 8);
@@ -1298,7 +1295,7 @@ namespace BetterJoyForCemu {
             }
             HIDapi.hid_write(handle, buf_, new UIntPtr(len + 11));
             
-            ref var response = ref hid_buf;
+            ref var response = ref buf_;
             int tries = 0;
             int length = 0;
             bool responseFound = false;
