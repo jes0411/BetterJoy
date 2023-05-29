@@ -323,6 +323,7 @@ namespace BetterJoyForCemu {
         }
 
         private bool ReportToBuffer(Joycon hidReport, byte[] outputData, ref int outIdx) {
+            /* Commented because we only care about the gyroscope and accelerometer
             var ds4 = Joycon.MapToDualShock4Input(hidReport);
 
             outputData[outIdx] = 0;
@@ -380,6 +381,9 @@ namespace BetterJoyForCemu {
             for (int i = 0; i < 2; i++) {
                 outIdx += 6;
             }
+            */
+
+            outIdx += 32;
 
             //motion timestamp
             Array.Copy(BitConverter.GetBytes(hidReport.Timestamp), 0, outputData, outIdx, 8);
