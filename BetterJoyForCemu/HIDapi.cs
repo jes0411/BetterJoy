@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace BetterJoyForCemu {
 	public class HIDapi {
@@ -8,6 +9,8 @@ namespace BetterJoyForCemu {
 #else
 		const string dll = "hidapi.dll";
 #endif
+        const int maxStringLength = 255;
+
         public enum BusType {
             UNKNOWN = 0x00,
             USB = 0x01,
@@ -90,7 +93,18 @@ namespace BetterJoyForCemu {
 		[return: MarshalAs(UnmanagedType.LPWStr)]
 		public static extern string hid_error(IntPtr device);
 
-		static void PrintEnumeration(IntPtr phid_device_info) {
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_winapi_get_container_id(IntPtr device, out Guid container_id);
+
+        // Added in my fork of HIDapi at https://github.com/d3xMachina/hidapi (needed for HIDHide to work correctly)
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_winapi_get_instance_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder string_, UIntPtr maxlen);
+
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_winapi_get_parent_instance_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder string_, UIntPtr maxlen);
+        // END
+
+        static void PrintEnumeration(IntPtr phid_device_info) {
 			if (!phid_device_info.Equals(IntPtr.Zero)) {
 				hid_device_info hdev = (hid_device_info)Marshal.PtrToStructure(phid_device_info, typeof(hid_device_info));
 
@@ -119,5 +133,35 @@ namespace BetterJoyForCemu {
 		public static string GetDevicePath(ushort vendorId, ushort productId, ushort usagePage, ushort usage) {
 			return _getDevicePath(hid_enumerate(vendorId, productId), usagePage, usage);
 		}
-	}
+
+        public static string GetInstance(IntPtr device) {
+            StringBuilder bufferInstance = new StringBuilder(maxStringLength);
+
+            int ret = hid_winapi_get_instance_string(device, bufferInstance, maxStringLength);
+            if (ret < 0) {
+                return "";
+            }
+
+            string instance = bufferInstance.ToString();
+            if (string.IsNullOrEmpty(instance)) {
+                return "";
+            }
+            return instance;
+        }
+
+        public static string GetParentInstance(IntPtr device) {
+            StringBuilder bufferInstance = new StringBuilder(maxStringLength);
+
+            int ret = hid_winapi_get_parent_instance_string(device, bufferInstance, maxStringLength);
+            if (ret < 0) {
+                return "";
+            }
+
+            string instance = bufferInstance.ToString();
+            if (string.IsNullOrEmpty(instance)) {
+                return "";
+            }
+            return instance;
+        }
+    }
 }

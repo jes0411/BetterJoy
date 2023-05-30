@@ -141,21 +141,19 @@ namespace BetterJoyForCemu {
             IntPtr ptr = HIDapi.hid_enumerate(0x0, 0x0);
             IntPtr top_ptr = ptr;
 
-            hid_device_info enumerate; // Add device to list
             bool foundNew = false;
-            while (ptr != IntPtr.Zero) {
-                SController thirdParty = null;
+            for (hid_device_info enumerate; ptr != IntPtr.Zero; ptr = enumerate.next) {
                 enumerate = (hid_device_info)Marshal.PtrToStructure(ptr, typeof(hid_device_info));
 
                 if (enumerate.serial_number == null) {
-                    ptr = enumerate.next; // can't believe it took me this long to figure out why USB connections used up so much CPU.
-                                          // it was getting stuck in an inf loop here!
                     continue;
                 }
 
                 bool validController = (enumerate.product_id == product_l || enumerate.product_id == product_r ||
                                         enumerate.product_id == product_pro || enumerate.product_id == product_snes) && enumerate.vendor_id == vendor_id;
+
                 // check list of custom controllers specified
+                SController thirdParty = null;
                 foreach (SController v in Program.thirdPartyCons) {
                     if (enumerate.vendor_id == v.vendor_id && enumerate.product_id == v.product_id && enumerate.serial_number == v.serial_number) {
                         validController = true;
@@ -188,32 +186,6 @@ namespace BetterJoyForCemu {
                             form.AppendTextBox("Non Joy-Con Nintendo input device skipped.\r\n"); break;
                     }
 
-                    bool isUSB = enumerate.bus_type == BusType.USB;
-
-                    // Add controller to block-list for HidHide
-                    if (Program.useHidHide) {
-                        var pathTokens = enumerate.path.Split('#');
-                        if (pathTokens.Length < 2) {
-                            form.AppendTextBox("Unable to add controller to block-list : incorrect device path.\r\n");
-                        }
-                        else
-                        {
-                            try {
-                                List<string> devices = new List<string>() {
-                                    @"HID\" + pathTokens[1].ToUpper() + @"\" + pathTokens[2].ToLower(),
-                                };
-
-                                // TODO: add the hardware id (starting with USB or BTHENUM), not possible without modifying hidapi to get it
-                                if (isUSB) {
-                                    devices.Add(@"USB\" + pathTokens[1].ToUpper() + @"\" + enumerate.serial_number);
-                                }
-                                Program.blockDevices(devices);
-                            } catch {
-                                form.AppendTextBox("Unable to add controller to block-list.\r\n");
-                            }
-                        }
-                    }
-
                     IntPtr handle = HIDapi.hid_open_path(enumerate.path);
                     if (handle == IntPtr.Zero) {
                         form.AppendTextBox("Unable to open path to device - are you using the correct (64 vs 32-bit) version for your PC?\r\n");
@@ -221,6 +193,9 @@ namespace BetterJoyForCemu {
                     }
 
                     HIDapi.hid_set_nonblocking(handle, 1);
+
+                    // Add controller to block-list for HidHide
+                    Program.addDeviceToBlocklist(handle);
 
                     Joycon.ControllerType type = Joycon.ControllerType.JOYCON;
                     if (prod_id == product_pro) {
@@ -230,6 +205,7 @@ namespace BetterJoyForCemu {
                     }
 
                     int indexController = j.Count;
+                    bool isUSB = enumerate.bus_type == BusType.USB;
                     Joycon controller = new Joycon(handle, EnableIMU, EnableLocalize && EnableIMU, 0.05f, isLeft, enumerate.path, enumerate.serial_number, isUSB, indexController, type, thirdParty != null);
                     controller.form = form;
                     
@@ -248,9 +224,8 @@ namespace BetterJoyForCemu {
                     }
                     foundNew = true;
                 }
-
-                ptr = enumerate.next;
             }
+            HIDapi.hid_free_enumeration(top_ptr);
 
             if (foundNew) { // attempt to auto join-up joycons on connection
                 Joycon temp = null;
@@ -277,8 +252,6 @@ namespace BetterJoyForCemu {
                     }
                 }
             }
-
-            HIDapi.hid_free_enumeration(top_ptr);
 
             bool dropped = false;
             bool on = Boolean.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
@@ -343,7 +316,7 @@ namespace BetterJoyForCemu {
         private static WindowsInput.Events.Sources.IKeyboardEventSource keyboard;
         private static WindowsInput.Events.Sources.IMouseEventSource mouse;
 
-        private static HashSet<string> blockedDevices = new HashSet<string>();
+        private static HashSet<string> blockedDeviceInstances = new HashSet<string>();
 
         private static bool isRunning = false;
 
@@ -439,11 +412,42 @@ namespace BetterJoyForCemu {
             return true;
         }
 
-        public static void blockDevices(IList<string> devices) {
+        public static void addDeviceToBlocklist(IntPtr handle) {
+            if (!Program.useHidHide) {
+                return;
+            }
+            try {
+                List<string> devices = new List<string>();
+
+                string instance = HIDapi.GetInstance(handle);
+                if (instance.Length == 0) {
+                    form.AppendTextBox("Unable to get device instance\r\n");
+                } else {
+                    devices.Add(instance);
+                }
+
+                string parentInstance = HIDapi.GetParentInstance(handle);
+                if (parentInstance.Length == 0) {
+                    form.AppendTextBox("Unable to get device parent instance\r\n");
+                } else {
+                    devices.Add(parentInstance);
+                }
+
+                if (devices.Count == 0) {
+                    throw new Exception("hidapi error");
+                }
+
+                blockDeviceInstances(devices);
+            } catch {
+                form.AppendTextBox("Unable to add controller to block-list.\r\n");
+            }
+        }
+
+        public static void blockDeviceInstances(IList<string> instances) {
             HidHideControlService hidHideService = new HidHideControlService();
-            foreach (var device in devices) {
-                hidHideService.AddBlockedInstanceId(device);
-                blockedDevices.Add(device);
+            foreach (var instance in instances) {
+                hidHideService.AddBlockedInstanceId(instance);
+                blockedDeviceInstances.Add(instance);
             }
         }
 
@@ -526,8 +530,8 @@ namespace BetterJoyForCemu {
 
             if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
                 try {
-                    foreach (var device in blockedDevices) {
-                        hidHideService.RemoveBlockedInstanceId(device);
+                    foreach (var instance in blockedDeviceInstances) {
+                        hidHideService.RemoveBlockedInstanceId(instance);
                     }
                 } catch (Exception /*e*/) {
                     form.AppendTextBox("Unable to purge blacklisted devices.\r\n");
