@@ -450,9 +450,7 @@ namespace BetterJoyForCemu {
                 // Get MAC
                 buf[0] = 0x80; buf[1] = 0x1;
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
-                int length = HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
-                
-                if (length < 10 || buf[0] != 0x81) { // can occur when USB connection isn't closed properly
+                if (ReadUSBCheck(buf, 0x1) == 0) { // can occur when USB connection isn't closed properly
                     Reset();
                     throw new Exception("reset mac");
                 }
@@ -464,19 +462,28 @@ namespace BetterJoyForCemu {
                 // USB Pairing
                 buf[0] = 0x80; buf[1] = 0x2; // Handshake
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
-                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
+                if (ReadUSBCheck(buf, 0x2) == 0) {
+                    // can occur when another software sends commands to the device, disable PurgeAffectedDevice in the config to avoid this
+                    Reset();
+                    throw new Exception("reset handshake");
+                }
 
                 buf[0] = 0x80; buf[1] = 0x3; // 3Mbit baud rate
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
-                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
+                if (ReadUSBCheck(buf, 0x3) == 0) {
+                    Reset();
+                    throw new Exception("reset baud rate");
+                }
 
                 buf[0] = 0x80; buf[1] = 0x2; // Handshake at new baud rate
                 HIDapi.hid_write(handle, buf, new UIntPtr(2));
-                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
+                if (ReadUSBCheck(buf, 0x2) == 0) {
+                    Reset();
+                    throw new Exception("reset new handshake");
+                }
 
                 buf[0] = 0x80; buf[1] = 0x4; // Prevent HID timeout
-                HIDapi.hid_write(handle, buf, new UIntPtr(2)); // doesn't actually prevent timout...
-                HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 100);
+                HIDapi.hid_write(handle, buf, new UIntPtr(2)); // does not send a response
 
             } else {
                 form.AppendTextBox("Using Bluetooth.\r\n");
@@ -578,12 +585,15 @@ namespace BetterJoyForCemu {
                     //var buf = new byte[report_len];
                     //buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
                     //HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                    //ReadUSBCheck(Buffer, 0x5);
                     //buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
                     //HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                    //ReadUSBCheck(Buffer, 0x6);
                 }
             }
             if (close && handle != IntPtr.Zero) {
                 HIDapi.hid_close(handle);
+                handle = IntPtr.Zero;
             }
             state = state_.NOT_ATTACHED;
         }
@@ -1299,7 +1309,7 @@ namespace BetterJoyForCemu {
                 length = HIDapi.hid_read_timeout(handle, response, new UIntPtr(report_len), 100); // don't set the timeout lower than 100 or might not always work
                 responseFound = (length >= 20 && response[0] == 0x21 && response[14] == sc);
                 tries++;
-            } while (tries < 5 && !responseFound);
+            } while (tries < 10 && !responseFound);
 
             if (!responseFound) {
                 DebugPrint("No response.", DebugType.COMMS);
@@ -1427,6 +1437,23 @@ namespace BetterJoyForCemu {
                 form.AppendTextBox("Error while reading calibration data.\r\n");
             }
             return ok;
+        }
+
+        private int ReadUSBCheck(byte[] data, byte command) {
+            int length;
+            bool responseFound;
+            int tries = 0;
+            do {
+                length = HIDapi.hid_read_timeout(handle, data, new UIntPtr(report_len), 100);
+                responseFound = (length > 1 && data[0] == 0x81 && data[1] == command);
+                ++tries;
+            } while (tries < 10 && !responseFound);
+
+            if (!responseFound) {
+                length = 0;
+            }
+            
+            return length;
         }
 
         private byte[] ReadSPICheck(byte addr1, byte addr2, uint len, ref bool ok, bool print = false) {
