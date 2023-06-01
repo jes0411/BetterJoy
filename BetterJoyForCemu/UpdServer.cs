@@ -1,18 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Numerics;
-using Force.Crc32;
+using System.Threading.Tasks;
 
 namespace BetterJoyForCemu {
     class UdpServer {
+        private const ushort MaxProtocolVersion = 1001;
+        private const int packetSize = 1024;
+        private const int reportSize = 100;
+
         private Socket udpSock;
         private uint serverId;
         private bool running;
-        private byte[] recvBuffer = new byte[1024];
+        private Task receiveTask;
+
+        private byte[] bufferReport;
 
         IList<Joycon> controllers;
 
@@ -20,6 +27,7 @@ namespace BetterJoyForCemu {
 
         public UdpServer(IList<Joycon> p) {
             controllers = p;
+            bufferReport = GC.AllocateArray<byte>(reportSize, true);
         }
 
         enum MessageType {
@@ -30,9 +38,6 @@ namespace BetterJoyForCemu {
             DSUC_PadDataReq = 0x100002,
             DSUS_PadDataRsp = 0x100002,
         };
-
-        private const ushort MaxProtocolVersion = 1001;
-
         class ClientRequestTimes {
             DateTime allPads;
             DateTime[] padIds;
@@ -71,214 +76,198 @@ namespace BetterJoyForCemu {
 
         private Dictionary<IPEndPoint, ClientRequestTimes> clients = new Dictionary<IPEndPoint, ClientRequestTimes>();
 
-        private int BeginPacket(byte[] packetBuf, ushort reqProtocolVersion = MaxProtocolVersion) {
+        private int BeginPacket(Span<byte> packetBuffer, ushort reqProtocolVersion = MaxProtocolVersion) {
             int currIdx = 0;
-            packetBuf[currIdx++] = (byte)'D';
-            packetBuf[currIdx++] = (byte)'S';
-            packetBuf[currIdx++] = (byte)'U';
-            packetBuf[currIdx++] = (byte)'S';
+            packetBuffer[currIdx++] = (byte)'D';
+            packetBuffer[currIdx++] = (byte)'S';
+            packetBuffer[currIdx++] = (byte)'U';
+            packetBuffer[currIdx++] = (byte)'S';
 
-            Array.Copy(BitConverter.GetBytes((ushort)reqProtocolVersion), 0, packetBuf, currIdx, 2);
+            BitConverter.TryWriteBytes(packetBuffer.Slice(currIdx, 2), (ushort)reqProtocolVersion);
             currIdx += 2;
 
-            Array.Copy(BitConverter.GetBytes((ushort)packetBuf.Length - 16), 0, packetBuf, currIdx, 2);
+            BitConverter.TryWriteBytes(packetBuffer.Slice(currIdx, 2), (ushort)(packetBuffer.Length - 16));
             currIdx += 2;
 
-            Array.Clear(packetBuf, currIdx, 4); //place for crc
+            packetBuffer.Slice(currIdx, 4).Clear(); //place for crc
             currIdx += 4;
 
-            Array.Copy(BitConverter.GetBytes((uint)serverId), 0, packetBuf, currIdx, 4);
+            BitConverter.TryWriteBytes(packetBuffer.Slice(currIdx, 4), (uint)serverId);
             currIdx += 4;
 
             return currIdx;
         }
 
-        private void FinishPacket(byte[] packetBuf) {
-            Array.Clear(packetBuf, 8, 4);
-
-            uint crcCalc = Crc32Algorithm.Compute(packetBuf);
-            Array.Copy(BitConverter.GetBytes((uint)crcCalc), 0, packetBuf, 8, 4);
+        private void FinishPacket(Span<byte> packetBuffer) {
+            uint crcCalc = calculateCrc32(packetBuffer);
+            BitConverter.TryWriteBytes(packetBuffer.Slice(8, 4), crcCalc);
         }
 
-        private void SendPacket(IPEndPoint clientEP, byte[] usefulData, ushort reqProtocolVersion = MaxProtocolVersion) {
+        private async Task SendPacket(IPEndPoint clientEP, byte[] usefulData, ushort reqProtocolVersion = MaxProtocolVersion) {
             byte[] packetData = new byte[usefulData.Length + 16];
             int currIdx = BeginPacket(packetData, reqProtocolVersion);
             Array.Copy(usefulData, 0, packetData, currIdx, usefulData.Length);
             FinishPacket(packetData);
 
-            try { udpSock.SendTo(packetData, clientEP); } catch (Exception /*e*/) { }
+            try {
+                await udpSock.SendToAsync(clientEP, packetData.AsMemory());
+            } catch (SocketException /*e*/) { }
         }
 
-        private void ProcessIncoming(byte[] localMsg, IPEndPoint clientEP) {
-            try {
-                int currIdx = 0;
-                if (localMsg[0] != 'D' || localMsg[1] != 'S' || localMsg[2] != 'U' || localMsg[3] != 'C')
-                    return;
+        private byte[] ProcessIncoming(Span<byte> localMsg, IPEndPoint clientEP) {
+            if (localMsg.Length < 28)
+                return null;
 
+            int currIdx = 0;
+            if (localMsg[0] != 'D' || localMsg[1] != 'S' || localMsg[2] != 'U' || localMsg[3] != 'C')
+                return null;
+
+            currIdx += 4;
+
+            uint protocolVer = BitConverter.ToUInt16(localMsg.Slice(currIdx, 2));
+            currIdx += 2;
+
+            if (protocolVer > MaxProtocolVersion)
+                return null;
+
+            uint packetSize = BitConverter.ToUInt16(localMsg.Slice(currIdx, 2));
+            currIdx += 2;
+
+            if (packetSize < 0)
+                return null;
+
+            packetSize += 16; //size of header
+            if (packetSize > localMsg.Length)
+                return null;
+
+            uint crcValue = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
+            //zero out the crc32 in the packet once we got it since that's whats needed for calculation
+            localMsg[currIdx++] = 0;
+            localMsg[currIdx++] = 0;
+            localMsg[currIdx++] = 0;
+            localMsg[currIdx++] = 0;
+
+            uint crcCalc = calculateCrc32(localMsg.Slice(0, (int)packetSize));
+            if (crcValue != crcCalc)
+                return null;
+
+            uint clientId = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
+            currIdx += 4;
+
+            uint messageType = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
+            currIdx += 4;
+
+            if (messageType == (uint)MessageType.DSUC_VersionReq) {
+                byte[] outputData = new byte[8];
+                int outIdx = 0;
+                Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_VersionRsp), 0, outputData, outIdx, 4);
+                outIdx += 4;
+                Array.Copy(BitConverter.GetBytes((ushort)MaxProtocolVersion), 0, outputData, outIdx, 2);
+                outIdx += 2;
+                outputData[outIdx++] = 0;
+                outputData[outIdx++] = 0;
+
+                return outputData;
+            } else if (messageType == (uint)MessageType.DSUC_ListPorts) {
+                // Requested information on gamepads - return MAC address
+                int numPadRequests = BitConverter.ToInt32(localMsg.Slice(currIdx, 4));
                 currIdx += 4;
+                if (numPadRequests <= 0)
+                    return null;
 
-                uint protocolVer = BitConverter.ToUInt16(localMsg, currIdx);
-                currIdx += 2;
-
-                if (protocolVer > MaxProtocolVersion)
-                    return;
-
-                uint packetSize = BitConverter.ToUInt16(localMsg, currIdx);
-                currIdx += 2;
-
-                if (packetSize < 0)
-                    return;
-
-                packetSize += 16; //size of header
-                if (packetSize > localMsg.Length)
-                    return;
-                
-                if (packetSize < localMsg.Length) {
-                    byte[] newMsg = new byte[packetSize];
-                    Array.Copy(localMsg, newMsg, packetSize);
-                    localMsg = newMsg;
-                }
-
-                uint crcValue = BitConverter.ToUInt32(localMsg, currIdx);
-                //zero out the crc32 in the packet once we got it since that's whats needed for calculation
-                localMsg[currIdx++] = 0;
-                localMsg[currIdx++] = 0;
-                localMsg[currIdx++] = 0;
-                localMsg[currIdx++] = 0;
-
-                uint crcCalc = Crc32Algorithm.Compute(localMsg);
-                if (crcValue != crcCalc)
-                    return;
-
-                uint clientId = BitConverter.ToUInt32(localMsg, currIdx);
-                currIdx += 4;
-
-                uint messageType = BitConverter.ToUInt32(localMsg, currIdx);
-                currIdx += 4;
-
-                if (messageType == (uint)MessageType.DSUC_VersionReq) {
-                    byte[] outputData = new byte[8];
-                    int outIdx = 0;
-                    Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_VersionRsp), 0, outputData, outIdx, 4);
-                    outIdx += 4;
-                    Array.Copy(BitConverter.GetBytes((ushort)MaxProtocolVersion), 0, outputData, outIdx, 2);
-                    outIdx += 2;
-                    outputData[outIdx++] = 0;
-                    outputData[outIdx++] = 0;
-
-                    SendPacket(clientEP, outputData, 1001);
-                } else if (messageType == (uint)MessageType.DSUC_ListPorts) {
-                    // Requested information on gamepads - return MAC address
-                    int numPadRequests = BitConverter.ToInt32(localMsg, currIdx);
-                    currIdx += 4;
-                    if (numPadRequests <= 0)
-                        return;
-
-                    byte[] outputData = new byte[16];
-                    for (byte i = 0; i < numPadRequests; i++) {
-                        byte currRequest = localMsg[currIdx + i];
-                        Joycon padData = null;
-                        try {
+                byte[] outputData = new byte[16];
+                for (byte i = 0; i < numPadRequests; i++) {
+                    byte currRequest = localMsg[currIdx + i];
+                    Joycon padData = null;
+                    try {
+                        if (controllers.Count > currRequest)
                             padData = controllers[currRequest];
-                        } catch (ArgumentOutOfRangeException /*e*/) {
+                        else
                             continue;
-                        }
+                    } catch (ArgumentOutOfRangeException /*e*/) {
+                        continue;
+                    }
 
-                        int outIdx = 0;
-                        Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo), 0, outputData, outIdx, 4);
-                        outIdx += 4;
+                    int outIdx = 0;
+                    Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo), 0, outputData, outIdx, 4);
+                    outIdx += 4;
 
-                        outputData[outIdx++] = (byte)padData.PadId;
-                        outputData[outIdx++] = (byte)padData.constate;
-                        outputData[outIdx++] = (byte)padData.model;
-                        outputData[outIdx++] = (byte)padData.connection;
+                    outputData[outIdx++] = (byte)padData.PadId;
+                    outputData[outIdx++] = (byte)padData.constate;
+                    outputData[outIdx++] = (byte)padData.model;
+                    outputData[outIdx++] = (byte)padData.connection;
 
-                        var addressBytes = padData.PadMacAddress.GetAddressBytes();
-                        if (addressBytes.Length == 6) {
-                            outputData[outIdx++] = addressBytes[0];
-                            outputData[outIdx++] = addressBytes[1];
-                            outputData[outIdx++] = addressBytes[2];
-                            outputData[outIdx++] = addressBytes[3];
-                            outputData[outIdx++] = addressBytes[4];
-                            outputData[outIdx++] = addressBytes[5];
-                        } else {
-                            outputData[outIdx++] = 0;
-                            outputData[outIdx++] = 0;
-                            outputData[outIdx++] = 0;
-                            outputData[outIdx++] = 0;
-                            outputData[outIdx++] = 0;
-                            outputData[outIdx++] = 0;
-                        }
-
-                        outputData[outIdx++] = (byte)padData.battery;
+                    var addressBytes = padData.PadMacAddress.GetAddressBytes();
+                    if (addressBytes.Length == 6) {
+                        outputData[outIdx++] = addressBytes[0];
+                        outputData[outIdx++] = addressBytes[1];
+                        outputData[outIdx++] = addressBytes[2];
+                        outputData[outIdx++] = addressBytes[3];
+                        outputData[outIdx++] = addressBytes[4];
+                        outputData[outIdx++] = addressBytes[5];
+                    } else {
                         outputData[outIdx++] = 0;
-
-                        SendPacket(clientEP, outputData, 1001);
-                    }
-                } else if (messageType == (uint)MessageType.DSUC_PadDataReq) {
-                    byte regFlags = localMsg[currIdx++];
-                    byte idToReg = localMsg[currIdx++];
-                    PhysicalAddress macToReg = null;
-                    {
-                        byte[] macBytes = new byte[6];
-                        Array.Copy(localMsg, currIdx, macBytes, 0, macBytes.Length);
-                        currIdx += macBytes.Length;
-                        macToReg = new PhysicalAddress(macBytes);
+                        outputData[outIdx++] = 0;
+                        outputData[outIdx++] = 0;
+                        outputData[outIdx++] = 0;
+                        outputData[outIdx++] = 0;
+                        outputData[outIdx++] = 0;
                     }
 
-                    lock (clients) {
-                        if (clients.ContainsKey(clientEP))
-                            clients[clientEP].RequestPadInfo(regFlags, idToReg, macToReg);
-                        else {
-                            var clientTimes = new ClientRequestTimes();
-                            clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
-                            clients[clientEP] = clientTimes;
-                        }
+                    outputData[outIdx++] = (byte)padData.battery;
+                    outputData[outIdx++] = 0;
+
+                    return outputData;
+                }
+            } else if (messageType == (uint)MessageType.DSUC_PadDataReq) {
+                byte regFlags = localMsg[currIdx++];
+                byte idToReg = localMsg[currIdx++];
+                PhysicalAddress macToReg = null;
+                {
+                    byte[] macBytes = new byte[6];
+                    localMsg.Slice(currIdx, macBytes.Length).CopyTo(macBytes);
+
+                    macToReg = new PhysicalAddress(macBytes);
+                }
+
+                lock (clients) {
+                    if (clients.ContainsKey(clientEP))
+                        clients[clientEP].RequestPadInfo(regFlags, idToReg, macToReg);
+                    else {
+                        var clientTimes = new ClientRequestTimes();
+                        clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
+                        clients[clientEP] = clientTimes;
                     }
                 }
-            } catch (Exception /*e*/) { }
+            }
+            return null;
         }
 
-        private void ReceiveCallback(IAsyncResult iar) {
-            byte[] localMsg = null;
-            EndPoint clientEP = new IPEndPoint(IPAddress.Any, 0);
+        private async Task RunReceive() {
+            var buffer = GC.AllocateArray<byte>(packetSize, true);
+            var bufferMem = buffer.AsMemory();
 
-            try {
-                //Get the received message.
-                Socket recvSock = (Socket)iar.AsyncState;
-                int msgLen = recvSock.EndReceiveFrom(iar, ref clientEP);
-
-                localMsg = new byte[msgLen];
-                Array.Copy(recvBuffer, localMsg, msgLen);
-            } catch (Exception /*e*/) { }
-
-            //Start another receive as soon as we copied the data
-            StartReceive();
-
-            //Process the data if its valid
-            if (localMsg != null) {
-                ProcessIncoming(localMsg, (IPEndPoint)clientEP);
-            }
-        }
-        private void StartReceive() {
-            if (!running) {
-                return;
-            }
-
-            bool ok = false;
-            do {
+            // Do processing, continually receiving from the socket
+            while (running) {
                 try {
-                    //Start listening for a new message.
-                    EndPoint newClientEP = new IPEndPoint(IPAddress.Any, 0);
-                    udpSock.BeginReceiveFrom(recvBuffer, 0, recvBuffer.Length, SocketFlags.None, ref newClientEP, ReceiveCallback, udpSock);
-                    ok = true;
-                } catch (SocketException /*e*/) {
-                    uint IOC_IN = 0x80000000;
-                    uint IOC_VENDOR = 0x18000000;
-                    uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
-                    udpSock.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
+                    var result = await udpSock.ReceiveFromAsync(bufferMem);
+
+                    if (result is SocketReceiveFromResult recvResult) {
+                        var receivedData = bufferMem.Slice(0, recvResult.ReceivedBytes);
+                        IPEndPoint client = (IPEndPoint) recvResult.RemoteEndPoint;
+
+                        byte[] replyData = ProcessIncoming(receivedData.Span, client);
+                        if (replyData != null) {
+                            await SendPacket(client, replyData, 1001);
+                        }
+                    } else {
+                        break;
+                    }
+                } catch (SocketException) {
+                    // We're done
+                    break;
                 }
-            } while (!ok);
+            }
         }
 
         public void Start(IPAddress ip, int port = 26760) {
@@ -292,15 +281,21 @@ namespace BetterJoyForCemu {
             }
 
             udpSock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
             try {
                 udpSock.Bind(new IPEndPoint(ip, port));
             } catch (SocketException /*e*/) {
                 udpSock.Close();
-                udpSock = null;
 
                 form.AppendTextBox("Could not start server. Make sure that only one instance of the program is running at a time and no other CemuHook applications are running.\r\n");
                 return;
             }
+
+            // Ignore ICMP
+            uint IOC_IN = 0x80000000;
+            uint IOC_VENDOR = 0x18000000;
+            uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+            udpSock.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
 
             byte[] randomBuf = new byte[4];
             new Random().NextBytes(randomBuf);
@@ -308,7 +303,8 @@ namespace BetterJoyForCemu {
 
             running = true;
             form.AppendTextBox(String.Format("Starting server on {0}:{1}\r\n", ip.ToString(), port));
-            StartReceive();
+
+            receiveTask = Task.Run(RunReceive);
         }
 
         public void Stop() {
@@ -316,13 +312,12 @@ namespace BetterJoyForCemu {
                 return;
             }
             running = false;
-            if (udpSock != null) {
-                udpSock.Close();
-                udpSock = null;
-            }
+
+            udpSock.Close();
+            receiveTask.Wait(); // it rethrows exceptions
         }
 
-        private bool ReportToBuffer(Joycon hidReport, byte[] outputData, ref int outIdx) {
+        private bool ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx) {
             /* Commented because we only care about the gyroscope and accelerometer
             var ds4 = Joycon.MapToDualShock4Input(hidReport);
 
@@ -386,18 +381,18 @@ namespace BetterJoyForCemu {
             outIdx += 32;
 
             //motion timestamp
-            Array.Copy(BitConverter.GetBytes(hidReport.Timestamp), 0, outputData, outIdx, 8);
+            BitConverter.TryWriteBytes(outputData.Slice(outIdx, 8), hidReport.Timestamp);
             outIdx += 8;
 
             //accelerometer
             {
                 var accel = hidReport.GetAccel();
                 if (accel != Vector3.Zero) {
-                    Array.Copy(BitConverter.GetBytes(accel.Y), 0, outputData, outIdx, 4);
+                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), accel.Y);
                     outIdx += 4;
-                    Array.Copy(BitConverter.GetBytes(-accel.Z), 0, outputData, outIdx, 4);
+                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), -accel.Z);
                     outIdx += 4;
-                    Array.Copy(BitConverter.GetBytes(accel.X), 0, outputData, outIdx, 4);
+                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), accel.X);
                     outIdx += 4;
                 } else {
                     outIdx += 12;
@@ -409,11 +404,11 @@ namespace BetterJoyForCemu {
             {
                 var gyro = hidReport.GetGyro();
                 if (gyro != Vector3.Zero) {
-                    Array.Copy(BitConverter.GetBytes(gyro.Y), 0, outputData, outIdx, 4);
+                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.Y);
                     outIdx += 4;
-                    Array.Copy(BitConverter.GetBytes(gyro.Z), 0, outputData, outIdx, 4);
+                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.Z);
                     outIdx += 4;
-                    Array.Copy(BitConverter.GetBytes(gyro.X), 0, outputData, outIdx, 4);
+                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.X);
                     outIdx += 4;
                 } else {
                     outIdx += 12;
@@ -425,9 +420,9 @@ namespace BetterJoyForCemu {
         }
 
         public void NewReportIncoming(Joycon hidReport) {
-            if (!running)
+            if (!running) {
                 return;
-
+            }
             var clientsList = new List<IPEndPoint>();
             var now = DateTime.UtcNow;
             lock (clients) {
@@ -479,9 +474,11 @@ namespace BetterJoyForCemu {
             if (clientsList.Count <= 0)
                 return;
 
-            byte[] outputData = new byte[100];
+            var outputData = bufferReport.AsSpan();
+            outputData.Clear();
+
             int outIdx = BeginPacket(outputData, 1001);
-            Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PadDataRsp), 0, outputData, outIdx, 4);
+            BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), (uint)MessageType.DSUS_PadDataRsp);
             outIdx += 4;
 
             outputData[outIdx++] = (byte)hidReport.PadId;
@@ -489,19 +486,16 @@ namespace BetterJoyForCemu {
             outputData[outIdx++] = (byte)hidReport.model;
             outputData[outIdx++] = (byte)hidReport.connection;
             {
-                byte[] padMac = hidReport.PadMacAddress.GetAddressBytes();
-                outputData[outIdx++] = padMac[0];
-                outputData[outIdx++] = padMac[1];
-                outputData[outIdx++] = padMac[2];
-                outputData[outIdx++] = padMac[3];
-                outputData[outIdx++] = padMac[4];
-                outputData[outIdx++] = padMac[5];
+                ReadOnlySpan<byte> padMac = hidReport.PadMacAddress.GetAddressBytes();
+                for (int i = 0; i < padMac.Length; ++i) {
+                    outputData[outIdx++] = padMac[i];
+                }
             }
 
             outputData[outIdx++] = (byte)hidReport.battery;
             outputData[outIdx++] = 1;
 
-            Array.Copy(BitConverter.GetBytes(hidReport.packetCounter), 0, outputData, outIdx, 4);
+            BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), hidReport.packetCounter);
             outIdx += 4;
 
             if (!ReportToBuffer(hidReport, outputData, ref outIdx))
@@ -509,10 +503,19 @@ namespace BetterJoyForCemu {
 
             FinishPacket(outputData);
 
-            foreach (var cl in clientsList) {
-                try { udpSock.SendTo(outputData, cl); } catch (SocketException /*e*/) { }
-            }
-            clientsList.Clear();
+            // Send in parallel to all clients
+            ReadOnlyMemory<byte> bufferMem = bufferReport.AsMemory();
+            var tasks = clientsList.Select(async client => {
+                try {
+                    await udpSock.SendToAsync(client, bufferMem);
+                } catch (SocketException) { }
+            });
+            Task.WhenAll(tasks).Wait();
+        }
+
+        private static uint calculateCrc32(ReadOnlySpan<byte> data) {
+            byte[] crc = System.IO.Hashing.Crc32.Hash(data);
+            return BitConverter.ToUInt32(crc);
         }
     }
 }
