@@ -438,8 +438,8 @@ namespace BetterJoyForCemu {
                 }
 
                 blockDeviceInstances(devices);
-            } catch {
-                form.AppendTextBox("Unable to add controller to block-list.\r\n");
+            } catch (Exception e) {
+                form.AppendTextBox(String.Format("Unable to add controller to block-list ({0}).\r\n", e.Message));
             }
         }
 
