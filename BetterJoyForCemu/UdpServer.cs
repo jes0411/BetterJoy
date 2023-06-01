@@ -114,13 +114,14 @@ namespace BetterJoyForCemu {
             } catch (SocketException /*e*/) { }
         }
 
-        private byte[] ProcessIncoming(Span<byte> localMsg, IPEndPoint clientEP) {
-            if (localMsg.Length < 28)
-                return null;
+        private bool checkIncomingValidity(Span<byte> localMsg, out int currIdx) {
+            currIdx = 0;
 
-            int currIdx = 0;
+            if (localMsg.Length < 28)
+                return false;
+
             if (localMsg[0] != 'D' || localMsg[1] != 'S' || localMsg[2] != 'U' || localMsg[3] != 'C')
-                return null;
+                return false;
 
             currIdx += 4;
 
@@ -128,17 +129,17 @@ namespace BetterJoyForCemu {
             currIdx += 2;
 
             if (protocolVer > MaxProtocolVersion)
-                return null;
+                return false;
 
             uint packetSize = BitConverter.ToUInt16(localMsg.Slice(currIdx, 2));
             currIdx += 2;
 
             if (packetSize < 0)
-                return null;
+                return false;
 
             packetSize += 16; //size of header
             if (packetSize > localMsg.Length)
-                return null;
+                return false;
 
             uint crcValue = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
             //zero out the crc32 in the packet once we got it since that's whats needed for calculation
@@ -149,9 +150,20 @@ namespace BetterJoyForCemu {
 
             uint crcCalc = calculateCrc32(localMsg.Slice(0, (int)packetSize));
             if (crcValue != crcCalc)
-                return null;
+                return false;
 
-            uint clientId = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
+            return true;
+        }
+
+        private List<byte[]> ProcessIncoming(Span<byte> localMsg, IPEndPoint clientEP) {
+            var replies = new List<byte[]>();
+
+            int currIdx;
+            if (!checkIncomingValidity(localMsg, out currIdx)) {
+                return replies;
+            }
+
+            // uint clientId = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
             currIdx += 4;
 
             uint messageType = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
@@ -167,57 +179,54 @@ namespace BetterJoyForCemu {
                 outputData[outIdx++] = 0;
                 outputData[outIdx++] = 0;
 
-                return outputData;
+                replies.Add(outputData);
             } else if (messageType == (uint)MessageType.DSUC_ListPorts) {
                 // Requested information on gamepads - return MAC address
                 int numPadRequests = BitConverter.ToInt32(localMsg.Slice(currIdx, 4));
                 currIdx += 4;
-                if (numPadRequests <= 0)
-                    return null;
+                if (numPadRequests > 0) {
+                    byte[] outputData = new byte[16];
 
-                byte[] outputData = new byte[16];
-                for (byte i = 0; i < numPadRequests; i++) {
-                    byte currRequest = localMsg[currIdx + i];
-                    Joycon padData = null;
-                    try {
-                        if (controllers.Count > currRequest)
-                            padData = controllers[currRequest];
-                        else
-                            continue;
-                    } catch (ArgumentOutOfRangeException /*e*/) {
-                        continue;
+                    lock (controllers) {
+                        for (byte i = 0; i < numPadRequests; i++) {
+                            byte currRequest = localMsg[currIdx + i];
+                            if (currRequest < 0 || currRequest >= controllers.Count) {
+                                continue;
+                            }
+                            Joycon padData = controllers[currRequest];
+
+                            int outIdx = 0;
+                            Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo), 0, outputData, outIdx, 4);
+                            outIdx += 4;
+
+                            outputData[outIdx++] = (byte)padData.PadId;
+                            outputData[outIdx++] = (byte)padData.constate;
+                            outputData[outIdx++] = (byte)padData.model;
+                            outputData[outIdx++] = (byte)padData.connection;
+
+                            var addressBytes = padData.PadMacAddress.GetAddressBytes();
+                            if (addressBytes.Length == 6) {
+                                outputData[outIdx++] = addressBytes[0];
+                                outputData[outIdx++] = addressBytes[1];
+                                outputData[outIdx++] = addressBytes[2];
+                                outputData[outIdx++] = addressBytes[3];
+                                outputData[outIdx++] = addressBytes[4];
+                                outputData[outIdx++] = addressBytes[5];
+                            } else {
+                                outputData[outIdx++] = 0;
+                                outputData[outIdx++] = 0;
+                                outputData[outIdx++] = 0;
+                                outputData[outIdx++] = 0;
+                                outputData[outIdx++] = 0;
+                                outputData[outIdx++] = 0;
+                            }
+
+                            outputData[outIdx++] = (byte)padData.battery;
+                            outputData[outIdx++] = 0;
+
+                            replies.Add(outputData);
+                        }
                     }
-
-                    int outIdx = 0;
-                    Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo), 0, outputData, outIdx, 4);
-                    outIdx += 4;
-
-                    outputData[outIdx++] = (byte)padData.PadId;
-                    outputData[outIdx++] = (byte)padData.constate;
-                    outputData[outIdx++] = (byte)padData.model;
-                    outputData[outIdx++] = (byte)padData.connection;
-
-                    var addressBytes = padData.PadMacAddress.GetAddressBytes();
-                    if (addressBytes.Length == 6) {
-                        outputData[outIdx++] = addressBytes[0];
-                        outputData[outIdx++] = addressBytes[1];
-                        outputData[outIdx++] = addressBytes[2];
-                        outputData[outIdx++] = addressBytes[3];
-                        outputData[outIdx++] = addressBytes[4];
-                        outputData[outIdx++] = addressBytes[5];
-                    } else {
-                        outputData[outIdx++] = 0;
-                        outputData[outIdx++] = 0;
-                        outputData[outIdx++] = 0;
-                        outputData[outIdx++] = 0;
-                        outputData[outIdx++] = 0;
-                        outputData[outIdx++] = 0;
-                    }
-
-                    outputData[outIdx++] = (byte)padData.battery;
-                    outputData[outIdx++] = 0;
-
-                    return outputData;
                 }
             } else if (messageType == (uint)MessageType.DSUC_PadDataReq) {
                 byte regFlags = localMsg[currIdx++];
@@ -240,7 +249,7 @@ namespace BetterJoyForCemu {
                     }
                 }
             }
-            return null;
+            return replies;
         }
 
         private async Task RunReceive() {
@@ -256,9 +265,13 @@ namespace BetterJoyForCemu {
                         var receivedData = bufferMem.Slice(0, recvResult.ReceivedBytes);
                         IPEndPoint client = (IPEndPoint) recvResult.RemoteEndPoint;
 
-                        byte[] replyData = ProcessIncoming(receivedData.Span, client);
-                        if (replyData != null) {
-                            await SendPacket(client, replyData, 1001);
+                        List<byte[]> repliesData = ProcessIncoming(receivedData.Span, client);
+                        if (repliesData.Count > 0) {
+                            // We don't care in which order the replies are sent to the client
+                            var tasks = repliesData.Select(async reply => {
+                                await SendPacket(client, reply, 1001);
+                            });
+                            await Task.WhenAll(tasks);
                         }
                     } else {
                         break;
