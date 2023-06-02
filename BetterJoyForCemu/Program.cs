@@ -37,7 +37,7 @@ namespace BetterJoyForCemu {
 
         private System.Timers.Timer controllerCheck;
         private bool dropControllers = false;
-        private readonly object lockCheckController = new object();
+        private readonly object checkControllerLock = new object();
 
         public static JoyconManager Instance {
             get { return instance; }
@@ -96,15 +96,22 @@ namespace BetterJoyForCemu {
         }
 
         private void CheckForNewControllersTrigger(bool forceScan = false) {
-            lock (lockCheckController) {
+            if (!Monitor.TryEnter(checkControllerLock)) {
+                return;
+            }
+
+            try {
                 CleanUp();
 
                 double checkInterval = defaultCheckInterval;
                 if (Config.IntValue("ProgressiveScan") == 1 || forceScan) {
                     checkInterval = CheckForNewControllers();
                 }
+
                 setControllerCheckInterval(checkInterval);
                 controllerCheck.Start();
+            } finally {
+                Monitor.Exit(checkControllerLock);
             }
         }
 
@@ -282,7 +289,7 @@ namespace BetterJoyForCemu {
         }
 
         public void OnApplicationQuit() {
-            lock (lockCheckController) {
+            lock (checkControllerLock) {
                 controllerCheck?.Stop();
                 controllerCheck?.Dispose();
                 isRunning = false;
@@ -349,7 +356,7 @@ namespace BetterJoyForCemu {
             mgr.Awake();
 
             server = new UdpServer(mgr.j);
-            server.form = form;
+            server.Form = form;
 
             server.Start(IPAddress.Parse(ConfigurationManager.AppSettings["IP"]), Int32.Parse(ConfigurationManager.AppSettings["Port"]));
 
@@ -575,12 +582,5 @@ namespace BetterJoyForCemu {
             pathVariable = $"{archPath};{pathVariable}";
             Environment.SetEnvironmentVariable("PATH", pathVariable);
         }
-
-        // Helper funtions to set the hidapi dll location acording to the system instruction set.
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool SetDefaultDllDirectories(int directoryFlags);
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        static extern void AddDllDirectory(string lpPathName);
     }
 }

@@ -104,36 +104,6 @@ namespace BetterJoyForCemu {
         public static extern int hid_winapi_get_parent_instance_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder string_, UIntPtr maxlen);
         // END
 
-        static void PrintEnumeration(IntPtr phid_device_info) {
-			if (!phid_device_info.Equals(IntPtr.Zero)) {
-				hid_device_info hdev = (hid_device_info)Marshal.PtrToStructure(phid_device_info, typeof(hid_device_info));
-
-				Console.WriteLine(string.Format("path:       {0}", hdev.path));
-				Console.WriteLine(string.Format("vendor id:  {0:X}", hdev.vendor_id));
-				Console.WriteLine(string.Format("product id: {0:X}", hdev.product_id));
-				Console.WriteLine(string.Format("usage page: {0:X}", hdev.usage_page));
-				Console.WriteLine(string.Format("usage:      {0:X}", hdev.usage));
-				Console.WriteLine("");
-
-				PrintEnumeration(hdev.next);
-			}
-		}
-
-		static string _getDevicePath(IntPtr phid_device_info, ushort usagePage, ushort usage) {
-			if (!phid_device_info.Equals(IntPtr.Zero)) {
-				hid_device_info hdev = (hid_device_info)Marshal.PtrToStructure(phid_device_info, typeof(hid_device_info));
-				if (usagePage == hdev.usage_page && usage == hdev.usage)
-					return hdev.path;
-				else
-					return _getDevicePath(hdev.next, usagePage, usage);
-			}
-			return null;
-		}
-
-		public static string GetDevicePath(ushort vendorId, ushort productId, ushort usagePage, ushort usage) {
-			return _getDevicePath(hid_enumerate(vendorId, productId), usagePage, usage);
-		}
-
         public static string GetInstance(IntPtr device) {
             StringBuilder bufferInstance = new StringBuilder(maxStringLength);
 

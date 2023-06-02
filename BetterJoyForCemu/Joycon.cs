@@ -609,28 +609,24 @@ namespace BetterJoyForCemu {
 
         public void ConnectViGEm()
         {
-            if (out_xbox != null) {
-                out_xbox.Connect();
-            }
-            if (out_ds4 != null) {
-                out_ds4.Connect();
-            }
+            out_xbox?.Connect();
+            out_ds4?.Connect();
         }
 
         public void DisconnectViGEm()
         {
-            try {
-                if (out_xbox != null) {
+            if (out_xbox != null) {
+                try {
                     out_xbox.Disconnect();
-                }
-                if (out_ds4 != null) {
-                    out_ds4.Disconnect();
-                }
-            } catch (Exception /*e*/) {
-                // nothing we can do, might not be connected in the first place
+                } catch { } // nothing we can do, might not be connected in the first place
+                out_xbox = null;
             }
-            out_xbox = null;
-            out_ds4 = null;
+            if (out_ds4 != null) {
+                try {
+                    out_ds4.Disconnect();
+                } catch { } // nothing we can do, might not be connected in the first place
+                out_ds4 = null;
+            }
         }
 
         private byte ts_en;
@@ -688,16 +684,12 @@ namespace BetterJoyForCemu {
             if (out_ds4 != null) {
                 try {
                     out_ds4.UpdateInput(MapToDualShock4Input(this));
-                } catch (Exception /*e*/) {
-                    // ignore /shrug
-                }
+                } catch { } // ignore
             }
             if (out_xbox != null) {
                 try {
                     out_xbox.UpdateInput(MapToXbox360Input(this));
-                } catch (Exception /*e*/) {
-                    // ignore /shrug
-                }
+                } catch { } // ignore
             }
 
             if (ts_en == buf[1] && !isSnes) {

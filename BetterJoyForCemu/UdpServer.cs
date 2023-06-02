@@ -11,23 +11,26 @@ using System.Threading.Tasks;
 namespace BetterJoyForCemu {
     class UdpServer {
         private const ushort MaxProtocolVersion = 1001;
-        private const int packetSize = 1024;
-        private const int reportSize = 100;
+        private const int PacketSize = 1024;
+        private const int ReportSize = 100;
+        private const int ControllerTimeoutSeconds = 5;
 
-        private Socket udpSock;
-        private uint serverId;
-        private bool running;
-        private Task receiveTask;
+        private Socket _udpSock;
+        private uint _serverId;
+        private bool _running;
+        private Task _receiveTask;
 
-        private byte[] bufferReport;
+        private byte[] _bufferReport;
 
-        IList<Joycon> controllers;
+        private readonly IList<Joycon> _controllers;
+        private Dictionary<IPEndPoint, ClientRequestTimes> _clients;
 
-        public MainForm form;
+        public MainForm Form;
 
         public UdpServer(IList<Joycon> p) {
-            controllers = p;
-            bufferReport = GC.AllocateArray<byte>(reportSize, true);
+            _controllers = p;
+            _clients = new Dictionary<IPEndPoint, ClientRequestTimes>();
+            _bufferReport = GC.AllocateArray<byte>(ReportSize, true);
         }
 
         enum MessageType {
@@ -39,42 +42,39 @@ namespace BetterJoyForCemu {
             DSUS_PadDataRsp = 0x100002,
         };
         class ClientRequestTimes {
-            DateTime allPads;
-            DateTime[] padIds;
-            Dictionary<PhysicalAddress, DateTime> padMacs;
+            private Dictionary<PhysicalAddress, DateTime> _padMacs;
 
-            public DateTime AllPadsTime { get { return allPads; } }
-            public DateTime[] PadIdsTime { get { return padIds; } }
-            public Dictionary<PhysicalAddress, DateTime> PadMacsTime { get { return padMacs; } }
+            public DateTime AllPadsTime { get; private set; }
+            public DateTime[] PadIdsTime { get; }
+            public Dictionary<PhysicalAddress, DateTime> PadMacsTime { get { return _padMacs; } }
 
             public ClientRequestTimes() {
-                allPads = DateTime.MinValue;
-                padIds = new DateTime[4];
+                AllPadsTime = DateTime.MinValue;
+                PadIdsTime = new DateTime[4];
 
-                for (int i = 0; i < padIds.Length; i++)
-                    padIds[i] = DateTime.MinValue;
+                for (int i = 0; i < PadIdsTime.Length; i++)
+                    PadIdsTime[i] = DateTime.MinValue;
 
-                padMacs = new Dictionary<PhysicalAddress, DateTime>();
+                _padMacs = new Dictionary<PhysicalAddress, DateTime>();
             }
 
             public void RequestPadInfo(byte regFlags, byte idToReg, PhysicalAddress macToReg) {
-                if (regFlags == 0)
-                    allPads = DateTime.UtcNow;
-                else {
-                    if ((regFlags & 0x01) != 0) //id valid
-                    {
-                        if (idToReg < padIds.Length)
-                            padIds[idToReg] = DateTime.UtcNow;
+                var now = DateTime.UtcNow;
+
+                if (regFlags == 0) {
+                    AllPadsTime = now;
+                } else {
+                    //id valid
+                    if ((regFlags & 0x01) != 0 && idToReg < PadIdsTime.Length) {
+                        PadIdsTime[idToReg] = now;
                     }
-                    if ((regFlags & 0x02) != 0) //mac valid
-                    {
-                        padMacs[macToReg] = DateTime.UtcNow;
+                    //mac valid
+                    if ((regFlags & 0x02) != 0) {
+                        _padMacs[macToReg] = now;
                     }
                 }
             }
         }
-
-        private Dictionary<IPEndPoint, ClientRequestTimes> clients = new Dictionary<IPEndPoint, ClientRequestTimes>();
 
         private int BeginPacket(Span<byte> packetBuffer, ushort reqProtocolVersion = MaxProtocolVersion) {
             int currIdx = 0;
@@ -92,14 +92,14 @@ namespace BetterJoyForCemu {
             packetBuffer.Slice(currIdx, 4).Clear(); //place for crc
             currIdx += 4;
 
-            BitConverter.TryWriteBytes(packetBuffer.Slice(currIdx, 4), (uint)serverId);
+            BitConverter.TryWriteBytes(packetBuffer.Slice(currIdx, 4), (uint)_serverId);
             currIdx += 4;
 
             return currIdx;
         }
 
         private void FinishPacket(Span<byte> packetBuffer) {
-            uint crcCalc = calculateCrc32(packetBuffer);
+            uint crcCalc = CalculateCrc32(packetBuffer);
             BitConverter.TryWriteBytes(packetBuffer.Slice(8, 4), crcCalc);
         }
 
@@ -110,11 +110,11 @@ namespace BetterJoyForCemu {
             FinishPacket(packetData);
 
             try {
-                await udpSock.SendToAsync(clientEP, packetData.AsMemory());
+                await _udpSock.SendToAsync(clientEP, packetData.AsMemory());
             } catch (SocketException /*e*/) { }
         }
 
-        private bool checkIncomingValidity(Span<byte> localMsg, out int currIdx) {
+        private static bool CheckIncomingValidity(Span<byte> localMsg, out int currIdx) {
             currIdx = 0;
 
             if (localMsg.Length < 28)
@@ -148,7 +148,7 @@ namespace BetterJoyForCemu {
             localMsg[currIdx++] = 0;
             localMsg[currIdx++] = 0;
 
-            uint crcCalc = calculateCrc32(localMsg.Slice(0, (int)packetSize));
+            uint crcCalc = CalculateCrc32(localMsg.Slice(0, (int)packetSize));
             if (crcValue != crcCalc)
                 return false;
 
@@ -158,8 +158,7 @@ namespace BetterJoyForCemu {
         private List<byte[]> ProcessIncoming(Span<byte> localMsg, IPEndPoint clientEP) {
             var replies = new List<byte[]>();
 
-            int currIdx;
-            if (!checkIncomingValidity(localMsg, out currIdx)) {
+            if (!CheckIncomingValidity(localMsg, out var currIdx)) {
                 return replies;
             }
 
@@ -169,113 +168,122 @@ namespace BetterJoyForCemu {
             uint messageType = BitConverter.ToUInt32(localMsg.Slice(currIdx, 4));
             currIdx += 4;
 
-            if (messageType == (uint)MessageType.DSUC_VersionReq) {
-                byte[] outputData = new byte[8];
-                int outIdx = 0;
-                Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_VersionRsp), 0, outputData, outIdx, 4);
-                outIdx += 4;
-                Array.Copy(BitConverter.GetBytes((ushort)MaxProtocolVersion), 0, outputData, outIdx, 2);
-                outIdx += 2;
-                outputData[outIdx++] = 0;
-                outputData[outIdx++] = 0;
+            switch (messageType)
+            {
+                case (uint)MessageType.DSUC_VersionReq:
+                {
+                    byte[] outputData = new byte[8];
+                    int outIdx = 0;
+                    Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_VersionRsp), 0, outputData, outIdx, 4);
+                    outIdx += 4;
+                    Array.Copy(BitConverter.GetBytes((ushort)MaxProtocolVersion), 0, outputData, outIdx, 2);
+                    outIdx += 2;
+                    outputData[outIdx++] = 0;
+                    outputData[outIdx++] = 0;
 
-                replies.Add(outputData);
-            } else if (messageType == (uint)MessageType.DSUC_ListPorts) {
-                // Requested information on gamepads - return MAC address
-                int numPadRequests = BitConverter.ToInt32(localMsg.Slice(currIdx, 4));
-                currIdx += 4;
-                if (numPadRequests > 0) {
-                    byte[] outputData = new byte[16];
+                    replies.Add(outputData);
+                    break;
+                }
+                case (uint)MessageType.DSUC_ListPorts:
+                {
+                    // Requested information on gamepads - return MAC address
+                    int numPadRequests = BitConverter.ToInt32(localMsg.Slice(currIdx, 4));
+                    currIdx += 4;
+                    if (numPadRequests > 0) {
+                        byte[] outputData = new byte[16];
 
-                    lock (controllers) {
-                        for (byte i = 0; i < numPadRequests; i++) {
-                            byte currRequest = localMsg[currIdx + i];
-                            if (currRequest < 0 || currRequest >= controllers.Count) {
-                                continue;
+                        lock (_controllers) {
+                            for (byte i = 0; i < numPadRequests; i++) {
+                                byte currRequest = localMsg[currIdx + i];
+                                if (currRequest >= _controllers.Count) {
+                                    continue;
+                                }
+                                Joycon padData = _controllers[currRequest];
+
+                                int outIdx = 0;
+                                Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo), 0, outputData, outIdx, 4);
+                                outIdx += 4;
+
+                                outputData[outIdx++] = (byte)padData.PadId;
+                                outputData[outIdx++] = (byte)padData.constate;
+                                outputData[outIdx++] = (byte)padData.model;
+                                outputData[outIdx++] = (byte)padData.connection;
+
+                                var addressBytes = padData.PadMacAddress.GetAddressBytes();
+                                if (addressBytes.Length == 6) {
+                                    outputData[outIdx++] = addressBytes[0];
+                                    outputData[outIdx++] = addressBytes[1];
+                                    outputData[outIdx++] = addressBytes[2];
+                                    outputData[outIdx++] = addressBytes[3];
+                                    outputData[outIdx++] = addressBytes[4];
+                                    outputData[outIdx++] = addressBytes[5];
+                                } else {
+                                    outputData[outIdx++] = 0;
+                                    outputData[outIdx++] = 0;
+                                    outputData[outIdx++] = 0;
+                                    outputData[outIdx++] = 0;
+                                    outputData[outIdx++] = 0;
+                                    outputData[outIdx++] = 0;
+                                }
+
+                                outputData[outIdx++] = (byte)padData.battery;
+                                outputData[outIdx++] = 0;
+
+                                replies.Add(outputData);
                             }
-                            Joycon padData = controllers[currRequest];
-
-                            int outIdx = 0;
-                            Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo), 0, outputData, outIdx, 4);
-                            outIdx += 4;
-
-                            outputData[outIdx++] = (byte)padData.PadId;
-                            outputData[outIdx++] = (byte)padData.constate;
-                            outputData[outIdx++] = (byte)padData.model;
-                            outputData[outIdx++] = (byte)padData.connection;
-
-                            var addressBytes = padData.PadMacAddress.GetAddressBytes();
-                            if (addressBytes.Length == 6) {
-                                outputData[outIdx++] = addressBytes[0];
-                                outputData[outIdx++] = addressBytes[1];
-                                outputData[outIdx++] = addressBytes[2];
-                                outputData[outIdx++] = addressBytes[3];
-                                outputData[outIdx++] = addressBytes[4];
-                                outputData[outIdx++] = addressBytes[5];
-                            } else {
-                                outputData[outIdx++] = 0;
-                                outputData[outIdx++] = 0;
-                                outputData[outIdx++] = 0;
-                                outputData[outIdx++] = 0;
-                                outputData[outIdx++] = 0;
-                                outputData[outIdx++] = 0;
-                            }
-
-                            outputData[outIdx++] = (byte)padData.battery;
-                            outputData[outIdx++] = 0;
-
-                            replies.Add(outputData);
                         }
                     }
+                    break;
                 }
-            } else if (messageType == (uint)MessageType.DSUC_PadDataReq) {
-                byte regFlags = localMsg[currIdx++];
-                byte idToReg = localMsg[currIdx++];
-                PhysicalAddress macToReg = null;
+                case (uint)MessageType.DSUC_PadDataReq:
                 {
-                    byte[] macBytes = new byte[6];
-                    localMsg.Slice(currIdx, macBytes.Length).CopyTo(macBytes);
+                    byte regFlags = localMsg[currIdx++];
+                    byte idToReg = localMsg[currIdx++];
+                    PhysicalAddress macToReg;
+                    {
+                        byte[] macBytes = new byte[6];
+                        localMsg.Slice(currIdx, macBytes.Length).CopyTo(macBytes);
 
-                    macToReg = new PhysicalAddress(macBytes);
-                }
-
-                lock (clients) {
-                    if (clients.ContainsKey(clientEP))
-                        clients[clientEP].RequestPadInfo(regFlags, idToReg, macToReg);
-                    else {
-                        var clientTimes = new ClientRequestTimes();
-                        clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
-                        clients[clientEP] = clientTimes;
+                        macToReg = new PhysicalAddress(macBytes);
                     }
+
+                    lock (_clients) {
+                        if (_clients.TryGetValue(clientEP, out var client)) {
+                            client.RequestPadInfo(regFlags, idToReg, macToReg);
+                        } else {
+                            var clientTimes = new ClientRequestTimes();
+                            clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
+                            _clients[clientEP] = clientTimes;
+                        }
+                    }
+                    break;
                 }
             }
             return replies;
         }
 
         private async Task RunReceive() {
-            var buffer = GC.AllocateArray<byte>(packetSize, true);
+            var buffer = GC.AllocateArray<byte>(PacketSize, true);
             var bufferMem = buffer.AsMemory();
 
             // Do processing, continually receiving from the socket
-            while (running) {
+            while (_running) {
                 try {
-                    var result = await udpSock.ReceiveFromAsync(bufferMem);
+                    var receiveResult = await _udpSock.ReceiveFromAsync(bufferMem);
+                    var receivedData = bufferMem.Slice(0, receiveResult.ReceivedBytes);
+                    IPEndPoint client = (IPEndPoint) receiveResult.RemoteEndPoint;
 
-                    if (result is SocketReceiveFromResult recvResult) {
-                        var receivedData = bufferMem.Slice(0, recvResult.ReceivedBytes);
-                        IPEndPoint client = (IPEndPoint) recvResult.RemoteEndPoint;
-
-                        List<byte[]> repliesData = ProcessIncoming(receivedData.Span, client);
-                        if (repliesData.Count > 0) {
-                            // We don't care in which order the replies are sent to the client
-                            var tasks = repliesData.Select(async reply => {
-                                await SendPacket(client, reply, 1001);
-                            });
-                            await Task.WhenAll(tasks);
-                        }
-                    } else {
-                        break;
+                    List<byte[]> repliesData = ProcessIncoming(receivedData.Span, client);
+                    if (repliesData.Count <= 0) {
+                        continue;
                     }
+
+                    // We don't care in which order the replies are sent to the client
+                    var tasks = repliesData.Select(async reply => {
+                        await SendPacket(client, reply, 1001);
+                    });
+                    await Task.WhenAll(tasks);
+
                 } catch (SocketException) {
                     // We're done
                     break;
@@ -284,23 +292,23 @@ namespace BetterJoyForCemu {
         }
 
         public void Start(IPAddress ip, int port = 26760) {
-            if (running) {
+            if (_running) {
                 return;
             }
 
             if (!Boolean.Parse(ConfigurationManager.AppSettings["MotionServer"])) {
-                form.AppendTextBox("Motion server is OFF.");
+                Form.AppendTextBox("Motion server is OFF.");
                 return;
             }
 
-            udpSock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            _udpSock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
             try {
-                udpSock.Bind(new IPEndPoint(ip, port));
+                _udpSock.Bind(new IPEndPoint(ip, port));
             } catch (SocketException /*e*/) {
-                udpSock.Close();
+                _udpSock.Close();
 
-                form.AppendTextBox("Could not start server. Make sure that only one instance of the program is running at a time and no other CemuHook applications are running.");
+                Form.AppendTextBox("Could not start server. Make sure that only one instance of the program is running at a time and no other CemuHook applications are running.");
                 return;
             }
 
@@ -308,26 +316,26 @@ namespace BetterJoyForCemu {
             uint IOC_IN = 0x80000000;
             uint IOC_VENDOR = 0x18000000;
             uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
-            udpSock.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
+            _udpSock.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
 
             byte[] randomBuf = new byte[4];
             new Random().NextBytes(randomBuf);
-            serverId = BitConverter.ToUInt32(randomBuf, 0);
+            _serverId = BitConverter.ToUInt32(randomBuf, 0);
 
-            running = true;
-            form.AppendTextBox($"Starting server on {ip.ToString()}:{port}.");
+            _running = true;
+            Form.AppendTextBox($"Starting server on {ip}:{port}.");
 
-            receiveTask = Task.Run(RunReceive);
+            _receiveTask = Task.Run(RunReceive);
         }
 
         public void Stop() {
-            if (!running) {
+            if (!_running) {
                 return;
             }
-            running = false;
+            _running = false;
 
-            udpSock.Close();
-            receiveTask.Wait(); // it rethrows exceptions
+            _udpSock.Close();
+            _receiveTask.Wait(); // it rethrows exceptions
         }
 
         private bool ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx) {
@@ -432,62 +440,58 @@ namespace BetterJoyForCemu {
             return true;
         }
 
+        private static bool IsControllerTimedout(DateTime current, DateTime last) {
+            return (current - last).TotalSeconds >= ControllerTimeoutSeconds;
+        }
+
         public void NewReportIncoming(Joycon hidReport) {
-            if (!running) {
+            if (!_running) {
                 return;
             }
+
             var clientsList = new List<IPEndPoint>();
-            var now = DateTime.UtcNow;
-            lock (clients) {
-                var clientsToDelete = new List<IPEndPoint>();
+            DateTime now = DateTime.UtcNow;
 
-                foreach (var cl in clients) {
-                    const double TimeoutLimit = 5;
-
-                    if ((now - cl.Value.AllPadsTime).TotalSeconds < TimeoutLimit)
-                        clientsList.Add(cl.Key);
-                    else if ((hidReport.PadId >= 0 && hidReport.PadId <= 3) &&
-                             (now - cl.Value.PadIdsTime[(byte)hidReport.PadId]).TotalSeconds < TimeoutLimit)
-                        clientsList.Add(cl.Key);
-                    else if (cl.Value.PadMacsTime.ContainsKey(hidReport.PadMacAddress) &&
-                             (now - cl.Value.PadMacsTime[hidReport.PadMacAddress]).TotalSeconds < TimeoutLimit)
-                        clientsList.Add(cl.Key);
-                    else //check if this client is totally dead, and remove it if so
-                    {
+            lock (_clients) {
+                foreach (var client in _clients) {
+                    if (!IsControllerTimedout(now, client.Value.AllPadsTime))
+                        clientsList.Add(client.Key);
+                    else if (hidReport.PadId is >= 0 and <= 3 &&
+                             !IsControllerTimedout(now, client.Value.PadIdsTime[(byte)hidReport.PadId])) {
+                        clientsList.Add(client.Key);
+                    } else if (client.Value.PadMacsTime.ContainsKey(hidReport.PadMacAddress) &&
+                               !IsControllerTimedout(now, client.Value.PadMacsTime[hidReport.PadMacAddress])) {
+                        clientsList.Add(client.Key);
+                    } else { //check if this client is totally dead, and remove it if so
                         bool clientOk = false;
-                        for (int i = 0; i < cl.Value.PadIdsTime.Length; i++) {
-                            var dur = (now - cl.Value.PadIdsTime[i]).TotalSeconds;
-                            if (dur < TimeoutLimit) {
+                        foreach (var padIdTime in client.Value.PadIdsTime) {
+                            if (!IsControllerTimedout(now, padIdTime)) {
                                 clientOk = true;
                                 break;
                             }
                         }
-                        if (!clientOk) {
-                            foreach (var dict in cl.Value.PadMacsTime) {
-                                var dur = (now - dict.Value).TotalSeconds;
-                                if (dur < TimeoutLimit) {
-                                    clientOk = true;
-                                    break;
-                                }
-                            }
+                        if (clientOk) {
+                            continue;
+                        }
 
-                            if (!clientOk)
-                                clientsToDelete.Add(cl.Key);
+                        foreach (var dict in client.Value.PadMacsTime) {
+                            if (!IsControllerTimedout(now, dict.Value)) {
+                                clientOk = true;
+                                break;
+                            }
+                        }
+
+                        if (!clientOk) {
+                            _clients.Remove(client.Key);
                         }
                     }
                 }
-
-                foreach (var delCl in clientsToDelete) {
-                    clients.Remove(delCl);
-                }
-                clientsToDelete.Clear();
-                clientsToDelete = null;
             }
 
             if (clientsList.Count <= 0)
                 return;
 
-            var outputData = bufferReport.AsSpan();
+            var outputData = _bufferReport.AsSpan();
             outputData.Clear();
 
             int outIdx = BeginPacket(outputData, 1001);
@@ -500,8 +504,8 @@ namespace BetterJoyForCemu {
             outputData[outIdx++] = (byte)hidReport.connection;
             {
                 ReadOnlySpan<byte> padMac = hidReport.PadMacAddress.GetAddressBytes();
-                for (int i = 0; i < padMac.Length; ++i) {
-                    outputData[outIdx++] = padMac[i];
+                foreach (byte number in padMac) {
+                    outputData[outIdx++] = number;
                 }
             }
 
@@ -517,16 +521,16 @@ namespace BetterJoyForCemu {
             FinishPacket(outputData);
 
             // Send in parallel to all clients
-            ReadOnlyMemory<byte> bufferMem = bufferReport.AsMemory();
+            ReadOnlyMemory<byte> bufferMem = _bufferReport.AsMemory();
             var tasks = clientsList.Select(async client => {
                 try {
-                    await udpSock.SendToAsync(client, bufferMem);
+                    await _udpSock.SendToAsync(client, bufferMem);
                 } catch (SocketException) { }
             });
             Task.WhenAll(tasks).Wait();
         }
 
-        private static uint calculateCrc32(ReadOnlySpan<byte> data) {
+        private static uint CalculateCrc32(ReadOnlySpan<byte> data) {
             byte[] crc = System.IO.Hashing.Crc32.Hash(data);
             return BitConverter.ToUInt32(crc);
         }
