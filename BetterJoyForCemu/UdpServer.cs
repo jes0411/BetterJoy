@@ -289,7 +289,7 @@ namespace BetterJoyForCemu {
             }
 
             if (!Boolean.Parse(ConfigurationManager.AppSettings["MotionServer"])) {
-                form.AppendTextBox("Motion server is OFF.\r\n");
+                form.AppendTextBox("Motion server is OFF.");
                 return;
             }
 
@@ -300,7 +300,7 @@ namespace BetterJoyForCemu {
             } catch (SocketException /*e*/) {
                 udpSock.Close();
 
-                form.AppendTextBox("Could not start server. Make sure that only one instance of the program is running at a time and no other CemuHook applications are running.\r\n");
+                form.AppendTextBox("Could not start server. Make sure that only one instance of the program is running at a time and no other CemuHook applications are running.");
                 return;
             }
 
@@ -315,7 +315,7 @@ namespace BetterJoyForCemu {
             serverId = BitConverter.ToUInt32(randomBuf, 0);
 
             running = true;
-            form.AppendTextBox(String.Format("Starting server on {0}:{1}\r\n", ip.ToString(), port));
+            form.AppendTextBox($"Starting server on {ip.ToString()}:{port}.");
 
             receiveTask = Task.Run(RunReceive);
         }

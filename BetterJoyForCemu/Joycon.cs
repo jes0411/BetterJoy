@@ -406,7 +406,7 @@ namespace BetterJoyForCemu {
         public void DebugPrint(String s, DebugType d) {
             if (debug_type == DebugType.NONE) return;
             if (d == DebugType.ALL || d == debug_type || debug_type == DebugType.ALL) {
-                form.AppendTextBox("[J" + (PadId + 1) + "] " + s + "\r\n");
+                form.AppendTextBox("[J" + (PadId + 1) + "] " + s);
             }
         }
         public bool GetButtonDown(Button b) {
@@ -431,7 +431,7 @@ namespace BetterJoyForCemu {
             return acc_g;
         }
         public void Reset() {
-            form.AppendTextBox("Resetting connection.\r\n");
+            form.AppendTextBox("Resetting connection.");
             SetHCIState(0x01);
         }
         public int Attach() {
@@ -443,7 +443,7 @@ namespace BetterJoyForCemu {
 
             // Connect
             if (isUSB) {
-                form.AppendTextBox("Using USB.\r\n");
+                form.AppendTextBox("Using USB.");
 
                 var buf = new byte[report_len];
 
@@ -486,7 +486,7 @@ namespace BetterJoyForCemu {
                 HIDapi.hid_write(handle, buf, new UIntPtr(2)); // does not send a response
 
             } else {
-                form.AppendTextBox("Using Bluetooth.\r\n");
+                form.AppendTextBox("Using Bluetooth.");
             }
 
             bool ok = dump_calibration_data();
@@ -559,7 +559,7 @@ namespace BetterJoyForCemu {
             form.setBatteryColor(this, battery);
 
             if (!isUSB && battery <= 1) {
-                string msg = String.Format("Controller {0} ({1}) - low battery notification!", PadId, getControllerName());
+                string msg = $"Controller {PadId} ({getControllerName()}) - low battery notification!";
                 form.tooltip(msg);
             }
         }
@@ -701,11 +701,11 @@ namespace BetterJoyForCemu {
             }
 
             if (ts_en == buf[1] && !isSnes) {
-                form.AppendTextBox("Duplicate timestamp enqueued.\r\n");
-                DebugPrint(string.Format("Duplicate timestamp enqueued. TS: {0:X2}", ts_en), DebugType.THREADING);
+                form.AppendTextBox("Duplicate timestamp enqueued.");
+                DebugPrint($"Duplicate timestamp enqueued. TS: {ts_en:X2}", DebugType.THREADING);
             }
             ts_en = buf[1];
-            //DebugPrint(string.Format("Enqueue. Bytes read: {0:D}. Type: {1:X2} Timestamp: {2:X2}", length, buf[0], buf[1]), DebugType.THREADING);
+            //DebugPrint($"Enqueue. Bytes read: {length:D}. Type: {buf[0]:X2} Timestamp: {buf[1]:X2}", DebugType.THREADING);
             
             return ReceiveError.None;
         }
@@ -993,11 +993,11 @@ namespace BetterJoyForCemu {
                     attempts = 0;
                 } else if (attempts > 240) {
                     state = state_.DROPPED;
-                    form.AppendTextBox("Dropped.\r\n");
+                    form.AppendTextBox("Dropped.");
                     DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.ALL);
                 } else if (error == ReceiveError.InvalidHandle) { // should not happen
                     state = state_.DROPPED;
-                    form.AppendTextBox("Dropped (invalid handle).\r\n");
+                    form.AppendTextBox("Dropped (invalid handle).");
                 } else {
                     // No data read, read error or invalid packet
                     // The controller should report back at 60hz or 120hz for the pro controller
@@ -1063,7 +1063,7 @@ namespace BetterJoyForCemu {
                     stick2 = CenterSticks(stick2_precal, cal, dz);
                 }
                 if (!form.calibrateSticks) {
-                    DebugPrint(string.Format("Stick1: X={0} Y={1}. Stick2: X={2} Y={3}", stick[0], stick[1], stick2[0], stick2[1]), DebugType.THREADING);
+                    DebugPrint($"Stick1: X={stick[0]} Y={stick[1]}. Stick2: X={stick2[0]} Y={stick2[1]}", DebugType.THREADING);
                 }
 
                 // Read other Joycon's sticks
@@ -1241,9 +1241,9 @@ namespace BetterJoyForCemu {
                 PollThreadObj.IsBackground = true;
                 PollThreadObj.Start();
 
-                form.AppendTextBox("Starting poll thread.\r\n");
+                form.AppendTextBox("Starting poll thread.");
             } else {
-                form.AppendTextBox("Poll cannot start.\r\n");
+                form.AppendTextBox("Poll cannot start.");
             }
         }
 
@@ -1297,7 +1297,7 @@ namespace BetterJoyForCemu {
             if (global_count == 0xf) global_count = 0;
             else ++global_count;
             if (print) {
-                PrintArray(buf_, DebugType.COMMS, len, 11, "Subcommand 0x" + string.Format("{0:X2}", sc) + " sent. Data: 0x{0:S}");
+                PrintArray(buf_, DebugType.COMMS, len, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
             }
             HIDapi.hid_write(handle, buf_, new UIntPtr(len + 11));
             
@@ -1316,7 +1316,7 @@ namespace BetterJoyForCemu {
                 return null;
             }
             if (print) {
-                PrintArray(response, DebugType.COMMS, (uint)length - 1, 1, "Response ID 0x" + string.Format("{0:X2}", response[0]) + ". Data: 0x{0:S}");
+                PrintArray(response, DebugType.COMMS, (uint)length - 1, 1, $"Response ID 0x{response[0]:X2}." + " Data: 0x{0:S}");
             } 
             return response;
         }
@@ -1332,13 +1332,13 @@ namespace BetterJoyForCemu {
             {
                 for (int i = 0; i < 9; ++i) {
                     if (buf_[i] != 0xff) {
-                        form.AppendTextBox("Using user stick calibration data.\r\n");
+                        form.AppendTextBox("Using user stick calibration data.");
                         found = true;
                         break;
                     }
                 }
                 if (!found) {
-                    form.AppendTextBox("Using factory stick calibration data.\r\n");
+                    form.AppendTextBox("Using factory stick calibration data.");
                     buf_ = ReadSPICheck(0x60, (isLeft ? (byte)0x3d : (byte)0x46), 9, ref ok);
                 }
             }
@@ -1359,13 +1359,13 @@ namespace BetterJoyForCemu {
                 {
                     for (int i = 0; i < 9; ++i) {
                         if (buf_[i] != 0xff) {
-                            form.AppendTextBox("Using user stick calibration data.\r\n");
+                            form.AppendTextBox("Using user stick calibration data.");
                             found = true;
                             break;
                         }
                     }
                     if (!found) {
-                        form.AppendTextBox("Using factory stick calibration data.\r\n");
+                        form.AppendTextBox("Using factory stick calibration data.");
                         buf_ = ReadSPICheck(0x60, (!isLeft ? (byte)0x3d : (byte)0x46), 9, ref ok);
                     }
                 }
@@ -1434,7 +1434,7 @@ namespace BetterJoyForCemu {
             }
 
             if (!ok) {
-                form.AppendTextBox("Error while reading calibration data.\r\n");
+                form.AppendTextBox("Error while reading calibration data.");
             }
             return ok;
         }
@@ -1478,7 +1478,7 @@ namespace BetterJoyForCemu {
                 if (print) PrintArray(read_buf, DebugType.COMMS, len);
             }
             else {
-                form.AppendTextBox("ReadSPI error\r\n");
+                form.AppendTextBox("ReadSPI error");
             }
             return read_buf;
         }

@@ -83,7 +83,7 @@ namespace BetterJoyForCemu {
                     rem.Add(joycon);
 
                     form.removeController(joycon);
-                    form.AppendTextBox(String.Format("Removed dropped {0}. Can be reconnected.\r\n", joycon.getControllerName()));
+                    form.AppendTextBox($"Removed dropped {joycon.getControllerName()}. Can be reconnected.");
                 }
             }
 
@@ -172,23 +172,23 @@ namespace BetterJoyForCemu {
                     switch (prod_id) {
                         case product_l:
                             isLeft = true;
-                            form.AppendTextBox("Left Joy-Con connected.\r\n"); break;
+                            form.AppendTextBox("Left Joy-Con connected."); break;
                         case product_r:
                             isLeft = false;
-                            form.AppendTextBox("Right Joy-Con connected.\r\n"); break;
+                            form.AppendTextBox("Right Joy-Con connected."); break;
                         case product_pro:
                             isLeft = true;
-                            form.AppendTextBox("Pro controller connected.\r\n"); break;
+                            form.AppendTextBox("Pro controller connected."); break;
                         case product_snes:
                             isLeft = true;
-                            form.AppendTextBox("SNES controller connected.\r\n"); break;
+                            form.AppendTextBox("SNES controller connected."); break;
                         default:
-                            form.AppendTextBox("Non Joy-Con Nintendo input device skipped.\r\n"); break;
+                            form.AppendTextBox("Non Joy-Con Nintendo input device skipped."); break;
                     }
 
                     IntPtr handle = HIDapi.hid_open_path(enumerate.path);
                     if (handle == IntPtr.Zero) {
-                        form.AppendTextBox("Unable to open path to device - are you using the correct (64 vs 32-bit) version for your PC?\r\n");
+                        form.AppendTextBox("Unable to open path to device - are you using the correct (64 vs 32-bit) version for your PC?");
                         break;
                     }
 
@@ -264,7 +264,7 @@ namespace BetterJoyForCemu {
                         jc.Drop();
                         dropped = true;
 
-                        form.AppendTextBox(String.Format("Could not connect {0} ({1}). Dropped.\r\n", jc.getControllerName(), e.Message));
+                        form.AppendTextBox($"Could not connect {jc.getControllerName()} ({e.Message}). Dropped.");
                         continue;
                     }
 
@@ -327,7 +327,7 @@ namespace BetterJoyForCemu {
                 try {
                     emClient = new ViGEmClient(); // Manages emulated XInput
                 } catch (Nefarius.ViGEm.Client.Exceptions.VigemBusNotFoundException) {
-                    form.AppendTextBox("Could not start VigemBus. Make sure drivers are installed correctly.\r\n");
+                    form.AppendTextBox("Could not start VigemBus. Make sure drivers are installed correctly.");
                 }
             }
 
@@ -359,7 +359,7 @@ namespace BetterJoyForCemu {
             mouse = WindowsInput.Capture.Global.MouseAsync();
             mouse.MouseEvent += Mouse_MouseEvent;
 
-            form.AppendTextBox("All systems go\r\n");
+            form.AppendTextBox("All systems go");
             mgr.Start();
             isRunning = true;
         }
@@ -371,14 +371,14 @@ namespace BetterJoyForCemu {
 
             HidHideControlService hidHideService = new HidHideControlService();
             if (!hidHideService.IsInstalled) {
-                form.AppendTextBox("HidHide is not installed.\r\n");
+                form.AppendTextBox("HidHide is not installed.");
                 return false;
             }
 
             try {
                 hidHideService.IsAppListInverted = false;
             } catch (Exception /*e*/) {
-                form.AppendTextBox("Unable to set HidHide in whitelist mode.\r\n");
+                form.AppendTextBox("Unable to set HidHide in whitelist mode.");
                 return false;
             }
 
@@ -386,7 +386,7 @@ namespace BetterJoyForCemu {
             //    try {
             //        hidHideService.ClearBlockedInstancesList();
             //    } catch (Exception /*e*/) {
-            //        form.AppendTextBox("Unable to purge blacklisted devices.\r\n");
+            //        form.AppendTextBox("Unable to purge blacklisted devices.");
             //        return false;
             //    }
             //}
@@ -397,18 +397,18 @@ namespace BetterJoyForCemu {
                 }
                 hidHideService.AddApplicationPath(Environment.ProcessPath);
             } catch (Exception /*e*/) {
-                form.AppendTextBox("Unable to add program to whitelist.\r\n");
+                form.AppendTextBox("Unable to add program to whitelist.");
                 return false;
             }
 
             try {
                 hidHideService.IsActive = true;
             } catch (Exception /*e*/) {
-                form.AppendTextBox("Unable to hide devices.\r\n");
+                form.AppendTextBox("Unable to hide devices.");
                 return false;
             }
 
-            form.AppendTextBox("HidHide is enabled.\r\n");
+            form.AppendTextBox("HidHide is enabled.");
             return true;
         }
 
@@ -421,14 +421,14 @@ namespace BetterJoyForCemu {
 
                 string instance = HIDapi.GetInstance(handle);
                 if (instance.Length == 0) {
-                    form.AppendTextBox("Unable to get device instance\r\n");
+                    form.AppendTextBox("Unable to get device instance.");
                 } else {
                     devices.Add(instance);
                 }
 
                 string parentInstance = HIDapi.GetParentInstance(handle);
                 if (parentInstance.Length == 0) {
-                    form.AppendTextBox("Unable to get device parent instance\r\n");
+                    form.AppendTextBox("Unable to get device parent instance.");
                 } else {
                     devices.Add(parentInstance);
                 }
@@ -439,7 +439,7 @@ namespace BetterJoyForCemu {
 
                 blockDeviceInstances(devices);
             } catch (Exception e) {
-                form.AppendTextBox(String.Format("Unable to add controller to block-list ({0}).\r\n", e.Message));
+                form.AppendTextBox($"Unable to add controller to block-list ({e.Message}).");
             }
         }
 
@@ -525,7 +525,7 @@ namespace BetterJoyForCemu {
             try {
                 hidHideService.RemoveApplicationPath(Environment.ProcessPath);
             } catch (Exception /*e*/) {
-                form.AppendTextBox("Unable to remove program from whitelist.\r\n");
+                form.AppendTextBox("Unable to remove program from whitelist.");
             }
 
             if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
@@ -534,14 +534,14 @@ namespace BetterJoyForCemu {
                         hidHideService.RemoveBlockedInstanceId(instance);
                     }
                 } catch (Exception /*e*/) {
-                    form.AppendTextBox("Unable to purge blacklisted devices.\r\n");
+                    form.AppendTextBox("Unable to purge blacklisted devices.");
                 }
             }
 
             try {
                 hidHideService.IsActive = false;
             } catch (Exception /*e*/) {
-                form.AppendTextBox("Unable to disable HidHide.\r\n");
+                form.AppendTextBox("Unable to disable HidHide.");
             }
         }
 

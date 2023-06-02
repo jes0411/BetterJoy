@@ -157,10 +157,10 @@ namespace BetterJoyForCemu {
         private void OnPowerChange(object s, PowerModeChangedEventArgs e) {
             switch (e.Mode) {
                 case PowerModes.Resume:
-                    AppendTextBox("Resume session.\r\n");
+                    AppendTextBox("Resume session.");
                     break;
                 case PowerModes.Suspend:
-                    AppendTextBox("Suspend session.\r\n");
+                    AppendTextBox("Suspend session.");
                     break;
             }
         }
@@ -184,7 +184,7 @@ namespace BetterJoyForCemu {
                 BeginInvoke(new Action<string>(AppendTextBox), new object[] { value });
                 return;
             }
-            console.AppendText(value);
+            console.AppendText(value + "\r\n");
         }
 
         bool toRumble = Boolean.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
@@ -300,7 +300,7 @@ namespace BetterJoyForCemu {
             try {
                 configFile.Save(ConfigurationSaveMode.Modified);
             } catch (ConfigurationErrorsException) {
-                AppendTextBox("Error writing app settings.\r\n");
+                AppendTextBox("Error writing app settings.");
             }
 
             ConfigurationManager.AppSettings["AutoPowerOff"] = "false";  // Prevent joycons poweroff when applying settings
@@ -367,8 +367,8 @@ namespace BetterJoyForCemu {
                 configFile.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
             } catch (ConfigurationErrorsException) {
-                AppendTextBox("Error writing app settings\r\n");
-                Trace.WriteLine(String.Format("rw {0}, column {1}, {2}, {3}", coord.Row, coord.Column, sender.GetType(), KeyCtl));
+                AppendTextBox("Error writing app settings.");
+                Trace.WriteLine($"rw {coord.Row}, column {coord.Column}, {sender.GetType()}, {KeyCtl}");
             }
         }
         private void StartCalibrate(object sender, EventArgs e) {

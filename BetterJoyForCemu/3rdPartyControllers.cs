@@ -39,7 +39,7 @@ namespace BetterJoyForCemu {
             }
 
             public string Serialise() {
-                return String.Format("{0}|{1}|{2}|{3}|{4}", name, vendor_id, product_id, type, serial_number);
+                return $"{name}|{vendor_id}|{product_id}|{type}|{serial_number}";
             }
         }
 
