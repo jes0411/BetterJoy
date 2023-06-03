@@ -118,7 +118,7 @@ namespace BetterJoyForCemu {
                     break;
                 default:
                     Type t = val.StartsWith("joy_") ? typeof(Joycon.Button) : (val.StartsWith("key_") ? typeof(WindowsInput.Events.KeyCode) : typeof(WindowsInput.Events.ButtonCode));
-                    c.Text = Enum.GetName(t, Int32.Parse(val.Substring(4)));
+                    c.Text = Enum.GetName(t, Int32.Parse(val.AsSpan(4)));
                     break;
             }
         }

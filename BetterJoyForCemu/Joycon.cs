@@ -56,7 +56,7 @@ namespace BetterJoyForCemu {
         }
         public bool active_gyro = false;
 
-        private long inactivity = Stopwatch.GetTimestamp();
+        private long timestampActivity = Stopwatch.GetTimestamp();
 
         public bool send = true;
 
@@ -759,8 +759,10 @@ namespace BetterJoyForCemu {
         // For Joystick->Joystick inputs
         private void SimulateContinous(int origin, string s) {
             if (s.StartsWith("joy_")) {
-                int button = Int32.Parse(s.Substring(4));
-                buttons[button] |= buttons[origin];
+                int button = Int32.Parse(s.AsSpan(4));
+                lock (buttons) {
+                    buttons[button] |= buttons[origin];
+                }
             }
         }
 
@@ -786,11 +788,11 @@ namespace BetterJoyForCemu {
         private void DoThingsWithButtons() {
             int powerOffButton = (int)((isPro || !isLeft || other != null) ? Button.HOME : Button.CAPTURE);
 
-            long timestamp = Stopwatch.GetTimestamp();
+            long timestampNow = Stopwatch.GetTimestamp();
             if (HomeLongPowerOff && buttons[powerOffButton]) {
-                if ((timestamp - buttons_down_timestamp[powerOffButton]) / 10000 > 2000.0) {
+                var powerOffPressedDurationMs = (timestampNow - buttons_down_timestamp[powerOffButton]) / 10000;
+                if (powerOffPressedDurationMs > 2000) {
                     other?.PowerOff();
-
                     PowerOff();
                     return;
                 }
@@ -811,10 +813,9 @@ namespace BetterJoyForCemu {
             }
 
             if (PowerOffInactivityMins > 0) {
-                if ((timestamp - inactivity) / 10000 > PowerOffInactivityMins * 60 * 1000) {
-                    if (other != null)
-                        other.PowerOff();
-
+                var timeSinceActivityMs = (timestampNow - timestampActivity) / 10000;
+                if (timeSinceActivityMs > PowerOffInactivityMins * 60 * 1000) {
+                    other?.PowerOff();
                     PowerOff();
                     return;
                 }
@@ -893,7 +894,7 @@ namespace BetterJoyForCemu {
 
             string res_val = Config.Value("active_gyro");
             if (res_val.StartsWith("joy_")) {
-                int i = Int32.Parse(res_val.Substring(4));
+                int i = Int32.Parse(res_val.AsSpan(4));
                 if (GyroHoldToggle) {
                     if (buttons_down[i] || (other != null && other.buttons_down[i]))
                         active_gyro = true;
@@ -905,7 +906,7 @@ namespace BetterJoyForCemu {
                 }
             }
 
-            if (extraGyroFeature.Substring(0, 3) == "joy") {
+            if (extraGyroFeature.AsSpan(0, 3) == "joy") {
                 if (Config.Value("active_gyro") == "0" || active_gyro) {
                     float[] control_stick = (extraGyroFeature == "joy_left") ? stick : stick2;
 
@@ -940,7 +941,7 @@ namespace BetterJoyForCemu {
                 // reset mouse position to centre of primary monitor
                 res_val = Config.Value("reset_mouse");
                 if (res_val.StartsWith("joy_")) {
-                    int i = Int32.Parse(res_val.Substring(4));
+                    int i = Int32.Parse(res_val.AsSpan(4));
                     if (buttons_down[i] || (other != null && other.buttons_down[i]))
                         WindowsInput.Simulate.Events().MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2).Invoke();
                 }
@@ -1058,7 +1059,7 @@ namespace BetterJoyForCemu {
                 }
             }
 
-            // Set button states both for server and ViGEm
+            // Set button states both for ViGEm
             lock (buttons) {
                 lock (down_) {
                     Array.Copy(buttons, down_, buttons.Length);
@@ -1070,7 +1071,7 @@ namespace BetterJoyForCemu {
 
                 buttons[(int)Button.DPAD_DOWN] = (report_buf[3 + reportOffset] & (isLeft ? 0x01 : 0x04)) != 0;
                 buttons[(int)Button.DPAD_RIGHT] = (report_buf[3 + reportOffset] & (isLeft ? 0x04 : 0x08)) != 0;
-                buttons[(int)Button.DPAD_UP] = (report_buf[3 + reportOffset] & (isLeft ? 0x02 : 0x02)) != 0;
+                buttons[(int)Button.DPAD_UP] = (report_buf[3 + reportOffset] & 0x02) != 0;
                 buttons[(int)Button.DPAD_LEFT] = (report_buf[3 + reportOffset] & (isLeft ? 0x08 : 0x01)) != 0;
                 buttons[(int)Button.HOME] = ((report_buf[4] & 0x10) != 0);
                 buttons[(int)Button.CAPTURE] = ((report_buf[4] & 0x20) != 0);
@@ -1087,7 +1088,7 @@ namespace BetterJoyForCemu {
 
                     buttons[(int)Button.B] = (report_buf[3 + reportOffset] & (!isLeft ? 0x01 : 0x04)) != 0;
                     buttons[(int)Button.A] = (report_buf[3 + reportOffset] & (!isLeft ? 0x04 : 0x08)) != 0;
-                    buttons[(int)Button.X] = (report_buf[3 + reportOffset] & (!isLeft ? 0x02 : 0x02)) != 0;
+                    buttons[(int)Button.X] = (report_buf[3 + reportOffset] & 0x02) != 0;
                     buttons[(int)Button.Y] = (report_buf[3 + reportOffset] & (!isLeft ? 0x08 : 0x01)) != 0;
 
                     buttons[(int)Button.STICK2] = ((report_buf[4] & (!isLeft ? 0x08 : 0x04)) != 0);
@@ -1129,7 +1130,9 @@ namespace BetterJoyForCemu {
                                 changed = true;
                         }
 
-                        inactivity = (changed) ? timestamp : inactivity;
+                        if (changed) {
+                            timestampActivity = timestamp;
+                        }
                     }
                 }
             }

@@ -219,7 +219,7 @@ namespace BetterJoyForCemu {
                     byte[] mac = new byte[6];
                     try {
                         for (int n = 0; n < 6; n++)
-                            mac[n] = byte.Parse(enumerate.serial_number.Substring(n * 2, 2), System.Globalization.NumberStyles.HexNumber);
+                            mac[n] = byte.Parse(enumerate.serial_number.AsSpan(n * 2, 2), System.Globalization.NumberStyles.HexNumber);
                     } catch (Exception /*e*/) {
                         // could not parse mac address
                     }
@@ -318,7 +318,7 @@ namespace BetterJoyForCemu {
 
         public static ConcurrentList<SController> thirdPartyCons = new ConcurrentList<SController>();
 
-        public static bool useHidHide = Boolean.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
+        private static bool useHidHide = Boolean.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
 
         private static WindowsInput.Events.Sources.IKeyboardEventSource keyboard;
         private static WindowsInput.Events.Sources.IMouseEventSource mouse;
