@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BetterJoyForCemu {
@@ -101,26 +102,24 @@ namespace BetterJoyForCemu {
         }
 
         private async Task SendPacket(IPEndPoint clientEP, byte[] usefulData, ushort reqProtocolVersion = MaxProtocolVersion) {
-            var pool = ArrayPool<byte>.Shared;
             int size = usefulData.Length + 16;
-            byte[] buffer = pool.Rent(size);
-
-            void makePacket() { // needed to use span in async function
-                Span<byte> packetData = buffer.AsSpan(0, size);
-                packetData.Clear();
+            using IMemoryOwner<byte> packetDataBuffer = Memory.MemoryPool<byte>.Shared.RentCleared(size);
+            Memory<byte> packetDataMem = packetDataBuffer.Memory;
+            
+            // needed to use span in async function
+            void makePacket() {
+                Span<byte> packetData = packetDataMem.Span;
 
                 int currIdx = BeginPacket(packetData, reqProtocolVersion);
                 usefulData.AsSpan().CopyTo(packetData.Slice(currIdx));
                 FinishPacket(packetData);
             }
+
             makePacket();
 
             try {
-                Memory<byte> bufferMem = buffer.AsMemory(0, size);
-                await _udpSock.SendToAsync(clientEP, bufferMem);
+                await _udpSock.SendToAsync(clientEP, packetDataMem);
             } catch (SocketException /*e*/) { }
-
-            pool.Return(buffer);
         }
 
         private static bool CheckIncomingValidity(Span<byte> localMsg, out int currIdx) {
@@ -276,10 +275,9 @@ namespace BetterJoyForCemu {
             while (_running) {
                 try {
                     var receiveResult = await _udpSock.ReceiveFromAsync(bufferMem);
-                    var receivedData = bufferMem.Slice(0, receiveResult.ReceivedBytes);
                     IPEndPoint client = (IPEndPoint) receiveResult.RemoteEndPoint;
 
-                    List<byte[]> repliesData = ProcessIncoming(receivedData.Span, client);
+                    List<byte[]> repliesData = ProcessIncoming(buffer.AsSpan(0, receiveResult.ReceivedBytes), client);
                     if (repliesData.Count <= 0) {
                         continue;
                     }
@@ -449,20 +447,26 @@ namespace BetterJoyForCemu {
                 return;
             }
 
-            var clientsList = new List<IPEndPoint>();
+            int nbClients = 0;
             DateTime now = DateTime.UtcNow;
 
-            lock (_clients) {
+            Monitor.Enter(_clients);
+            using IMemoryOwner<IPEndPoint> relevantClientsBuffer = Memory.MemoryPool<IPEndPoint>.Shared.RentCleared(_clients.Count);
+            var relevantClientsMemory = relevantClientsBuffer.Memory;
+            var relevantClients = relevantClientsMemory.Span;
+
+            try {
                 foreach (var client in _clients) {
                     if (!IsControllerTimedout(now, client.Value.AllPadsTime))
-                        clientsList.Add(client.Key);
+                        relevantClients[nbClients++] = client.Key;
                     else if (hidReport.PadId is >= 0 and <= 3 &&
                              !IsControllerTimedout(now, client.Value.PadIdsTime[(byte)hidReport.PadId])) {
-                        clientsList.Add(client.Key);
+                        relevantClients[nbClients++] = client.Key;
                     } else if (client.Value.PadMacsTime.ContainsKey(hidReport.PadMacAddress) &&
                                !IsControllerTimedout(now, client.Value.PadMacsTime[hidReport.PadMacAddress])) {
-                        clientsList.Add(client.Key);
-                    } else { //check if this client is totally dead, and remove it if so
+                        relevantClients[nbClients++] = client.Key;
+                    } else {
+                        //check if this client is totally dead, and remove it if so
                         bool clientOk = false;
                         foreach (var padIdTime in client.Value.PadIdsTime) {
                             if (!IsControllerTimedout(now, padIdTime)) {
@@ -486,15 +490,18 @@ namespace BetterJoyForCemu {
                         }
                     }
                 }
+            } finally {
+                Monitor.Exit(_clients);
             }
 
-            if (clientsList.Count <= 0)
+            if (nbClients <= 0)
                 return;
 
-            var pool = ArrayPool<byte>.Shared;
-            byte[] buffer = pool.Rent(ReportSize);
-            Span<byte> outputData = buffer.AsSpan(0, ReportSize);
-            outputData.Clear();
+            relevantClients = relevantClients.Slice(0, nbClients);
+
+            using IMemoryOwner<byte> reportBuffer = Memory.MemoryPool<byte>.Shared.RentCleared(ReportSize);
+            Memory<byte> reportBufferMem = reportBuffer.Memory;
+            Span<byte> outputData = reportBufferMem.Span;
 
             int outIdx = BeginPacket(outputData, 1001);
             BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), (uint)MessageType.DSUS_PadDataRsp);
@@ -520,16 +527,9 @@ namespace BetterJoyForCemu {
             ReportToBuffer(hidReport, outputData, ref outIdx);
             FinishPacket(outputData);
 
-            // Send in parallel to all clients
-            ReadOnlyMemory<byte> bufferMem = buffer.AsMemory().Slice(0, ReportSize);
-            var tasks = clientsList.Select(async client => {
-                try {
-                    await _udpSock.SendToAsync(client, bufferMem);
-                } catch (SocketException) { }
-            });
-            Task.WhenAll(tasks).Wait();
-
-            pool.Return(buffer);
+            foreach (var client in relevantClients) {
+                _udpSock.SendTo(outputData, client);
+            }
         }
 
         private static int CalculateCrc32(ReadOnlySpan<byte> data, Span<byte> crc) {
