@@ -2,16 +2,19 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace BetterJoyForCemu {
-	public class HIDapi {
+namespace BetterJoyForCemu
+{
+    public class HIDapi
+    {
 #if LINUX
 	    const string dll = "libhidapi.so";
 #else
-		const string dll = "hidapi.dll";
+        private const string dll = "hidapi.dll";
 #endif
-        const int maxStringLength = 255;
+        private const int maxStringLength = 255;
 
-        public enum BusType {
+        public enum BusType
+        {
             UNKNOWN = 0x00,
             USB = 0x01,
             BLUETOOTH = 0x02,
@@ -19,118 +22,152 @@ namespace BetterJoyForCemu {
             SPI = 0x04
         }
 
-        public struct hid_device_info {
-			[MarshalAs(UnmanagedType.LPStr)]
-			public string path;
-			public ushort vendor_id;
-			public ushort product_id;
-			[MarshalAs(UnmanagedType.LPWStr)]
-			public string serial_number;
-			public ushort release_number;
-			[MarshalAs(UnmanagedType.LPWStr)]
-			public string manufacturer_string;
-			[MarshalAs(UnmanagedType.LPWStr)]
-			public string product_string;
-			public ushort usage_page;
-			public ushort usage;
-			public int interface_number;
-			public IntPtr next;
+        public struct hid_device_info
+        {
+            [MarshalAs(UnmanagedType.LPStr)] public string path;
+            public ushort vendor_id;
+            public ushort product_id;
+            [MarshalAs(UnmanagedType.LPWStr)] public string serial_number;
+            public ushort release_number;
+            [MarshalAs(UnmanagedType.LPWStr)] public string manufacturer_string;
+            [MarshalAs(UnmanagedType.LPWStr)] public string product_string;
+            public ushort usage_page;
+            public ushort usage;
+            public int interface_number;
+            public IntPtr next;
             public BusType bus_type; // >= 0.13.0
-        };
+        }
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_init();
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_init();
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_exit();
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_exit();
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern IntPtr hid_enumerate(ushort vendor_id, ushort product_id);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr hid_enumerate(ushort vendor_id, ushort product_id);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern void hid_free_enumeration(IntPtr phid_device_info);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void hid_free_enumeration(IntPtr phid_device_info);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern IntPtr hid_open(ushort vendor_id, ushort product_id, [MarshalAs(UnmanagedType.LPWStr)] string serial_number);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr hid_open(
+            ushort vendor_id,
+            ushort product_id,
+            [MarshalAs(UnmanagedType.LPWStr)] string serial_number
+        );
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern IntPtr hid_open_path([MarshalAs(UnmanagedType.LPStr)] string path);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr hid_open_path([MarshalAs(UnmanagedType.LPStr)] string path);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_write(IntPtr device, byte[] data, UIntPtr length);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_write(IntPtr device, byte[] data, UIntPtr length);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_read_timeout(IntPtr dev, byte[] data, UIntPtr length, int milliseconds);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_read_timeout(IntPtr dev, byte[] data, UIntPtr length, int milliseconds);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_read(IntPtr device, byte[] data, UIntPtr length);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_read(IntPtr device, byte[] data, UIntPtr length);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_set_nonblocking(IntPtr device, int nonblock);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_set_nonblocking(IntPtr device, int nonblock);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_send_feature_report(IntPtr device, byte[] data, UIntPtr length);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_send_feature_report(IntPtr device, byte[] data, UIntPtr length);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_get_feature_report(IntPtr device, byte[] data, UIntPtr length);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_get_feature_report(IntPtr device, byte[] data, UIntPtr length);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern void hid_close(IntPtr device);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void hid_close(IntPtr device);
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_get_manufacturer_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] string string_, UIntPtr maxlen);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_get_manufacturer_string(
+            IntPtr device,
+            [MarshalAs(UnmanagedType.LPWStr)] string string_,
+            UIntPtr maxlen
+        );
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_get_product_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] string string_, UIntPtr maxlen);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_get_product_string(
+            IntPtr device,
+            [MarshalAs(UnmanagedType.LPWStr)] string string_,
+            UIntPtr maxlen
+        );
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_get_serial_number_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] string string_, UIntPtr maxlen);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_get_serial_number_string(
+            IntPtr device,
+            [MarshalAs(UnmanagedType.LPWStr)] string string_,
+            UIntPtr maxlen
+        );
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int hid_get_indexed_string(IntPtr device, int string_index, [MarshalAs(UnmanagedType.LPWStr)] string string_, UIntPtr maxlen);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_get_indexed_string(
+            IntPtr device,
+            int string_index,
+            [MarshalAs(UnmanagedType.LPWStr)] string string_,
+            UIntPtr maxlen
+        );
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-		[return: MarshalAs(UnmanagedType.LPWStr)]
-		public static extern string hid_error(IntPtr device);
+        [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.LPWStr)]
+        public static extern string hid_error(IntPtr device);
 
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
         public static extern int hid_winapi_get_container_id(IntPtr device, out Guid container_id);
 
         // Added in my fork of HIDapi at https://github.com/d3xMachina/hidapi (needed for HIDHide to work correctly)
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int hid_winapi_get_instance_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder string_, UIntPtr maxlen);
+        public static extern int hid_winapi_get_instance_string(
+            IntPtr device,
+            [MarshalAs(UnmanagedType.LPWStr)] StringBuilder string_,
+            UIntPtr maxlen
+        );
 
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int hid_winapi_get_parent_instance_string(IntPtr device, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder string_, UIntPtr maxlen);
+        public static extern int hid_winapi_get_parent_instance_string(
+            IntPtr device,
+            [MarshalAs(UnmanagedType.LPWStr)] StringBuilder string_,
+            UIntPtr maxlen
+        );
         // END
 
-        public static string GetInstance(IntPtr device) {
-            StringBuilder bufferInstance = new StringBuilder(maxStringLength);
+        public static string GetInstance(IntPtr device)
+        {
+            var bufferInstance = new StringBuilder(maxStringLength);
 
-            int ret = hid_winapi_get_instance_string(device, bufferInstance, maxStringLength);
-            if (ret < 0) {
+            var ret = hid_winapi_get_instance_string(device, bufferInstance, maxStringLength);
+            if (ret < 0)
+            {
                 return "";
             }
 
-            string instance = bufferInstance.ToString();
-            if (string.IsNullOrEmpty(instance)) {
+            var instance = bufferInstance.ToString();
+            if (string.IsNullOrEmpty(instance))
+            {
                 return "";
             }
+
             return instance;
         }
 
-        public static string GetParentInstance(IntPtr device) {
-            StringBuilder bufferInstance = new StringBuilder(maxStringLength);
+        public static string GetParentInstance(IntPtr device)
+        {
+            var bufferInstance = new StringBuilder(maxStringLength);
 
-            int ret = hid_winapi_get_parent_instance_string(device, bufferInstance, maxStringLength);
-            if (ret < 0) {
+            var ret = hid_winapi_get_parent_instance_string(device, bufferInstance, maxStringLength);
+            if (ret < 0)
+            {
                 return "";
             }
 
-            string instance = bufferInstance.ToString();
-            if (string.IsNullOrEmpty(instance)) {
+            var instance = bufferInstance.ToString();
+            if (string.IsNullOrEmpty(instance))
+            {
                 return "";
             }
+
             return instance;
         }
     }
