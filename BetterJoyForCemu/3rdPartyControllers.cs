@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -60,30 +61,41 @@ namespace BetterJoyForCemu {
             group_props.Controls.Add(chooseType);
             group_props.Enabled = false;
 
-            if (File.Exists(path)) {
-                using (StreamReader file = new StreamReader(path)) {
-                    string line = String.Empty;
-                    while ((line = file.ReadLine()) != null && (line != String.Empty)) {
-                        String[] split = line.Split('|');
-                        //won't break existing config file
-                        String serial_number = "";
-                        if (split.Length > 4) {
-                            serial_number = split[4];
-                        }
-                        list_customControllers.Items.Add(new SController(split[0], ushort.Parse(split[1]), ushort.Parse(split[2]), byte.Parse(split[3]), serial_number));
-                    }
-                }
-            }
-
-            CopyCustomControllers();
+            GetSaved3rdPartyControllers().ForEach(controller => list_customControllers.Items.Add(controller));
             RefreshControllerList();
         }
 
-        public void CopyCustomControllers() {
-            Program.thirdPartyCons.Clear();
-            foreach (SController v in list_customControllers.Items) {
-                Program.thirdPartyCons.Add(v);
+        public static List<SController> GetSaved3rdPartyControllers() {
+            var controllers = new List<SController>();
+
+            if (File.Exists(path)) {
+                using StreamReader file = new StreamReader(path);
+                string line = String.Empty;
+                while ((line = file.ReadLine()) != null && (line != String.Empty)) {
+                    string[] split = line.Split('|');
+                    //won't break existing config file
+                    string serial_number = "";
+                    if (split.Length > 4) {
+                        serial_number = split[4];
+                    }
+                    controllers.Add(new SController(split[0], ushort.Parse(split[1]), ushort.Parse(split[2]), byte.Parse(split[3]), serial_number));
+                }
             }
+            return controllers;
+        }
+
+        private List<SController> GetActive3rdPartyControllers() {
+            var controllers = new List<SController>();
+
+            foreach (SController v in list_customControllers.Items) {
+                controllers.Add(v);
+            }
+            return controllers;
+        }
+
+        private void CopyCustomControllers() {
+            List<SController> controllers = GetActive3rdPartyControllers();
+            Program.update3rdPartyControllers(controllers);
         }
 
         private bool ContainsText(ListBox a, String manu) {
@@ -103,12 +115,11 @@ namespace BetterJoyForCemu {
             IntPtr ptr = HIDapi.hid_enumerate(0x0, 0x0);
             IntPtr top_ptr = ptr;
 
-            hid_device_info enumerate; // Add device to list
-            while (ptr != IntPtr.Zero) {
+            // Add device to list
+            for (hid_device_info enumerate; ptr != IntPtr.Zero; ptr = enumerate.next) {
                 enumerate = (hid_device_info)Marshal.PtrToStructure(ptr, typeof(hid_device_info));
 
                 if (enumerate.serial_number == null) {
-                    ptr = enumerate.next;
                     continue;
                 }
 
@@ -119,8 +130,6 @@ namespace BetterJoyForCemu {
                     // 0 type is undefined
                     Console.WriteLine("Found controller "+ name);
                 }
-
-                ptr = enumerate.next;
             }
             HIDapi.hid_free_enumeration(top_ptr);
         }

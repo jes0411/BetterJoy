@@ -85,6 +85,15 @@ namespace BetterJoyForCemu.Collections {
 
         public bool IsReadOnly => false;
 
+        public void Set(IList<T> list) {
+            lock (_lock) {
+                _internalList.Clear();
+                foreach (var item in list) {
+                    _internalList.Add(item);
+                }
+            }
+        }
+
         public void Add(T item) {
             LockInternalListAndCommand(l => l.Add(item));
         }

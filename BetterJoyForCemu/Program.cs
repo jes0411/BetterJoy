@@ -316,7 +316,7 @@ namespace BetterJoyForCemu {
 
         static MainForm form;
 
-        public static List<SController> thirdPartyCons = new List<SController>();
+        public static ConcurrentList<SController> thirdPartyCons = new ConcurrentList<SController>();
 
         public static bool useHidHide = Boolean.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
 
@@ -347,9 +347,8 @@ namespace BetterJoyForCemu {
                 }
             }
 
-            // a bit hacky
-            _3rdPartyControllers partyForm = new _3rdPartyControllers();
-            partyForm.CopyCustomControllers();
+            List<SController> controllers = _3rdPartyControllers.GetSaved3rdPartyControllers();
+            update3rdPartyControllers(controllers);
 
             mgr = new JoyconManager();
             mgr.form = form;
@@ -550,6 +549,10 @@ namespace BetterJoyForCemu {
             } catch (Exception /*e*/) {
                 form.AppendTextBox("Unable to disable HidHide.");
             }
+        }
+
+        public static void update3rdPartyControllers(List<SController> controllers) {
+            thirdPartyCons.Set(controllers);
         }
 
         private static string appGuid = "1bf709e9-c133-41df-933a-c9ff3f664c7b"; // randomly-generated
