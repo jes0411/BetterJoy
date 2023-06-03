@@ -18,56 +18,56 @@ namespace BetterJoyForCemu
     {
         public enum Button
         {
-            DPAD_DOWN = 0,
-            DPAD_RIGHT = 1,
-            DPAD_LEFT = 2,
-            DPAD_UP = 3,
+            DpadDown = 0,
+            DpadRight = 1,
+            DpadLeft = 2,
+            DpadUp = 3,
             SL = 4,
             SR = 5,
-            MINUS = 6,
-            HOME = 7,
-            PLUS = 8,
-            CAPTURE = 9,
-            STICK = 10,
-            SHOULDER_1 = 11,
-            SHOULDER_2 = 12,
+            Minus = 6,
+            Home = 7,
+            Plus = 8,
+            Capture = 9,
+            Stick = 10,
+            Shoulder1 = 11,
+            Shoulder2 = 12,
 
             // For pro controller
             B = 13,
             A = 14,
             Y = 15,
             X = 16,
-            STICK2 = 17,
-            SHOULDER2_1 = 18,
-            SHOULDER2_2 = 19
+            Stick2 = 17,
+            Shoulder21 = 18,
+            Shoulder22 = 19
         }
 
         public enum ControllerType
         {
-            JOYCON,
-            PRO,
+            Joycon,
+            Pro,
             SNES
         }
 
         public enum DebugType
         {
-            NONE,
-            ALL,
-            COMMS,
-            THREADING,
+            None,
+            All,
+            Comms,
+            Threading,
             IMU,
-            RUMBLE,
-            SHAKE
+            Rumble,
+            Shake
         }
 
-        public enum state_ : uint
+        public enum Status : uint
         {
-            NOT_ATTACHED,
-            DROPPED,
-            NO_JOYCONS,
-            ATTACHED,
-            INPUT_MODE_0x30,
-            IMU_DATA_OK
+            NotAttached,
+            Dropped,
+            NoJoycons,
+            Attached,
+            InputMode0X30,
+            IMUDataOk
         }
 
         private enum ReceiveError
@@ -79,170 +79,170 @@ namespace BetterJoyForCemu
             NoData
         }
 
-        private const int report_len = 49;
+        private const int ReportLen = 49;
 
-        private static readonly int lowFreq = int.Parse(ConfigurationManager.AppSettings["LowFreqRumble"]);
-        private static readonly int highFreq = int.Parse(ConfigurationManager.AppSettings["HighFreqRumble"]);
-        private static readonly bool toRumble = bool.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
-        private static readonly bool showAsXInput = bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
-        private static readonly bool showAsDS4 = bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
-        private static readonly bool useIncrementalLights = bool.Parse(ConfigurationManager.AppSettings["UseIncrementalLights"]);
-        private static readonly float defaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
-        private static readonly float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
+        private static readonly int LowFreq = int.Parse(ConfigurationManager.AppSettings["LowFreqRumble"]);
+        private static readonly int HighFreq = int.Parse(ConfigurationManager.AppSettings["HighFreqRumble"]);
+        private static readonly bool ToRumble = bool.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
+        private static readonly bool ShowAsXInput = bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
+        private static readonly bool ShowAsDs4 = bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
+        private static readonly bool UseIncrementalLights = bool.Parse(ConfigurationManager.AppSettings["UseIncrementalLights"]);
+        private static readonly float DefaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
+        private static readonly float AHRSBeta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
 
-        private readonly short[] acc_neutral = { 0, 0, 0 };
-        private readonly short[] acc_r = { 0, 0, 0 };
+        private readonly short[] _accNeutral = { 0, 0, 0 };
+        private readonly short[] _accR = { 0, 0, 0 };
 
-        private readonly short[] acc_sen =
+        private readonly short[] _accSen =
         {
             16384,
             16384,
             16384
         };
 
-        private readonly short[] acc_sensiti = { 0, 0, 0 };
-        private readonly ushort[] activeStick1Data;
-        private readonly ushort[] activeStick2Data;
+        private readonly short[] _accSensiti = { 0, 0, 0 };
+        private readonly ushort[] _activeStick1Data;
+        private readonly ushort[] _activeStick2Data;
 
-        private readonly MadgwickAHRS AHRS = new(0.005f, AHRS_beta); // for getting filtered Euler angles of rotation; 5ms sampling rate
+        private readonly MadgwickAHRS _AHRS = new(0.005f, AHRSBeta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
-        private readonly bool[] buttons = new bool[20];
-        private readonly bool[] buttons_down = new bool[20];
-        private readonly long[] buttons_down_timestamp = new long[20];
-        private readonly bool[] buttons_up = new bool[20];
+        private readonly bool[] _buttons = new bool[20];
+        private readonly bool[] _buttonsDown = new bool[20];
+        private readonly long[] _buttonsDownTimestamp = new long[20];
+        private readonly bool[] _buttonsUp = new bool[20];
 
-        private readonly bool ChangeOrientationDoubleClick = bool.Parse(ConfigurationManager.AppSettings["ChangeOrientationDoubleClick"]);
+        private readonly bool _changeOrientationDoubleClick = bool.Parse(ConfigurationManager.AppSettings["ChangeOrientationDoubleClick"]);
 
-        private readonly float[] cur_rotation = { 0, 0, 0, 0, 0, 0 }; // Filtered IMU data
+        private readonly float[] _curRotation = { 0, 0, 0, 0, 0, 0 }; // Filtered IMU data
 
-        private readonly byte[] default_buf = { 0x0, 0x1, 0x40, 0x40, 0x0, 0x1, 0x40, 0x40 };
-        private readonly bool[] down_ = new bool[20];
+        private readonly byte[] _defaultBuf = { 0x0, 0x1, 0x40, 0x40, 0x0, 0x1, 0x40, 0x40 };
+        private readonly bool[] _down = new bool[20];
 
-        private readonly bool dragToggle = bool.Parse(ConfigurationManager.AppSettings["DragToggle"]);
+        private readonly bool _dragToggle = bool.Parse(ConfigurationManager.AppSettings["DragToggle"]);
 
-        private readonly string extraGyroFeature = ConfigurationManager.AppSettings["GyroToJoyOrMouse"];
-        private readonly short[] gyr_neutral = { 0, 0, 0 };
+        private readonly string _extraGyroFeature = ConfigurationManager.AppSettings["GyroToJoyOrMouse"];
+        private readonly short[] _gyrNeutral = { 0, 0, 0 };
 
-        private readonly short[] gyr_r = { 0, 0, 0 };
+        private readonly short[] _gyrR = { 0, 0, 0 };
 
-        private readonly short[] gyr_sen =
+        private readonly short[] _gyrSen =
         {
             18642,
             18642,
             18642
         };
 
-        private readonly short[] gyr_sensiti = { 0, 0, 0 };
+        private readonly short[] _gyrSensiti = { 0, 0, 0 };
 
-        private readonly int GyroAnalogSensitivity = int.Parse(ConfigurationManager.AppSettings["GyroAnalogSensitivity"]);
-        private readonly bool GyroAnalogSliders = bool.Parse(ConfigurationManager.AppSettings["GyroAnalogSliders"]);
-        private readonly bool GyroHoldToggle = bool.Parse(ConfigurationManager.AppSettings["GyroHoldToggle"]);
-        private readonly bool GyroMouseLeftHanded = bool.Parse(ConfigurationManager.AppSettings["GyroMouseLeftHanded"]);
-        private readonly int GyroMouseSensitivityX = int.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityX"]);
-        private readonly int GyroMouseSensitivityY = int.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityY"]);
-        private readonly float GyroStickReduction = float.Parse(ConfigurationManager.AppSettings["GyroStickReduction"]);
-        private readonly float GyroStickSensitivityX = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityX"]);
-        private readonly float GyroStickSensitivityY = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityY"]);
-        private readonly bool HomeLongPowerOff = bool.Parse(ConfigurationManager.AppSettings["HomeLongPowerOff"]);
+        private readonly int _gyroAnalogSensitivity = int.Parse(ConfigurationManager.AppSettings["GyroAnalogSensitivity"]);
+        private readonly bool _gyroAnalogSliders = bool.Parse(ConfigurationManager.AppSettings["GyroAnalogSliders"]);
+        private readonly bool _gyroHoldToggle = bool.Parse(ConfigurationManager.AppSettings["GyroHoldToggle"]);
+        private readonly bool _gyroMouseLeftHanded = bool.Parse(ConfigurationManager.AppSettings["GyroMouseLeftHanded"]);
+        private readonly int _gyroMouseSensitivityX = int.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityX"]);
+        private readonly int _gyroMouseSensitivityY = int.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityY"]);
+        private readonly float _gyroStickReduction = float.Parse(ConfigurationManager.AppSettings["GyroStickReduction"]);
+        private readonly float _gyroStickSensitivityX = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityX"]);
+        private readonly float _gyroStickSensitivityY = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityY"]);
+        private readonly bool _homeLongPowerOff = bool.Parse(ConfigurationManager.AppSettings["HomeLongPowerOff"]);
 
-        private readonly bool imu_enabled;
-        private readonly short[] left_hor_offset = { 0, 0, 0 };
-        private readonly Dictionary<int, bool> mouse_toggle_btn = new();
-        private readonly ushort noCalibrationDeadzone;
-        private readonly ushort[] noCalibrationSticksData;
+        private readonly bool _IMUEnabled;
+        private readonly short[] _leftHorOffset = { 0, 0, 0 };
+        private readonly Dictionary<int, bool> _mouseToggleBtn = new();
+        private readonly ushort _noCalibrationDeadzone;
+        private readonly ushort[] _noCalibrationSticksData;
 
-        private readonly float[] otherStick = { 0, 0 };
+        private readonly float[] _otherStick = { 0, 0 };
 
-        private readonly long PowerOffInactivityMins = int.Parse(ConfigurationManager.AppSettings["PowerOffInactivity"]);
+        private readonly long _powerOffInactivityMins = int.Parse(ConfigurationManager.AppSettings["PowerOffInactivity"]);
 
-        private readonly short[] pro_hor_offset = { -710, 0, 0 };
-        private readonly short[] right_hor_offset = { 0, 0, 0 };
+        private readonly short[] _proHorOffset = { -710, 0, 0 };
+        private readonly short[] _rightHorOffset = { 0, 0, 0 };
 
         private readonly Stopwatch
-                shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
+                _shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
 
-        private readonly byte[] sliderVal = { 0, 0 };
-        private readonly ushort[] stick_cal = { 0, 0, 0, 0, 0, 0 };
-        private readonly ushort[] stick_precal = { 0, 0 };
+        private readonly byte[] _sliderVal = { 0, 0 };
+        private readonly ushort[] _stickCal = { 0, 0, 0, 0, 0, 0 };
+        private readonly ushort[] _stickPrecal = { 0, 0 };
 
-        private readonly byte[] stick_raw = { 0, 0, 0 };
-        private readonly ushort[] stick2_cal = { 0, 0, 0, 0, 0, 0 };
-        private readonly ushort[] stick2_precal = { 0, 0 };
+        private readonly byte[] _stickRaw = { 0, 0, 0 };
+        private readonly ushort[] _stick2Cal = { 0, 0, 0, 0, 0, 0 };
+        private readonly ushort[] _stick2Precal = { 0, 0 };
 
-        private readonly byte[] stick2_raw = { 0, 0, 0 };
+        private readonly byte[] _stick2Raw = { 0, 0, 0 };
 
-        private readonly bool swapAB = bool.Parse(ConfigurationManager.AppSettings["SwapAB"]);
-        private readonly bool swapXY = bool.Parse(ConfigurationManager.AppSettings["SwapXY"]);
-        private readonly bool UseFilteredIMU = bool.Parse(ConfigurationManager.AppSettings["UseFilteredIMU"]);
+        private readonly bool _swapAB = bool.Parse(ConfigurationManager.AppSettings["SwapAB"]);
+        private readonly bool _swapXY = bool.Parse(ConfigurationManager.AppSettings["SwapXY"]);
+        private readonly bool _useFilteredIMU = bool.Parse(ConfigurationManager.AppSettings["UseFilteredIMU"]);
 
         private Joycon _other;
-        private Vector3 acc_g = Vector3.Zero;
-        public bool active_gyro;
+        private Vector3 _accG = Vector3.Zero;
+        public bool ActiveGyro;
 
-        private float[] activeIMUData;
-        private ushort activeStick1DeadZoneData;
-        private ushort activeStick2DeadZoneData;
+        private float[] _activeIMUData;
+        private ushort _activeStick1DeadZoneData;
+        private ushort _activeStick2DeadZoneData;
 
-        public int battery = -1;
+        public int Battery = -1;
 
-        public int connection = 3;
-        public int constate = 2;
-        private ushort deadzone;
-        private ushort deadzone2;
-        public DebugType debug_type = (DebugType)int.Parse(ConfigurationManager.AppSettings["DebugType"]);
+        public readonly int Connection = 3;
+        public readonly int Constate = 2;
+        private ushort _deadzone;
+        private ushort _deadzone2;
+        private readonly DebugType _debugType = (DebugType)int.Parse(ConfigurationManager.AppSettings["DebugType"]);
 
-        private bool do_localize;
-        private float filterweight;
+        private bool _doLocalize;
+        private float _filterweight;
 
-        public MainForm form;
+        public MainForm Form;
 
-        private byte global_count;
-        private Vector3 gyr_g = Vector3.Zero;
+        private byte _globalCount;
+        private Vector3 _gyrG = Vector3.Zero;
 
-        private IntPtr handle;
-        private bool hasShaked;
+        private IntPtr _handle;
+        private bool _hasShaked;
 
         //public DebugType debug_type = DebugType.NONE; //Keep this for manual debugging during development.
-        public bool isLeft;
-        public bool isThirdParty;
-        public bool isUSB;
-        private long lastDoubleClick = -1;
-        public int model = 2;
-        public OutputControllerDualShock4 out_ds4;
+        public readonly bool IsLeft;
+        public readonly bool IsThirdParty;
+        public readonly bool IsUSB;
+        private long _lastDoubleClick = -1;
+        public readonly int Model = 2;
+        public OutputControllerDualShock4 OutDs4;
 
-        public OutputControllerXbox360 out_xbox;
-        public int packetCounter;
+        public OutputControllerXbox360 OutXbox;
+        public int PacketCounter;
 
         // For UdpServer
-        public int PadId;
+        public readonly int PadId;
 
         public PhysicalAddress PadMacAddress = new(new byte[] { 01, 02, 03, 04, 05, 06 });
-        public string path = string.Empty;
+        public readonly string Path = string.Empty;
 
-        private Thread PollThreadObj;
+        private Thread _pollThreadObj;
 
-        private Rumble rumble_obj;
+        private Rumble _rumbleObj;
 
-        public bool send = true;
+        public bool Send = true;
 
-        public string serial_number;
-        private long shakedTime;
-        public state_ state;
+        public readonly string SerialNumber;
+        private long _shakedTime;
+        public Status State;
 
-        private float[] stick = { 0, 0 };
-        private float[] stick2 = { 0, 0 };
+        private float[] _stick = { 0, 0 };
+        private float[] _stick2 = { 0, 0 };
 
-        private bool stop_polling = true;
+        private bool _stopPolling = true;
         public ulong Timestamp;
 
-        private long timestampActivity = Stopwatch.GetTimestamp();
+        private long _timestampActivity = Stopwatch.GetTimestamp();
 
-        private byte ts_en;
+        private byte _tsEn;
 
-        public ControllerType type = ControllerType.JOYCON;
+        public readonly ControllerType Type = ControllerType.Joycon;
 
         public Joycon(
-            IntPtr handle_,
+            IntPtr handle,
             bool imu,
             bool localize,
             float alpha,
@@ -251,62 +251,62 @@ namespace BetterJoyForCemu
             string serialNum,
             bool isUSB,
             int id = 0,
-            ControllerType type = ControllerType.JOYCON,
+            ControllerType type = ControllerType.Joycon,
             bool isThirdParty = false
         )
         {
-            serial_number = serialNum;
-            activeIMUData = new float[6];
-            activeStick1Data = new ushort[6];
-            activeStick2Data = new ushort[6];
-            noCalibrationSticksData = new ushort[6] { 2048, 2048, 2048, 2048, 2048, 2048 };
-            noCalibrationDeadzone = calculateDeadzone(noCalibrationSticksData, defaultDeadzone);
-            handle = handle_;
-            imu_enabled = imu;
-            do_localize = localize;
-            rumble_obj = new Rumble(new float[] { lowFreq, highFreq, 0 });
-            for (var i = 0; i < buttons_down_timestamp.Length; i++)
+            SerialNumber = serialNum;
+            _activeIMUData = new float[6];
+            _activeStick1Data = new ushort[6];
+            _activeStick2Data = new ushort[6];
+            _noCalibrationSticksData = new ushort[6] { 2048, 2048, 2048, 2048, 2048, 2048 };
+            _noCalibrationDeadzone = CalculateDeadzone(_noCalibrationSticksData, DefaultDeadzone);
+            _handle = handle;
+            _IMUEnabled = imu;
+            _doLocalize = localize;
+            _rumbleObj = new Rumble(new float[] { LowFreq, HighFreq, 0 });
+            for (var i = 0; i < _buttonsDownTimestamp.Length; i++)
             {
-                buttons_down_timestamp[i] = -1;
+                _buttonsDownTimestamp[i] = -1;
             }
 
-            filterweight = alpha;
-            isLeft = left;
+            _filterweight = alpha;
+            IsLeft = left;
 
             PadId = id;
             LED = (byte)(0x1 << PadId);
 
-            this.isUSB = isUSB;
-            this.type = type;
-            this.isThirdParty = isThirdParty;
-            this.path = path;
+            IsUSB = isUSB;
+            Type = type;
+            IsThirdParty = isThirdParty;
+            Path = path;
 
-            connection = isUSB ? 0x01 : 0x02;
+            Connection = isUSB ? 0x01 : 0x02;
 
-            if (showAsXInput)
+            if (ShowAsXInput)
             {
-                out_xbox = new OutputControllerXbox360();
-                if (toRumble)
+                OutXbox = new OutputControllerXbox360();
+                if (ToRumble)
                 {
-                    out_xbox.FeedbackReceived += ReceiveRumble;
+                    OutXbox.FeedbackReceived += ReceiveRumble;
                 }
             }
 
-            if (showAsDS4)
+            if (ShowAsDs4)
             {
-                out_ds4 = new OutputControllerDualShock4();
-                if (toRumble)
+                OutDs4 = new OutputControllerDualShock4();
+                if (ToRumble)
                 {
-                    out_ds4.FeedbackReceived += Ds4_FeedbackReceived;
+                    OutDs4.FeedbackReceived += Ds4_FeedbackReceived;
                 }
             }
         }
 
-        public bool isPro => type is ControllerType.PRO or ControllerType.SNES;
+        public bool IsPro => Type is ControllerType.Pro or ControllerType.SNES;
 
-        public bool isSnes => type == ControllerType.SNES;
+        public bool IsSNES => Type == ControllerType.SNES;
 
-        public Joycon other
+        public Joycon Other
         {
             get => _other;
             set
@@ -338,7 +338,7 @@ namespace BetterJoyForCemu
                 id = 3;
             }
 
-            if (useIncrementalLights)
+            if (UseIncrementalLights)
             {
                 // Set all LEDs from 0 to the given id to lit
                 var ledId = id;
@@ -356,23 +356,23 @@ namespace BetterJoyForCemu
             SetPlayerLED(LED);
         }
 
-        public void getActiveIMUData()
+        public void GetActiveIMUData()
         {
-            activeIMUData = form.activeCaliIMUData(serial_number);
+            _activeIMUData = Form.ActiveCaliIMUData(SerialNumber);
         }
 
-        public void getActiveSticksData()
+        public void GetActiveSticksData()
         {
             {
-                var activeSticksData = form.activeCaliSticksData(serial_number);
-                Array.Copy(activeSticksData, activeStick1Data, 6);
-                Array.Copy(activeSticksData, 6, activeStick2Data, 0, 6);
+                var activeSticksData = Form.ActiveCaliSticksData(SerialNumber);
+                Array.Copy(activeSticksData, _activeStick1Data, 6);
+                Array.Copy(activeSticksData, 6, _activeStick2Data, 0, 6);
             }
-            activeStick1DeadZoneData = calculateDeadzone(activeStick1Data, defaultDeadzone);
-            activeStick2DeadZoneData = calculateDeadzone(activeStick2Data, defaultDeadzone);
+            _activeStick1DeadZoneData = CalculateDeadzone(_activeStick1Data, DefaultDeadzone);
+            _activeStick2DeadZoneData = CalculateDeadzone(_activeStick2Data, DefaultDeadzone);
         }
 
-        public ushort calculateDeadzone(ushort[] stickDatas, float deadzone)
+        public ushort CalculateDeadzone(ushort[] stickDatas, float deadzone)
         {
             var deadzone1 = (ushort)Math.Round(Math.Abs(stickDatas[0] + stickDatas[4]) * deadzone);
             var deadzone2 = (ushort)Math.Round(Math.Abs(stickDatas[1] + stickDatas[5]) * deadzone);
@@ -382,74 +382,74 @@ namespace BetterJoyForCemu
 
         public void ReceiveRumble(Xbox360FeedbackReceivedEventArgs e)
         {
-            DebugPrint("Rumble data Received: XInput", DebugType.RUMBLE);
-            SetRumble(lowFreq, highFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+            DebugPrint("Rumble data Received: XInput", DebugType.Rumble);
+            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
 
-            if (other != null && other != this)
+            if (Other != null && Other != this)
             {
-                other.SetRumble(lowFreq, highFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
             }
         }
 
         public void Ds4_FeedbackReceived(DualShock4FeedbackReceivedEventArgs e)
         {
-            DebugPrint("Rumble data Received: DS4", DebugType.RUMBLE);
-            SetRumble(lowFreq, highFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+            DebugPrint("Rumble data Received: DS4", DebugType.Rumble);
+            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
 
-            if (other != null && other != this)
+            if (Other != null && Other != this)
             {
-                other.SetRumble(lowFreq, highFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
             }
         }
 
         public void DebugPrint(string s, DebugType d)
         {
-            if (debug_type == DebugType.NONE)
+            if (_debugType == DebugType.None)
             {
                 return;
             }
 
-            if (d == DebugType.ALL || d == debug_type || debug_type == DebugType.ALL)
+            if (d == DebugType.All || d == _debugType || _debugType == DebugType.All)
             {
-                form.AppendTextBox("[J" + (PadId + 1) + "] " + s);
+                Form.AppendTextBox("[J" + (PadId + 1) + "] " + s);
             }
         }
 
         public Vector3 GetGyro()
         {
-            return gyr_g;
+            return _gyrG;
         }
 
         public Vector3 GetAccel()
         {
-            return acc_g;
+            return _accG;
         }
 
         public void Reset()
         {
-            form.AppendTextBox("Resetting connection.");
+            Form.AppendTextBox("Resetting connection.");
             SetHCIState(0x01);
         }
 
         public int Attach()
         {
-            state = state_.ATTACHED;
+            State = Status.Attached;
 
             // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
             // do not always send a response so we don't check if there is one
             Subcommand(0x3, new byte[] { 0x3F }, 1);
 
             // Connect
-            if (isUSB)
+            if (IsUSB)
             {
-                form.AppendTextBox("Using USB.");
+                Form.AppendTextBox("Using USB.");
 
-                var buf = new byte[report_len];
+                var buf = new byte[ReportLen];
 
                 // Get MAC
                 buf[0] = 0x80;
                 buf[1] = 0x1;
-                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
                 if (ReadUSBCheck(buf, 0x1) == 0)
                 {
                     // can occur when USB connection isn't closed properly
@@ -465,7 +465,7 @@ namespace BetterJoyForCemu
                 // USB Pairing
                 buf[0] = 0x80;
                 buf[1] = 0x2; // Handshake
-                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
                 if (ReadUSBCheck(buf, 0x2) == 0)
                 {
                     // can occur when another software sends commands to the device, disable PurgeAffectedDevice in the config to avoid this
@@ -475,7 +475,7 @@ namespace BetterJoyForCemu
 
                 buf[0] = 0x80;
                 buf[1] = 0x3; // 3Mbit baud rate
-                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
                 if (ReadUSBCheck(buf, 0x3) == 0)
                 {
                     Reset();
@@ -484,7 +484,7 @@ namespace BetterJoyForCemu
 
                 buf[0] = 0x80;
                 buf[1] = 0x2; // Handshake at new baud rate
-                HIDapi.hid_write(handle, buf, new UIntPtr(2));
+                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
                 if (ReadUSBCheck(buf, 0x2) == 0)
                 {
                     Reset();
@@ -493,11 +493,11 @@ namespace BetterJoyForCemu
 
                 buf[0] = 0x80;
                 buf[1] = 0x4; // Prevent HID timeout
-                HIDapi.hid_write(handle, buf, new UIntPtr(2)); // does not send a response
+                HIDApi.hid_write(_handle, buf, new UIntPtr(2)); // does not send a response
             }
             else
             {
-                form.AppendTextBox("Using Bluetooth.");
+                Form.AppendTextBox("Using Bluetooth.");
             }
 
             var ok = dump_calibration_data();
@@ -518,24 +518,24 @@ namespace BetterJoyForCemu
             BlinkHomeLight();
             SetLEDByPlayerNum(PadId);
 
-            Subcommand(0x40, new[] { imu_enabled ? (byte)0x1 : (byte)0x0 }, 1); // enable IMU
+            Subcommand(0x40, new[] { _IMUEnabled ? (byte)0x1 : (byte)0x0 }, 1); // enable IMU
             Subcommand(0x48, new byte[] { 0x01 }, 1); // enable vibrations
             Subcommand(0x3, new byte[] { 0x30 }, 1); // set report mode to NPad standard mode
 
-            DebugPrint("Done with init.", DebugType.COMMS);
+            DebugPrint("Done with init.", DebugType.Comms);
 
             return 0;
         }
 
-        public void SetPlayerLED(byte leds_ = 0x0)
+        public void SetPlayerLED(byte leds = 0x0)
         {
-            Subcommand(0x30, new[] { leds_ }, 1);
+            Subcommand(0x30, new[] { leds }, 1);
         }
 
         public void BlinkHomeLight()
         {
             // do not call after initial setup
-            if (isThirdParty)
+            if (IsThirdParty)
             {
                 return;
             }
@@ -548,7 +548,7 @@ namespace BetterJoyForCemu
 
         public void SetHomeLight(bool on)
         {
-            if (isThirdParty)
+            if (IsThirdParty)
             {
                 return;
             }
@@ -575,43 +575,43 @@ namespace BetterJoyForCemu
 
         public void PowerOff()
         {
-            if (state > state_.DROPPED)
+            if (State > Status.Dropped)
             {
                 SetHCIState(0x00);
-                state = state_.DROPPED;
+                State = Status.Dropped;
             }
         }
 
         private void BatteryChanged()
         {
             // battery changed level
-            form.setBatteryColor(this, battery);
+            Form.SetBatteryColor(this, Battery);
 
-            if (!isUSB && battery <= 1)
+            if (!IsUSB && Battery <= 1)
             {
-                var msg = $"Controller {PadId} ({getControllerName()}) - low battery notification!";
-                form.tooltip(msg);
+                var msg = $"Controller {PadId} ({GetControllerName()}) - low battery notification!";
+                Form.Tooltip(msg);
             }
         }
 
         public void SetFilterCoeff(float a)
         {
-            filterweight = a;
+            _filterweight = a;
         }
 
         public void Detach(bool close = true)
         {
-            stop_polling = true;
-            PollThreadObj?.Join();
+            _stopPolling = true;
+            _pollThreadObj?.Join();
 
             DisconnectViGEm();
 
-            if (state > state_.NO_JOYCONS)
+            if (State > Status.NoJoycons)
             {
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
                 //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
-                if (isUSB)
+                if (IsUSB)
                 {
                     // Commented because you need to restart the controller to reconnect in usb again with the following
                     //var buf = new byte[report_len];
@@ -624,63 +624,63 @@ namespace BetterJoyForCemu
                 }
             }
 
-            if (close && handle != IntPtr.Zero)
+            if (close && _handle != IntPtr.Zero)
             {
-                HIDapi.hid_close(handle);
-                handle = IntPtr.Zero;
+                HIDApi.hid_close(_handle);
+                _handle = IntPtr.Zero;
             }
 
-            state = state_.NOT_ATTACHED;
+            State = Status.NotAttached;
         }
 
         public void Drop()
         {
-            stop_polling = true;
-            PollThreadObj?.Join();
+            _stopPolling = true;
+            _pollThreadObj?.Join();
 
-            state = state_.DROPPED;
+            State = Status.Dropped;
         }
 
         public void ConnectViGEm()
         {
-            out_xbox?.Connect();
-            out_ds4?.Connect();
+            OutXbox?.Connect();
+            OutDs4?.Connect();
         }
 
         public void DisconnectViGEm()
         {
-            if (out_xbox != null)
+            if (OutXbox != null)
             {
                 try
                 {
-                    out_xbox.Disconnect();
+                    OutXbox.Disconnect();
                 }
                 catch { } // nothing we can do, might not be connected in the first place
 
-                out_xbox = null;
+                OutXbox = null;
             }
 
-            if (out_ds4 != null)
+            if (OutDs4 != null)
             {
                 try
                 {
-                    out_ds4.Disconnect();
+                    OutDs4.Disconnect();
                 }
                 catch { } // nothing we can do, might not be connected in the first place
 
-                out_ds4 = null;
+                OutDs4 = null;
             }
         }
 
         // Run from poll thread
         private ReceiveError ReceiveRaw(byte[] buf)
         {
-            if (handle == IntPtr.Zero)
+            if (_handle == IntPtr.Zero)
             {
                 return ReceiveError.InvalidHandle;
             }
 
-            var length = HIDapi.hid_read_timeout(handle, buf, new UIntPtr(report_len), 5);
+            var length = HIDApi.hid_read_timeout(_handle, buf, new UIntPtr(ReportLen), 5);
             if (length < 0)
             {
                 return ReceiveError.ReadError;
@@ -698,9 +698,9 @@ namespace BetterJoyForCemu
             }
 
             // clear remaining of buffer just to be safe
-            if (length < report_len)
+            if (length < ReportLen)
             {
-                Array.Clear(buf, length, report_len - length);
+                Array.Clear(buf, length, ReportLen - length);
             }
 
             // Process packets as soon as they come
@@ -710,15 +710,15 @@ namespace BetterJoyForCemu
 
                 if (n == 0)
                 {
-                    var lag = (byte)Math.Max(0, buf[1] - ts_en - 3); // why -3 ?
+                    var lag = (byte)Math.Max(0, buf[1] - _tsEn - 3); // why -3 ?
                     Timestamp += (ulong)lag * 5000; // add lag once
                     ProcessButtonsAndStick(buf);
 
                     DoThingsWithButtons();
 
-                    var prevBattery = battery;
-                    battery = (buf[2] >> 4) / 2;
-                    if (prevBattery != battery)
+                    var prevBattery = Battery;
+                    Battery = (buf[2] >> 4) / 2;
+                    if (prevBattery != Battery)
                     {
                         BatteryChanged();
                     }
@@ -726,35 +726,35 @@ namespace BetterJoyForCemu
 
                 Timestamp += 5000; // 5ms difference
 
-                packetCounter++;
-                Program.server?.NewReportIncoming(this);
+                PacketCounter++;
+                Program.Server?.NewReportIncoming(this);
             }
 
-            if (out_ds4 != null)
+            if (OutDs4 != null)
             {
                 try
                 {
-                    out_ds4.UpdateInput(MapToDualShock4Input(this));
+                    OutDs4.UpdateInput(MapToDualShock4Input(this));
                 }
                 catch { } // ignore
             }
 
-            if (out_xbox != null)
+            if (OutXbox != null)
             {
                 try
                 {
-                    out_xbox.UpdateInput(MapToXbox360Input(this));
+                    OutXbox.UpdateInput(MapToXbox360Input(this));
                 }
                 catch { } // ignore
             }
 
-            if (ts_en == buf[1] && !isSnes)
+            if (_tsEn == buf[1] && !IsSNES)
             {
-                form.AppendTextBox("Duplicate timestamp enqueued.");
-                DebugPrint($"Duplicate timestamp enqueued. TS: {ts_en:X2}", DebugType.THREADING);
+                Form.AppendTextBox("Duplicate timestamp enqueued.");
+                DebugPrint($"Duplicate timestamp enqueued. TS: {_tsEn:X2}", DebugType.Threading);
             }
 
-            ts_en = buf[1];
+            _tsEn = buf[1];
             //DebugPrint($"Enqueue. Bytes read: {length:D}. Type: {buf[0]:X2} Timestamp: {buf[1]:X2}", DebugType.THREADING);
 
             return ReceiveError.None;
@@ -762,34 +762,34 @@ namespace BetterJoyForCemu
 
         private void DetectShake()
         {
-            if (form.shakeInputEnabled)
+            if (Form.ShakeInputEnabled)
             {
-                var currentShakeTime = shakeTimer.ElapsedMilliseconds;
+                var currentShakeTime = _shakeTimer.ElapsedMilliseconds;
 
                 // Shake detection logic
-                var isShaking = GetAccel().LengthSquared() >= form.shakeSesitivity;
-                if ((isShaking && currentShakeTime >= shakedTime + form.shakeDelay) || (isShaking && shakedTime == 0))
+                var isShaking = GetAccel().LengthSquared() >= Form.ShakeSesitivity;
+                if ((isShaking && currentShakeTime >= _shakedTime + Form.ShakeDelay) || (isShaking && _shakedTime == 0))
                 {
-                    shakedTime = currentShakeTime;
-                    hasShaked = true;
+                    _shakedTime = currentShakeTime;
+                    _hasShaked = true;
 
                     // Mapped shake key down
                     Simulate(Config.Value("shake"), false);
-                    DebugPrint("Shaked at time: " + shakedTime, DebugType.SHAKE);
+                    DebugPrint("Shaked at time: " + _shakedTime, DebugType.Shake);
                 }
 
                 // If controller was shaked then release mapped key after a small delay to simulate a button press, then reset hasShaked
-                if (hasShaked && currentShakeTime >= shakedTime + 10)
+                if (_hasShaked && currentShakeTime >= _shakedTime + 10)
                 {
                     // Mapped shake key up
                     Simulate(Config.Value("shake"), false, true);
-                    DebugPrint("Shake completed", DebugType.SHAKE);
-                    hasShaked = false;
+                    DebugPrint("Shake completed", DebugType.Shake);
+                    _hasShaked = false;
                 }
             }
             else
             {
-                shakeTimer.Stop();
+                _shakeTimer.Stop();
             }
         }
 
@@ -823,12 +823,12 @@ namespace BetterJoyForCemu
                 }
                 else
                 {
-                    if (dragToggle)
+                    if (_dragToggle)
                     {
                         if (!up)
                         {
                             bool release;
-                            mouse_toggle_btn.TryGetValue((int)button, out release);
+                            _mouseToggleBtn.TryGetValue((int)button, out release);
                             if (release)
                             {
                                 WindowsInput.Simulate.Events().Release(button).Invoke();
@@ -838,7 +838,7 @@ namespace BetterJoyForCemu
                                 WindowsInput.Simulate.Events().Hold(button).Invoke();
                             }
 
-                            mouse_toggle_btn[(int)button] = !release;
+                            _mouseToggleBtn[(int)button] = !release;
                         }
                     }
                     else
@@ -862,55 +862,55 @@ namespace BetterJoyForCemu
             if (s.StartsWith("joy_"))
             {
                 var button = int.Parse(s.AsSpan(4));
-                lock (buttons)
+                lock (_buttons)
                 {
-                    buttons[button] |= buttons[origin];
+                    _buttons[button] |= _buttons[origin];
                 }
             }
         }
 
         private void DoThingsWithButtons()
         {
-            var powerOffButton = (int)(isPro || !isLeft || other != null ? Button.HOME : Button.CAPTURE);
+            var powerOffButton = (int)(IsPro || !IsLeft || Other != null ? Button.Home : Button.Capture);
 
             var timestampNow = Stopwatch.GetTimestamp();
-            if (HomeLongPowerOff && buttons[powerOffButton])
+            if (_homeLongPowerOff && _buttons[powerOffButton])
             {
-                var powerOffPressedDurationMs = (timestampNow - buttons_down_timestamp[powerOffButton]) / 10000;
+                var powerOffPressedDurationMs = (timestampNow - _buttonsDownTimestamp[powerOffButton]) / 10000;
                 if (powerOffPressedDurationMs > 2000)
                 {
-                    other?.PowerOff();
+                    Other?.PowerOff();
                     PowerOff();
                     return;
                 }
             }
 
-            if (!isPro)
+            if (!IsPro)
             {
-                if (ChangeOrientationDoubleClick && buttons_down[(int)Button.STICK] && lastDoubleClick != -1)
+                if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick] && _lastDoubleClick != -1)
                 {
-                    if (buttons_down_timestamp[(int)Button.STICK] - lastDoubleClick < 3000000)
+                    if (_buttonsDownTimestamp[(int)Button.Stick] - _lastDoubleClick < 3000000)
                     {
-                        form.conBtnClick(PadId); // trigger connection button click
+                        Form.ConBtnClick(PadId); // trigger connection button click
 
-                        lastDoubleClick = buttons_down_timestamp[(int)Button.STICK];
+                        _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                         return;
                     }
 
-                    lastDoubleClick = buttons_down_timestamp[(int)Button.STICK];
+                    _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                 }
-                else if (ChangeOrientationDoubleClick && buttons_down[(int)Button.STICK])
+                else if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick])
                 {
-                    lastDoubleClick = buttons_down_timestamp[(int)Button.STICK];
+                    _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                 }
             }
 
-            if (PowerOffInactivityMins > 0)
+            if (_powerOffInactivityMins > 0)
             {
-                var timeSinceActivityMs = (timestampNow - timestampActivity) / 10000;
-                if (timeSinceActivityMs > PowerOffInactivityMins * 60 * 1000)
+                var timeSinceActivityMs = (timestampNow - _timestampActivity) / 10000;
+                if (timeSinceActivityMs > _powerOffInactivityMins * 60 * 1000)
                 {
-                    other?.PowerOff();
+                    Other?.PowerOff();
                     PowerOff();
                     return;
                 }
@@ -918,47 +918,47 @@ namespace BetterJoyForCemu
 
             DetectShake();
 
-            if (buttons_down[(int)Button.CAPTURE])
+            if (_buttonsDown[(int)Button.Capture])
             {
                 Simulate(Config.Value("capture"), false);
             }
 
-            if (buttons_up[(int)Button.CAPTURE])
+            if (_buttonsUp[(int)Button.Capture])
             {
                 Simulate(Config.Value("capture"), false, true);
             }
 
-            if (buttons_down[(int)Button.HOME])
+            if (_buttonsDown[(int)Button.Home])
             {
                 Simulate(Config.Value("home"), false);
             }
 
-            if (buttons_up[(int)Button.HOME])
+            if (_buttonsUp[(int)Button.Home])
             {
                 Simulate(Config.Value("home"), false, true);
             }
 
-            SimulateContinous((int)Button.CAPTURE, Config.Value("capture"));
-            SimulateContinous((int)Button.HOME, Config.Value("home"));
+            SimulateContinous((int)Button.Capture, Config.Value("capture"));
+            SimulateContinous((int)Button.Home, Config.Value("home"));
 
-            if (isLeft)
+            if (IsLeft)
             {
-                if (buttons_down[(int)Button.SL])
+                if (_buttonsDown[(int)Button.SL])
                 {
                     Simulate(Config.Value("sl_l"), false);
                 }
 
-                if (buttons_up[(int)Button.SL])
+                if (_buttonsUp[(int)Button.SL])
                 {
                     Simulate(Config.Value("sl_l"), false, true);
                 }
 
-                if (buttons_down[(int)Button.SR])
+                if (_buttonsDown[(int)Button.SR])
                 {
                     Simulate(Config.Value("sr_l"), false);
                 }
 
-                if (buttons_up[(int)Button.SR])
+                if (_buttonsUp[(int)Button.SR])
                 {
                     Simulate(Config.Value("sr_l"), false, true);
                 }
@@ -968,22 +968,22 @@ namespace BetterJoyForCemu
             }
             else
             {
-                if (buttons_down[(int)Button.SL])
+                if (_buttonsDown[(int)Button.SL])
                 {
                     Simulate(Config.Value("sl_r"), false);
                 }
 
-                if (buttons_up[(int)Button.SL])
+                if (_buttonsUp[(int)Button.SL])
                 {
                     Simulate(Config.Value("sl_r"), false, true);
                 }
 
-                if (buttons_down[(int)Button.SR])
+                if (_buttonsDown[(int)Button.SR])
                 {
                     Simulate(Config.Value("sr_r"), false);
                 }
 
-                if (buttons_up[(int)Button.SR])
+                if (_buttonsUp[(int)Button.SR])
                 {
                     Simulate(Config.Value("sr_r"), false, true);
                 }
@@ -993,121 +993,121 @@ namespace BetterJoyForCemu
             }
 
             // Filtered IMU data
-            AHRS.GetEulerAngles(cur_rotation);
+            _AHRS.GetEulerAngles(_curRotation);
             const float dt = 0.015f; // 15ms
 
-            if (GyroAnalogSliders && (other != null || isPro))
+            if (_gyroAnalogSliders && (Other != null || IsPro))
             {
-                var leftT = isLeft ? Button.SHOULDER_2 : Button.SHOULDER2_2;
-                var rightT = isLeft ? Button.SHOULDER2_2 : Button.SHOULDER_2;
-                var left = isLeft || isPro ? this : other;
-                var right = !isLeft || isPro ? this : other;
+                var leftT = IsLeft ? Button.Shoulder2 : Button.Shoulder22;
+                var rightT = IsLeft ? Button.Shoulder22 : Button.Shoulder2;
+                var left = IsLeft || IsPro ? this : Other;
+                var right = !IsLeft || IsPro ? this : Other;
 
                 int ldy, rdy;
-                if (UseFilteredIMU)
+                if (_useFilteredIMU)
                 {
-                    ldy = (int)(GyroAnalogSensitivity * (left.cur_rotation[0] - left.cur_rotation[3]));
-                    rdy = (int)(GyroAnalogSensitivity * (right.cur_rotation[0] - right.cur_rotation[3]));
+                    ldy = (int)(_gyroAnalogSensitivity * (left._curRotation[0] - left._curRotation[3]));
+                    rdy = (int)(_gyroAnalogSensitivity * (right._curRotation[0] - right._curRotation[3]));
                 }
                 else
                 {
-                    ldy = (int)(GyroAnalogSensitivity * (left.gyr_g.Y * dt));
-                    rdy = (int)(GyroAnalogSensitivity * (right.gyr_g.Y * dt));
+                    ldy = (int)(_gyroAnalogSensitivity * (left._gyrG.Y * dt));
+                    rdy = (int)(_gyroAnalogSensitivity * (right._gyrG.Y * dt));
                 }
 
-                if (buttons[(int)leftT])
+                if (_buttons[(int)leftT])
                 {
-                    sliderVal[0] = (byte)Math.Min(byte.MaxValue, Math.Max(0, sliderVal[0] + ldy));
+                    _sliderVal[0] = (byte)Math.Min(byte.MaxValue, Math.Max(0, _sliderVal[0] + ldy));
                 }
                 else
                 {
-                    sliderVal[0] = 0;
+                    _sliderVal[0] = 0;
                 }
 
-                if (buttons[(int)rightT])
+                if (_buttons[(int)rightT])
                 {
-                    sliderVal[1] = (byte)Math.Min(byte.MaxValue, Math.Max(0, sliderVal[1] + rdy));
+                    _sliderVal[1] = (byte)Math.Min(byte.MaxValue, Math.Max(0, _sliderVal[1] + rdy));
                 }
                 else
                 {
-                    sliderVal[1] = 0;
+                    _sliderVal[1] = 0;
                 }
             }
 
-            var res_val = Config.Value("active_gyro");
-            if (res_val.StartsWith("joy_"))
+            var resVal = Config.Value("active_gyro");
+            if (resVal.StartsWith("joy_"))
             {
-                var i = int.Parse(res_val.AsSpan(4));
-                if (GyroHoldToggle)
+                var i = int.Parse(resVal.AsSpan(4));
+                if (_gyroHoldToggle)
                 {
-                    if (buttons_down[i] || (other != null && other.buttons_down[i]))
+                    if (_buttonsDown[i] || (Other != null && Other._buttonsDown[i]))
                     {
-                        active_gyro = true;
+                        ActiveGyro = true;
                     }
-                    else if (buttons_up[i] || (other != null && other.buttons_up[i]))
+                    else if (_buttonsUp[i] || (Other != null && Other._buttonsUp[i]))
                     {
-                        active_gyro = false;
+                        ActiveGyro = false;
                     }
                 }
                 else
                 {
-                    if (buttons_down[i] || (other != null && other.buttons_down[i]))
+                    if (_buttonsDown[i] || (Other != null && Other._buttonsDown[i]))
                     {
-                        active_gyro = !active_gyro;
+                        ActiveGyro = !ActiveGyro;
                     }
                 }
             }
 
-            if (extraGyroFeature.AsSpan(0, 3) == "joy")
+            if (_extraGyroFeature.AsSpan(0, 3) == "joy")
             {
-                if (Config.Value("active_gyro") == "0" || active_gyro)
+                if (Config.Value("active_gyro") == "0" || ActiveGyro)
                 {
-                    var control_stick = extraGyroFeature == "joy_left" ? stick : stick2;
+                    var controlStick = _extraGyroFeature == "joy_left" ? _stick : _stick2;
 
                     float dx, dy;
-                    if (UseFilteredIMU)
+                    if (_useFilteredIMU)
                     {
-                        dx = GyroStickSensitivityX * (cur_rotation[1] - cur_rotation[4]); // yaw
-                        dy = -(GyroStickSensitivityY * (cur_rotation[0] - cur_rotation[3])); // pitch
+                        dx = _gyroStickSensitivityX * (_curRotation[1] - _curRotation[4]); // yaw
+                        dy = -(_gyroStickSensitivityY * (_curRotation[0] - _curRotation[3])); // pitch
                     }
                     else
                     {
-                        dx = GyroStickSensitivityX * (gyr_g.Z * dt); // yaw
-                        dy = -(GyroStickSensitivityY * (gyr_g.Y * dt)); // pitch
+                        dx = _gyroStickSensitivityX * (_gyrG.Z * dt); // yaw
+                        dy = -(_gyroStickSensitivityY * (_gyrG.Y * dt)); // pitch
                     }
 
-                    control_stick[0] = Math.Max(-1.0f, Math.Min(1.0f, control_stick[0] / GyroStickReduction + dx));
-                    control_stick[1] = Math.Max(-1.0f, Math.Min(1.0f, control_stick[1] / GyroStickReduction + dy));
+                    controlStick[0] = Math.Max(-1.0f, Math.Min(1.0f, controlStick[0] / _gyroStickReduction + dx));
+                    controlStick[1] = Math.Max(-1.0f, Math.Min(1.0f, controlStick[1] / _gyroStickReduction + dy));
                 }
             }
-            else if (extraGyroFeature == "mouse" &&
-                     (isPro || other == null || (other != null && (GyroMouseLeftHanded ? isLeft : !isLeft))))
+            else if (_extraGyroFeature == "mouse" &&
+                     (IsPro || Other == null || (Other != null && (_gyroMouseLeftHanded ? IsLeft : !IsLeft))))
             {
                 // gyro data is in degrees/s
-                if (Config.Value("active_gyro") == "0" || active_gyro)
+                if (Config.Value("active_gyro") == "0" || ActiveGyro)
                 {
                     int dx, dy;
 
-                    if (UseFilteredIMU)
+                    if (_useFilteredIMU)
                     {
-                        dx = (int)(GyroMouseSensitivityX * (cur_rotation[1] - cur_rotation[4])); // yaw
-                        dy = (int)-(GyroMouseSensitivityY * (cur_rotation[0] - cur_rotation[3])); // pitch
+                        dx = (int)(_gyroMouseSensitivityX * (_curRotation[1] - _curRotation[4])); // yaw
+                        dy = (int)-(_gyroMouseSensitivityY * (_curRotation[0] - _curRotation[3])); // pitch
                     }
                     else
                     {
-                        dx = (int)(GyroMouseSensitivityX * (gyr_g.Z * dt));
-                        dy = (int)-(GyroMouseSensitivityY * (gyr_g.Y * dt));
+                        dx = (int)(_gyroMouseSensitivityX * (_gyrG.Z * dt));
+                        dy = (int)-(_gyroMouseSensitivityY * (_gyrG.Y * dt));
                     }
 
                     WindowsInput.Simulate.Events().MoveBy(dx, dy).Invoke();
                 }
 
                 // reset mouse position to centre of primary monitor
-                res_val = Config.Value("reset_mouse");
-                if (res_val.StartsWith("joy_"))
+                resVal = Config.Value("reset_mouse");
+                if (resVal.StartsWith("joy_"))
                 {
-                    var i = int.Parse(res_val.AsSpan(4));
-                    if (buttons_down[i] || (other != null && other.buttons_down[i]))
+                    var i = int.Parse(resVal.AsSpan(4));
+                    if (_buttonsDown[i] || (Other != null && Other._buttonsDown[i]))
                     {
                         WindowsInput.Simulate.Events()
                                     .MoveTo(
@@ -1122,13 +1122,13 @@ namespace BetterJoyForCemu
 
         private void Poll()
         {
-            var buf = new byte[report_len];
-            stop_polling = false;
+            var buf = new byte[ReportLen];
+            _stopPolling = false;
             var attempts = 0;
-            while (!stop_polling && state > state_.NO_JOYCONS)
+            while (!_stopPolling && State > Status.NoJoycons)
             {
                 {
-                    var data = rumble_obj.GetData();
+                    var data = _rumbleObj.GetData();
                     if (data != null)
                     {
                         SendRumble(buf, data);
@@ -1136,22 +1136,22 @@ namespace BetterJoyForCemu
                 }
                 var error = ReceiveRaw(buf);
 
-                if (error == ReceiveError.None && state > state_.DROPPED)
+                if (error == ReceiveError.None && State > Status.Dropped)
                 {
-                    state = state_.IMU_DATA_OK;
+                    State = Status.IMUDataOk;
                     attempts = 0;
                 }
                 else if (attempts > 240)
                 {
-                    state = state_.DROPPED;
-                    form.AppendTextBox("Dropped.");
-                    DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.ALL);
+                    State = Status.Dropped;
+                    Form.AppendTextBox("Dropped.");
+                    DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.All);
                 }
                 else if (error == ReceiveError.InvalidHandle)
                 {
                     // should not happen
-                    state = state_.DROPPED;
-                    form.AppendTextBox("Dropped (invalid handle).");
+                    State = Status.Dropped;
+                    Form.AppendTextBox("Dropped (invalid handle).");
                 }
                 else
                 {
@@ -1167,178 +1167,178 @@ namespace BetterJoyForCemu
             }
         }
 
-        private int ProcessButtonsAndStick(byte[] report_buf)
+        private int ProcessButtonsAndStick(byte[] reportBuf)
         {
-            if (!isSnes)
+            if (!IsSNES)
             {
-                var reportOffset = isLeft ? 0 : 3;
-                stick_raw[0] = report_buf[6 + reportOffset];
-                stick_raw[1] = report_buf[7 + reportOffset];
-                stick_raw[2] = report_buf[8 + reportOffset];
+                var reportOffset = IsLeft ? 0 : 3;
+                _stickRaw[0] = reportBuf[6 + reportOffset];
+                _stickRaw[1] = reportBuf[7 + reportOffset];
+                _stickRaw[2] = reportBuf[8 + reportOffset];
 
-                if (isPro)
+                if (IsPro)
                 {
-                    reportOffset = !isLeft ? 0 : 3;
-                    stick2_raw[0] = report_buf[6 + reportOffset];
-                    stick2_raw[1] = report_buf[7 + reportOffset];
-                    stick2_raw[2] = report_buf[8 + reportOffset];
+                    reportOffset = !IsLeft ? 0 : 3;
+                    _stick2Raw[0] = reportBuf[6 + reportOffset];
+                    _stick2Raw[1] = reportBuf[7 + reportOffset];
+                    _stick2Raw[2] = reportBuf[8 + reportOffset];
                 }
 
-                stick_precal[0] = (ushort)(stick_raw[0] | ((stick_raw[1] & 0xf) << 8));
-                stick_precal[1] = (ushort)((stick_raw[1] >> 4) | (stick_raw[2] << 4));
-                var cal = stick_cal;
-                var dz = deadzone;
-                if (form.allowCalibration)
+                _stickPrecal[0] = (ushort)(_stickRaw[0] | ((_stickRaw[1] & 0xf) << 8));
+                _stickPrecal[1] = (ushort)((_stickRaw[1] >> 4) | (_stickRaw[2] << 4));
+                var cal = _stickCal;
+                var dz = _deadzone;
+                if (Form.AllowCalibration)
                 {
-                    cal = activeStick1Data;
-                    dz = activeStick1DeadZoneData;
-                    if (form.calibrateSticks)
+                    cal = _activeStick1Data;
+                    dz = _activeStick1DeadZoneData;
+                    if (Form.CalibrateSticks)
                     {
-                        form.xS1.Add(stick_precal[0]);
-                        form.yS1.Add(stick_precal[1]);
+                        Form.Xs1.Add(_stickPrecal[0]);
+                        Form.Ys1.Add(_stickPrecal[1]);
                     }
                 }
-                else if (!form.useControllerStickCalibration)
+                else if (!Form.UseControllerStickCalibration)
                 {
-                    cal = noCalibrationSticksData;
-                    dz = noCalibrationDeadzone;
+                    cal = _noCalibrationSticksData;
+                    dz = _noCalibrationDeadzone;
                 }
 
-                calculateStickCenter(stick_precal, cal, dz, stick);
+                CalculateStickCenter(_stickPrecal, cal, dz, _stick);
 
-                if (isPro)
+                if (IsPro)
                 {
-                    stick2_precal[0] = (ushort)(stick2_raw[0] | ((stick2_raw[1] & 0xf) << 8));
-                    stick2_precal[1] = (ushort)((stick2_raw[1] >> 4) | (stick2_raw[2] << 4));
-                    if (form.allowCalibration)
+                    _stick2Precal[0] = (ushort)(_stick2Raw[0] | ((_stick2Raw[1] & 0xf) << 8));
+                    _stick2Precal[1] = (ushort)((_stick2Raw[1] >> 4) | (_stick2Raw[2] << 4));
+                    if (Form.AllowCalibration)
                     {
-                        cal = activeStick2Data;
-                        dz = activeStick2DeadZoneData;
-                        if (form.calibrateSticks)
+                        cal = _activeStick2Data;
+                        dz = _activeStick2DeadZoneData;
+                        if (Form.CalibrateSticks)
                         {
-                            form.xS2.Add(stick2_precal[0]);
-                            form.yS2.Add(stick2_precal[1]);
+                            Form.Xs2.Add(_stick2Precal[0]);
+                            Form.Ys2.Add(_stick2Precal[1]);
                         }
                     }
-                    else if (form.useControllerStickCalibration)
+                    else if (Form.UseControllerStickCalibration)
                     {
-                        cal = stick2_cal;
-                        dz = deadzone2;
+                        cal = _stick2Cal;
+                        dz = _deadzone2;
                     }
 
-                    calculateStickCenter(stick2_precal, cal, dz, stick2);
+                    CalculateStickCenter(_stick2Precal, cal, dz, _stick2);
                 }
 
-                if (!form.calibrateSticks)
+                if (!Form.CalibrateSticks)
                 {
                     //DebugPrint($"Stick1: X={stick[0]} Y={stick[1]}. Stick2: X={stick2[0]} Y={stick2[1]}", DebugType.THREADING);
                 }
 
                 // Read other Joycon's sticks
-                if (other != null && other != this)
+                if (Other != null && Other != this)
                 {
-                    lock (otherStick)
+                    lock (_otherStick)
                     {
                         // Read other stick sent by other joycon
-                        if (isLeft)
+                        if (IsLeft)
                         {
-                            Array.Copy(otherStick, stick2, 2);
+                            Array.Copy(_otherStick, _stick2, 2);
                         }
                         else
                         {
-                            stick = Interlocked.Exchange(ref stick2, stick);
-                            Array.Copy(otherStick, stick, 2);
+                            _stick = Interlocked.Exchange(ref _stick2, _stick);
+                            Array.Copy(_otherStick, _stick, 2);
                         }
                     }
 
-                    lock (other.otherStick)
+                    lock (Other._otherStick)
                     {
                         // Write stick to linked joycon
-                        Array.Copy(isLeft ? stick : stick2, other.otherStick, 2);
+                        Array.Copy(IsLeft ? _stick : _stick2, Other._otherStick, 2);
                     }
                 }
             }
 
             // Set button states both for ViGEm
-            lock (buttons)
+            lock (_buttons)
             {
-                lock (down_)
+                lock (_down)
                 {
-                    Array.Copy(buttons, down_, buttons.Length);
+                    Array.Copy(_buttons, _down, _buttons.Length);
                 }
 
-                Array.Clear(buttons);
+                Array.Clear(_buttons);
 
-                var reportOffset = isLeft ? 2 : 0;
+                var reportOffset = IsLeft ? 2 : 0;
 
-                buttons[(int)Button.DPAD_DOWN] = (report_buf[3 + reportOffset] & (isLeft ? 0x01 : 0x04)) != 0;
-                buttons[(int)Button.DPAD_RIGHT] = (report_buf[3 + reportOffset] & (isLeft ? 0x04 : 0x08)) != 0;
-                buttons[(int)Button.DPAD_UP] = (report_buf[3 + reportOffset] & 0x02) != 0;
-                buttons[(int)Button.DPAD_LEFT] = (report_buf[3 + reportOffset] & (isLeft ? 0x08 : 0x01)) != 0;
-                buttons[(int)Button.HOME] = (report_buf[4] & 0x10) != 0;
-                buttons[(int)Button.CAPTURE] = (report_buf[4] & 0x20) != 0;
-                buttons[(int)Button.MINUS] = (report_buf[4] & 0x01) != 0;
-                buttons[(int)Button.PLUS] = (report_buf[4] & 0x02) != 0;
-                buttons[(int)Button.STICK] = (report_buf[4] & (isLeft ? 0x08 : 0x04)) != 0;
-                buttons[(int)Button.SHOULDER_1] = (report_buf[3 + reportOffset] & 0x40) != 0;
-                buttons[(int)Button.SHOULDER_2] = (report_buf[3 + reportOffset] & 0x80) != 0;
-                buttons[(int)Button.SR] = (report_buf[3 + reportOffset] & 0x10) != 0;
-                buttons[(int)Button.SL] = (report_buf[3 + reportOffset] & 0x20) != 0;
+                _buttons[(int)Button.DpadDown] = (reportBuf[3 + reportOffset] & (IsLeft ? 0x01 : 0x04)) != 0;
+                _buttons[(int)Button.DpadRight] = (reportBuf[3 + reportOffset] & (IsLeft ? 0x04 : 0x08)) != 0;
+                _buttons[(int)Button.DpadUp] = (reportBuf[3 + reportOffset] & 0x02) != 0;
+                _buttons[(int)Button.DpadLeft] = (reportBuf[3 + reportOffset] & (IsLeft ? 0x08 : 0x01)) != 0;
+                _buttons[(int)Button.Home] = (reportBuf[4] & 0x10) != 0;
+                _buttons[(int)Button.Capture] = (reportBuf[4] & 0x20) != 0;
+                _buttons[(int)Button.Minus] = (reportBuf[4] & 0x01) != 0;
+                _buttons[(int)Button.Plus] = (reportBuf[4] & 0x02) != 0;
+                _buttons[(int)Button.Stick] = (reportBuf[4] & (IsLeft ? 0x08 : 0x04)) != 0;
+                _buttons[(int)Button.Shoulder1] = (reportBuf[3 + reportOffset] & 0x40) != 0;
+                _buttons[(int)Button.Shoulder2] = (reportBuf[3 + reportOffset] & 0x80) != 0;
+                _buttons[(int)Button.SR] = (reportBuf[3 + reportOffset] & 0x10) != 0;
+                _buttons[(int)Button.SL] = (reportBuf[3 + reportOffset] & 0x20) != 0;
 
-                if (isPro)
+                if (IsPro)
                 {
-                    reportOffset = !isLeft ? 2 : 0;
+                    reportOffset = !IsLeft ? 2 : 0;
 
-                    buttons[(int)Button.B] = (report_buf[3 + reportOffset] & (!isLeft ? 0x01 : 0x04)) != 0;
-                    buttons[(int)Button.A] = (report_buf[3 + reportOffset] & (!isLeft ? 0x04 : 0x08)) != 0;
-                    buttons[(int)Button.X] = (report_buf[3 + reportOffset] & 0x02) != 0;
-                    buttons[(int)Button.Y] = (report_buf[3 + reportOffset] & (!isLeft ? 0x08 : 0x01)) != 0;
+                    _buttons[(int)Button.B] = (reportBuf[3 + reportOffset] & (!IsLeft ? 0x01 : 0x04)) != 0;
+                    _buttons[(int)Button.A] = (reportBuf[3 + reportOffset] & (!IsLeft ? 0x04 : 0x08)) != 0;
+                    _buttons[(int)Button.X] = (reportBuf[3 + reportOffset] & 0x02) != 0;
+                    _buttons[(int)Button.Y] = (reportBuf[3 + reportOffset] & (!IsLeft ? 0x08 : 0x01)) != 0;
 
-                    buttons[(int)Button.STICK2] = (report_buf[4] & (!isLeft ? 0x08 : 0x04)) != 0;
-                    buttons[(int)Button.SHOULDER2_1] = (report_buf[3 + reportOffset] & 0x40) != 0;
-                    buttons[(int)Button.SHOULDER2_2] = (report_buf[3 + reportOffset] & 0x80) != 0;
+                    _buttons[(int)Button.Stick2] = (reportBuf[4] & (!IsLeft ? 0x08 : 0x04)) != 0;
+                    _buttons[(int)Button.Shoulder21] = (reportBuf[3 + reportOffset] & 0x40) != 0;
+                    _buttons[(int)Button.Shoulder22] = (reportBuf[3 + reportOffset] & 0x80) != 0;
                 }
 
-                if (other != null && other != this)
+                if (Other != null && Other != this)
                 {
-                    buttons[(int)Button.B] = other.buttons[(int)Button.DPAD_DOWN];
-                    buttons[(int)Button.A] = other.buttons[(int)Button.DPAD_RIGHT];
-                    buttons[(int)Button.X] = other.buttons[(int)Button.DPAD_UP];
-                    buttons[(int)Button.Y] = other.buttons[(int)Button.DPAD_LEFT];
+                    _buttons[(int)Button.B] = Other._buttons[(int)Button.DpadDown];
+                    _buttons[(int)Button.A] = Other._buttons[(int)Button.DpadRight];
+                    _buttons[(int)Button.X] = Other._buttons[(int)Button.DpadUp];
+                    _buttons[(int)Button.Y] = Other._buttons[(int)Button.DpadLeft];
 
-                    buttons[(int)Button.STICK2] = other.buttons[(int)Button.STICK];
-                    buttons[(int)Button.SHOULDER2_1] = other.buttons[(int)Button.SHOULDER_1];
-                    buttons[(int)Button.SHOULDER2_2] = other.buttons[(int)Button.SHOULDER_2];
+                    _buttons[(int)Button.Stick2] = Other._buttons[(int)Button.Stick];
+                    _buttons[(int)Button.Shoulder21] = Other._buttons[(int)Button.Shoulder1];
+                    _buttons[(int)Button.Shoulder22] = Other._buttons[(int)Button.Shoulder2];
 
-                    if (isLeft)
+                    if (IsLeft)
                     {
-                        buttons[(int)Button.HOME] = other.buttons[(int)Button.HOME];
-                        buttons[(int)Button.PLUS] = other.buttons[(int)Button.PLUS];
+                        _buttons[(int)Button.Home] = Other._buttons[(int)Button.Home];
+                        _buttons[(int)Button.Plus] = Other._buttons[(int)Button.Plus];
                     }
                     else
                     {
-                        buttons[(int)Button.CAPTURE] = other.buttons[(int)Button.CAPTURE];
-                        buttons[(int)Button.MINUS] = other.buttons[(int)Button.MINUS];
+                        _buttons[(int)Button.Capture] = Other._buttons[(int)Button.Capture];
+                        _buttons[(int)Button.Minus] = Other._buttons[(int)Button.Minus];
                     }
                 }
 
                 var timestamp = Stopwatch.GetTimestamp();
 
-                lock (buttons_up)
+                lock (_buttonsUp)
                 {
-                    lock (buttons_down)
+                    lock (_buttonsDown)
                     {
                         var changed = false;
-                        for (var i = 0; i < buttons.Length; ++i)
+                        for (var i = 0; i < _buttons.Length; ++i)
                         {
-                            buttons_up[i] = down_[i] & !buttons[i];
-                            buttons_down[i] = !down_[i] & buttons[i];
-                            if (down_[i] != buttons[i])
+                            _buttonsUp[i] = _down[i] & !_buttons[i];
+                            _buttonsDown[i] = !_down[i] & _buttons[i];
+                            if (_down[i] != _buttons[i])
                             {
-                                buttons_down_timestamp[i] = buttons[i] ? timestamp : -1;
+                                _buttonsDownTimestamp[i] = _buttons[i] ? timestamp : -1;
                             }
 
-                            if (buttons_up[i] || buttons_down[i])
+                            if (_buttonsUp[i] || _buttonsDown[i])
                             {
                                 changed = true;
                             }
@@ -1346,7 +1346,7 @@ namespace BetterJoyForCemu
 
                         if (changed)
                         {
-                            timestampActivity = timestamp;
+                            _timestampActivity = timestamp;
                         }
                     }
                 }
@@ -1356,124 +1356,126 @@ namespace BetterJoyForCemu
         }
 
         // Get Gyro/Accel data
-        private void ExtractIMUValues(byte[] report_buf, int n = 0)
+        private void ExtractIMUValues(byte[] reportBuf, int n = 0)
         {
-            if (!isSnes)
+            if (!IsSNES)
             {
-                gyr_r[0] = (short)(report_buf[19 + n * 12] | ((report_buf[20 + n * 12] << 8) & 0xff00));
-                gyr_r[1] = (short)(report_buf[21 + n * 12] | ((report_buf[22 + n * 12] << 8) & 0xff00));
-                gyr_r[2] = (short)(report_buf[23 + n * 12] | ((report_buf[24 + n * 12] << 8) & 0xff00));
-                acc_r[0] = (short)(report_buf[13 + n * 12] | ((report_buf[14 + n * 12] << 8) & 0xff00));
-                acc_r[1] = (short)(report_buf[15 + n * 12] | ((report_buf[16 + n * 12] << 8) & 0xff00));
-                acc_r[2] = (short)(report_buf[17 + n * 12] | ((report_buf[18 + n * 12] << 8) & 0xff00));
+                _gyrR[0] = (short)(reportBuf[19 + n * 12] | ((reportBuf[20 + n * 12] << 8) & 0xff00));
+                _gyrR[1] = (short)(reportBuf[21 + n * 12] | ((reportBuf[22 + n * 12] << 8) & 0xff00));
+                _gyrR[2] = (short)(reportBuf[23 + n * 12] | ((reportBuf[24 + n * 12] << 8) & 0xff00));
+                _accR[0] = (short)(reportBuf[13 + n * 12] | ((reportBuf[14 + n * 12] << 8) & 0xff00));
+                _accR[1] = (short)(reportBuf[15 + n * 12] | ((reportBuf[16 + n * 12] << 8) & 0xff00));
+                _accR[2] = (short)(reportBuf[17 + n * 12] | ((reportBuf[18 + n * 12] << 8) & 0xff00));
 
-                var direction = isLeft ? 1 : -1;
+                var direction = IsLeft ? 1 : -1;
 
-                if (form.allowCalibration)
+                if (Form.AllowCalibration)
                 {
-                    acc_g.X = (acc_r[0] - activeIMUData[3]) * (1.0f / acc_sen[0]) * 4.0f;
-                    gyr_g.X = (gyr_r[0] - activeIMUData[0]) * (816.0f / gyr_sen[0]);
-                    if (form.calibrateIMU)
+                    _accG.X = (_accR[0] - _activeIMUData[3]) * (1.0f / _accSen[0]) * 4.0f;
+                    _gyrG.X = (_gyrR[0] - _activeIMUData[0]) * (816.0f / _gyrSen[0]);
+                    if (Form.CalibrateIMU)
                     {
-                        form.xA.Add(acc_r[0]);
-                        form.xG.Add(gyr_r[0]);
+                        Form.Xa.Add(_accR[0]);
+                        Form.Xg.Add(_gyrR[0]);
                     }
 
-                    acc_g.Y = direction * (acc_r[1] - activeIMUData[4]) * (1.0f / acc_sen[1]) * 4.0f;
-                    gyr_g.Y = -direction * (gyr_r[1] - activeIMUData[1]) * (816.0f / gyr_sen[1]);
-                    if (form.calibrateIMU)
+                    _accG.Y = direction * (_accR[1] - _activeIMUData[4]) * (1.0f / _accSen[1]) * 4.0f;
+                    _gyrG.Y = -direction * (_gyrR[1] - _activeIMUData[1]) * (816.0f / _gyrSen[1]);
+                    if (Form.CalibrateIMU)
                     {
-                        form.yA.Add(acc_r[1]);
-                        form.yG.Add(gyr_r[1]);
+                        Form.Ya.Add(_accR[1]);
+                        Form.Yg.Add(_gyrR[1]);
                     }
 
-                    acc_g.Z = direction * (acc_r[2] - activeIMUData[5]) * (1.0f / acc_sen[2]) * 4.0f;
-                    gyr_g.Z = -direction * (gyr_r[2] - activeIMUData[2]) * (816.0f / gyr_sen[2]);
-                    if (form.calibrateIMU)
+                    _accG.Z = direction * (_accR[2] - _activeIMUData[5]) * (1.0f / _accSen[2]) * 4.0f;
+                    _gyrG.Z = -direction * (_gyrR[2] - _activeIMUData[2]) * (816.0f / _gyrSen[2]);
+                    if (Form.CalibrateIMU)
                     {
-                        form.zA.Add(acc_r[2]);
-                        form.zG.Add(gyr_r[2]);
+                        Form.Za.Add(_accR[2]);
+                        Form.Zg.Add(_gyrR[2]);
                     }
                 }
                 else
                 {
                     short[] offset;
-                    if (isPro)
+                    if (IsPro)
                     {
-                        offset = pro_hor_offset;
+                        offset = _proHorOffset;
                     }
-                    else if (isLeft)
+                    else if (IsLeft)
                     {
-                        offset = left_hor_offset;
+                        offset = _leftHorOffset;
                     }
                     else
                     {
-                        offset = right_hor_offset;
+                        offset = _rightHorOffset;
                     }
 
-                    acc_g.X = (acc_r[0] - offset[0]) * (1.0f / (acc_sensiti[0] - acc_neutral[0])) * 4.0f;
-                    gyr_g.X = (gyr_r[0] - gyr_neutral[0]) * (816.0f / (gyr_sensiti[0] - gyr_neutral[0]));
+                    _accG.X = (_accR[0] - offset[0]) * (1.0f / (_accSensiti[0] - _accNeutral[0])) * 4.0f;
+                    _gyrG.X = (_gyrR[0] - _gyrNeutral[0]) * (816.0f / (_gyrSensiti[0] - _gyrNeutral[0]));
 
-                    acc_g.Y = direction * (acc_r[1] - offset[1]) * (1.0f / (acc_sensiti[1] - acc_neutral[1])) * 4.0f;
-                    gyr_g.Y = -direction * (gyr_r[1] - gyr_neutral[1]) * (816.0f / (gyr_sensiti[1] - gyr_neutral[1]));
+                    _accG.Y = direction * (_accR[1] - offset[1]) * (1.0f / (_accSensiti[1] - _accNeutral[1])) * 4.0f;
+                    _gyrG.Y = -direction * (_gyrR[1] - _gyrNeutral[1]) * (816.0f / (_gyrSensiti[1] - _gyrNeutral[1]));
 
-                    acc_g.Z = direction * (acc_r[2] - offset[2]) * (1.0f / (acc_sensiti[2] - acc_neutral[2])) * 4.0f;
-                    gyr_g.Z = -direction * (gyr_r[2] - gyr_neutral[2]) * (816.0f / (gyr_sensiti[2] - gyr_neutral[2]));
+                    _accG.Z = direction * (_accR[2] - offset[2]) * (1.0f / (_accSensiti[2] - _accNeutral[2])) * 4.0f;
+                    _gyrG.Z = -direction * (_gyrR[2] - _gyrNeutral[2]) * (816.0f / (_gyrSensiti[2] - _gyrNeutral[2]));
                 }
 
-                if (!isPro && other == null)
+                if (!IsPro && Other == null)
                 {
                     // single joycon mode; Z do not swap, rest do
-                    if (isLeft)
+                    if (IsLeft)
                     {
-                        acc_g.X = -acc_g.X;
-                        acc_g.Y = -acc_g.Y;
-                        gyr_g.X = -gyr_g.X;
+                        _accG.X = -_accG.X;
+                        _accG.Y = -_accG.Y;
+                        _gyrG.X = -_gyrG.X;
                     }
                     else
                     {
-                        gyr_g.Y = -gyr_g.Y;
+                        _gyrG.Y = -_gyrG.Y;
                     }
 
-                    var temp = acc_g.X;
-                    acc_g.X = acc_g.Y;
-                    acc_g.Y = -temp;
+                    var temp = _accG.X;
+                    _accG.X = _accG.Y;
+                    _accG.Y = -temp;
 
-                    temp = gyr_g.X;
-                    gyr_g.X = gyr_g.Y;
-                    gyr_g.Y = temp;
+                    temp = _gyrG.X;
+                    _gyrG.X = _gyrG.Y;
+                    _gyrG.Y = temp;
                 }
 
                 // Update rotation Quaternion
-                var deg_to_rad = 0.0174533f;
-                AHRS.Update(
-                    gyr_g.X * deg_to_rad,
-                    gyr_g.Y * deg_to_rad,
-                    gyr_g.Z * deg_to_rad,
-                    acc_g.X,
-                    acc_g.Y,
-                    acc_g.Z
+                var degToRad = 0.0174533f;
+                _AHRS.Update(
+                    _gyrG.X * degToRad,
+                    _gyrG.Y * degToRad,
+                    _gyrG.Z * degToRad,
+                    _accG.X,
+                    _accG.Y,
+                    _accG.Z
                 );
             }
         }
 
         public void Begin()
         {
-            if (PollThreadObj == null)
+            if (_pollThreadObj == null)
             {
-                PollThreadObj = new Thread(Poll);
-                PollThreadObj.IsBackground = true;
-                PollThreadObj.Start();
+                _pollThreadObj = new Thread(Poll)
+                {
+                    IsBackground = true
+                };
+                _pollThreadObj.Start();
 
-                form.AppendTextBox("Starting poll thread.");
+                Form.AppendTextBox("Starting poll thread.");
             }
             else
             {
-                form.AppendTextBox("Poll cannot start.");
+                Form.AppendTextBox("Poll cannot start.");
             }
         }
 
-        private void calculateStickCenter(ushort[] vals, ushort[] cal, ushort dz, float[] stick)
+        private void CalculateStickCenter(ushort[] vals, ushort[] cal, ushort dz, float[] stick)
         {
             float dx = vals[0] - cal[2];
             float dy = vals[1] - cal[3];
@@ -1490,27 +1492,27 @@ namespace BetterJoyForCemu
             }
         }
 
-        private static short CastStickValue(float stick_value)
+        private static short CastStickValue(float stickValue)
         {
             return (short)Math.Max(
                 short.MinValue,
-                Math.Min(short.MaxValue, stick_value * (stick_value > 0 ? short.MaxValue : -short.MinValue))
+                Math.Min(short.MaxValue, stickValue * (stickValue > 0 ? short.MaxValue : -short.MinValue))
             );
         }
 
-        private static byte CastStickValueByte(float stick_value)
+        private static byte CastStickValueByte(float stickValue)
         {
-            return (byte)Math.Max(byte.MinValue, Math.Min(byte.MaxValue, 127 - stick_value * byte.MaxValue));
+            return (byte)Math.Max(byte.MinValue, Math.Min(byte.MaxValue, 127 - stickValue * byte.MaxValue));
         }
 
-        public void SetRumble(float low_freq, float high_freq, float amp)
+        public void SetRumble(float lowFreq, float highFreq, float amp)
         {
-            if (state <= state_.ATTACHED)
+            if (State <= Status.Attached)
             {
                 return;
             }
 
-            rumble_obj.set_vals(low_freq, high_freq, amp);
+            _rumbleObj.set_vals(lowFreq, highFreq, amp);
         }
 
         // Run from poll thread
@@ -1519,57 +1521,57 @@ namespace BetterJoyForCemu
             Array.Clear(buf);
 
             buf[0] = 0x10;
-            buf[1] = global_count;
-            if (global_count == 0xf)
+            buf[1] = _globalCount;
+            if (_globalCount == 0xf)
             {
-                global_count = 0;
+                _globalCount = 0;
             }
             else
             {
-                ++global_count;
+                ++_globalCount;
             }
 
             Array.Copy(data, 0, buf, 2, 8);
-            PrintArray(buf, DebugType.RUMBLE, 10, format: "Rumble data sent: {0:S}");
-            HIDapi.hid_write(handle, buf, new UIntPtr(report_len));
+            PrintArray(buf, DebugType.Rumble, 10, format: "Rumble data sent: {0:S}");
+            HIDApi.hid_write(_handle, buf, new UIntPtr(ReportLen));
         }
 
-        private byte[] Subcommand(byte sc, byte[] buf, uint len, bool print = true)
+        private byte[] Subcommand(byte sc, byte[] bufParameters, uint len, bool print = true)
         {
-            var buf_ = new byte[report_len];
-            Array.Clear(buf_);
+            var buf = new byte[ReportLen];
+            Array.Clear(buf);
 
-            Array.Copy(default_buf, 0, buf_, 2, 8);
-            Array.Copy(buf, 0, buf_, 11, len);
-            buf_[10] = sc;
-            buf_[1] = global_count;
-            buf_[0] = 0x1;
-            if (global_count == 0xf)
+            Array.Copy(_defaultBuf, 0, buf, 2, 8);
+            Array.Copy(bufParameters, 0, buf, 11, len);
+            buf[10] = sc;
+            buf[1] = _globalCount;
+            buf[0] = 0x1;
+            if (_globalCount == 0xf)
             {
-                global_count = 0;
+                _globalCount = 0;
             }
             else
             {
-                ++global_count;
+                ++_globalCount;
             }
 
             if (print)
             {
-                PrintArray(buf_, DebugType.COMMS, len, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
+                PrintArray(buf, DebugType.Comms, len, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
             }
 
-            HIDapi.hid_write(handle, buf_, new UIntPtr(len + 11));
+            HIDApi.hid_write(_handle, buf, new UIntPtr(len + 11));
 
-            ref var response = ref buf_;
+            ref var response = ref buf;
             var tries = 0;
             var length = 0;
             var responseFound = false;
             do
             {
-                length = HIDapi.hid_read_timeout(
-                    handle,
+                length = HIDApi.hid_read_timeout(
+                    _handle,
                     response,
-                    new UIntPtr(report_len),
+                    new UIntPtr(ReportLen),
                     100
                 ); // don't set the timeout lower than 100 or might not always work
                 responseFound = length >= 20 && response[0] == 0x21 && response[14] == sc;
@@ -1578,7 +1580,7 @@ namespace BetterJoyForCemu
 
             if (!responseFound)
             {
-                DebugPrint("No response.", DebugType.COMMS);
+                DebugPrint("No response.", DebugType.Comms);
                 return null;
             }
 
@@ -1586,7 +1588,7 @@ namespace BetterJoyForCemu
             {
                 PrintArray(
                     response,
-                    DebugType.COMMS,
+                    DebugType.Comms,
                     (uint)length - 1,
                     1,
                     $"Response ID 0x{response[0]:X2}." + " Data: 0x{0:S}"
@@ -1598,15 +1600,15 @@ namespace BetterJoyForCemu
 
         private bool dump_calibration_data()
         {
-            if (isSnes || isThirdParty)
+            if (IsSNES || IsThirdParty)
             {
                 return true;
             }
 
             var ok = true;
-            var buf_ = ReadSPICheck(
+            var buf = ReadSPICheck(
                 0x80,
-                isLeft ? (byte)0x12 : (byte)0x1d,
+                IsLeft ? (byte)0x12 : (byte)0x1d,
                 9,
                 ref ok
             ); // get user calibration data if possible
@@ -1615,9 +1617,9 @@ namespace BetterJoyForCemu
             {
                 for (var i = 0; i < 9; ++i)
                 {
-                    if (buf_[i] != 0xff)
+                    if (buf[i] != 0xff)
                     {
-                        form.AppendTextBox("Using user stick calibration data.");
+                        Form.AppendTextBox("Using user stick calibration data.");
                         found = true;
                         break;
                     }
@@ -1625,25 +1627,25 @@ namespace BetterJoyForCemu
 
                 if (!found)
                 {
-                    form.AppendTextBox("Using factory stick calibration data.");
-                    buf_ = ReadSPICheck(0x60, isLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
+                    Form.AppendTextBox("Using factory stick calibration data.");
+                    buf = ReadSPICheck(0x60, IsLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
                 }
             }
 
-            stick_cal[isLeft ? 0 : 2] = (ushort)(((buf_[1] << 8) & 0xF00) | buf_[0]); // X Axis Max above center
-            stick_cal[isLeft ? 1 : 3] = (ushort)((buf_[2] << 4) | (buf_[1] >> 4)); // Y Axis Max above center
-            stick_cal[isLeft ? 2 : 4] = (ushort)(((buf_[4] << 8) & 0xF00) | buf_[3]); // X Axis Center
-            stick_cal[isLeft ? 3 : 5] = (ushort)((buf_[5] << 4) | (buf_[4] >> 4)); // Y Axis Center
-            stick_cal[isLeft ? 4 : 0] = (ushort)(((buf_[7] << 8) & 0xF00) | buf_[6]); // X Axis Min below center
-            stick_cal[isLeft ? 5 : 1] = (ushort)((buf_[8] << 4) | (buf_[7] >> 4)); // Y Axis Min below center
+            _stickCal[IsLeft ? 0 : 2] = (ushort)(((buf[1] << 8) & 0xF00) | buf[0]); // X Axis Max above center
+            _stickCal[IsLeft ? 1 : 3] = (ushort)((buf[2] << 4) | (buf[1] >> 4)); // Y Axis Max above center
+            _stickCal[IsLeft ? 2 : 4] = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]); // X Axis Center
+            _stickCal[IsLeft ? 3 : 5] = (ushort)((buf[5] << 4) | (buf[4] >> 4)); // Y Axis Center
+            _stickCal[IsLeft ? 4 : 0] = (ushort)(((buf[7] << 8) & 0xF00) | buf[6]); // X Axis Min below center
+            _stickCal[IsLeft ? 5 : 1] = (ushort)((buf[8] << 4) | (buf[7] >> 4)); // Y Axis Min below center
 
-            PrintArray(stick_cal, len: 6, start: 0, format: "Stick calibration data: {0:S}");
+            PrintArray(_stickCal, len: 6, start: 0, format: "Stick calibration data: {0:S}");
 
-            if (isPro)
+            if (IsPro)
             {
-                buf_ = ReadSPICheck(
+                buf = ReadSPICheck(
                     0x80,
-                    !isLeft ? (byte)0x12 : (byte)0x1d,
+                    !IsLeft ? (byte)0x12 : (byte)0x1d,
                     9,
                     ref ok
                 ); // get user calibration data if possible
@@ -1652,9 +1654,9 @@ namespace BetterJoyForCemu
                 {
                     for (var i = 0; i < 9; ++i)
                     {
-                        if (buf_[i] != 0xff)
+                        if (buf[i] != 0xff)
                         {
-                            form.AppendTextBox("Using user stick calibration data.");
+                            Form.AppendTextBox("Using user stick calibration data.");
                             found = true;
                             break;
                         }
@@ -1662,79 +1664,79 @@ namespace BetterJoyForCemu
 
                     if (!found)
                     {
-                        form.AppendTextBox("Using factory stick calibration data.");
-                        buf_ = ReadSPICheck(0x60, !isLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
+                        Form.AppendTextBox("Using factory stick calibration data.");
+                        buf = ReadSPICheck(0x60, !IsLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
                     }
                 }
 
-                stick2_cal[!isLeft ? 0 : 2] = (ushort)(((buf_[1] << 8) & 0xF00) | buf_[0]); // X Axis Max above center
-                stick2_cal[!isLeft ? 1 : 3] = (ushort)((buf_[2] << 4) | (buf_[1] >> 4)); // Y Axis Max above center
-                stick2_cal[!isLeft ? 2 : 4] = (ushort)(((buf_[4] << 8) & 0xF00) | buf_[3]); // X Axis Center
-                stick2_cal[!isLeft ? 3 : 5] = (ushort)((buf_[5] << 4) | (buf_[4] >> 4)); // Y Axis Center
-                stick2_cal[!isLeft ? 4 : 0] = (ushort)(((buf_[7] << 8) & 0xF00) | buf_[6]); // X Axis Min below center
-                stick2_cal[!isLeft ? 5 : 1] = (ushort)((buf_[8] << 4) | (buf_[7] >> 4)); // Y Axis Min below center
+                _stick2Cal[!IsLeft ? 0 : 2] = (ushort)(((buf[1] << 8) & 0xF00) | buf[0]); // X Axis Max above center
+                _stick2Cal[!IsLeft ? 1 : 3] = (ushort)((buf[2] << 4) | (buf[1] >> 4)); // Y Axis Max above center
+                _stick2Cal[!IsLeft ? 2 : 4] = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]); // X Axis Center
+                _stick2Cal[!IsLeft ? 3 : 5] = (ushort)((buf[5] << 4) | (buf[4] >> 4)); // Y Axis Center
+                _stick2Cal[!IsLeft ? 4 : 0] = (ushort)(((buf[7] << 8) & 0xF00) | buf[6]); // X Axis Min below center
+                _stick2Cal[!IsLeft ? 5 : 1] = (ushort)((buf[8] << 4) | (buf[7] >> 4)); // Y Axis Min below center
 
-                PrintArray(stick2_cal, len: 6, start: 0, format: "Stick calibration data: {0:S}");
+                PrintArray(_stick2Cal, len: 6, start: 0, format: "Stick calibration data: {0:S}");
 
-                buf_ = ReadSPICheck(0x60, !isLeft ? (byte)0x86 : (byte)0x98, 16, ref ok);
-                deadzone2 = (ushort)(((buf_[4] << 8) & 0xF00) | buf_[3]);
+                buf = ReadSPICheck(0x60, !IsLeft ? (byte)0x86 : (byte)0x98, 16, ref ok);
+                _deadzone2 = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]);
             }
 
-            buf_ = ReadSPICheck(0x60, isLeft ? (byte)0x86 : (byte)0x98, 16, ref ok);
-            deadzone = (ushort)(((buf_[4] << 8) & 0xF00) | buf_[3]);
+            buf = ReadSPICheck(0x60, IsLeft ? (byte)0x86 : (byte)0x98, 16, ref ok);
+            _deadzone = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]);
 
-            buf_ = ReadSPICheck(0x80, 0x28, 10, ref ok);
-            acc_neutral[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-            acc_neutral[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-            acc_neutral[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+            buf = ReadSPICheck(0x80, 0x28, 10, ref ok);
+            _accNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+            _accNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+            _accNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-            buf_ = ReadSPICheck(0x80, 0x2E, 10, ref ok);
-            acc_sensiti[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-            acc_sensiti[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-            acc_sensiti[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+            buf = ReadSPICheck(0x80, 0x2E, 10, ref ok);
+            _accSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+            _accSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+            _accSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-            buf_ = ReadSPICheck(0x80, 0x34, 10, ref ok);
-            gyr_neutral[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-            gyr_neutral[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-            gyr_neutral[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+            buf = ReadSPICheck(0x80, 0x34, 10, ref ok);
+            _gyrNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+            _gyrNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+            _gyrNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-            buf_ = ReadSPICheck(0x80, 0x3A, 10, ref ok);
-            gyr_sensiti[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-            gyr_sensiti[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-            gyr_sensiti[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+            buf = ReadSPICheck(0x80, 0x3A, 10, ref ok);
+            _gyrSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+            _gyrSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+            _gyrSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-            PrintArray(gyr_neutral, len: 3, d: DebugType.IMU, format: "User gyro neutral position: {0:S}");
+            PrintArray(_gyrNeutral, len: 3, d: DebugType.IMU, format: "User gyro neutral position: {0:S}");
 
             // This is an extremely messy way of checking to see whether there is user stick calibration data present, but I've seen conflicting user calibration data on blank Joy-Cons. Worth another look eventually.
-            if (gyr_neutral[0] + gyr_neutral[1] + gyr_neutral[2] == -3 || Math.Abs(gyr_neutral[0]) > 100 ||
-                Math.Abs(gyr_neutral[1]) > 100 || Math.Abs(gyr_neutral[2]) > 100)
+            if (_gyrNeutral[0] + _gyrNeutral[1] + _gyrNeutral[2] == -3 || Math.Abs(_gyrNeutral[0]) > 100 ||
+                Math.Abs(_gyrNeutral[1]) > 100 || Math.Abs(_gyrNeutral[2]) > 100)
             {
-                buf_ = ReadSPICheck(0x60, 0x20, 10, ref ok);
-                acc_neutral[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-                acc_neutral[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-                acc_neutral[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+                buf = ReadSPICheck(0x60, 0x20, 10, ref ok);
+                _accNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+                _accNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+                _accNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-                buf_ = ReadSPICheck(0x60, 0x26, 10, ref ok);
-                acc_sensiti[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-                acc_sensiti[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-                acc_sensiti[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+                buf = ReadSPICheck(0x60, 0x26, 10, ref ok);
+                _accSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+                _accSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+                _accSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-                buf_ = ReadSPICheck(0x60, 0x2C, 10, ref ok);
-                gyr_neutral[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-                gyr_neutral[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-                gyr_neutral[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+                buf = ReadSPICheck(0x60, 0x2C, 10, ref ok);
+                _gyrNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+                _gyrNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+                _gyrNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-                buf_ = ReadSPICheck(0x60, 0x32, 10, ref ok);
-                gyr_sensiti[0] = (short)(buf_[0] | ((buf_[1] << 8) & 0xff00));
-                gyr_sensiti[1] = (short)(buf_[2] | ((buf_[3] << 8) & 0xff00));
-                gyr_sensiti[2] = (short)(buf_[4] | ((buf_[5] << 8) & 0xff00));
+                buf = ReadSPICheck(0x60, 0x32, 10, ref ok);
+                _gyrSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
+                _gyrSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
+                _gyrSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
 
-                PrintArray(gyr_neutral, len: 3, d: DebugType.IMU, format: "Factory gyro neutral position: {0:S}");
+                PrintArray(_gyrNeutral, len: 3, d: DebugType.IMU, format: "Factory gyro neutral position: {0:S}");
             }
 
             if (!ok)
             {
-                form.AppendTextBox("Error while reading calibration data.");
+                Form.AppendTextBox("Error while reading calibration data.");
             }
 
             return ok;
@@ -1747,7 +1749,7 @@ namespace BetterJoyForCemu
             var tries = 0;
             do
             {
-                length = HIDapi.hid_read_timeout(handle, data, new UIntPtr(report_len), 100);
+                length = HIDApi.hid_read_timeout(_handle, data, new UIntPtr(ReportLen), 100);
                 responseFound = length > 1 && data[0] == 0x81 && data[1] == command;
                 ++tries;
             } while (tries < 10 && !responseFound);
@@ -1762,20 +1764,20 @@ namespace BetterJoyForCemu
 
         private byte[] ReadSPICheck(byte addr1, byte addr2, uint len, ref bool ok, bool print = false)
         {
-            var read_buf = new byte[len];
+            var readBuf = new byte[len];
             if (!ok)
             {
-                return read_buf;
+                return readBuf;
             }
 
-            byte[] buf = { addr2, addr1, 0x00, 0x00, (byte)len };
-            byte[] buf_ = null;
+            byte[] bufSubcommand = { addr2, addr1, 0x00, 0x00, (byte)len };
+            byte[] buf = null;
 
             ok = false;
             for (var i = 0; i < 5; ++i)
             {
-                buf_ = Subcommand(0x10, buf, 5, false);
-                if (buf_ != null && buf_[15] == addr2 && buf_[16] == addr1)
+                buf = Subcommand(0x10, bufSubcommand, 5, false);
+                if (buf != null && buf[15] == addr2 && buf[16] == addr1)
                 {
                     ok = true;
                     break;
@@ -1784,29 +1786,29 @@ namespace BetterJoyForCemu
 
             if (ok)
             {
-                Array.Copy(buf_, 20, read_buf, 0, len);
+                Array.Copy(buf, 20, readBuf, 0, len);
                 if (print)
                 {
-                    PrintArray(read_buf, DebugType.COMMS, len);
+                    PrintArray(readBuf, DebugType.Comms, len);
                 }
             }
             else
             {
-                form.AppendTextBox("ReadSPI error");
+                Form.AppendTextBox("ReadSPI error");
             }
 
-            return read_buf;
+            return readBuf;
         }
 
         private void PrintArray<T>(
             T[] arr,
-            DebugType d = DebugType.NONE,
+            DebugType d = DebugType.None,
             uint len = 0,
             uint start = 0,
             string format = "{0:S}"
         )
         {
-            if (d != debug_type && debug_type != DebugType.ALL)
+            if (d != _debugType && _debugType != DebugType.All)
             {
                 return;
             }
@@ -1832,137 +1834,137 @@ namespace BetterJoyForCemu
         {
             var output = new OutputControllerXbox360InputState();
 
-            var swapAB = input.swapAB;
-            var swapXY = input.swapXY;
+            var swapAB = input._swapAB;
+            var swapXY = input._swapXY;
 
-            var isPro = input.isPro;
-            var isLeft = input.isLeft;
-            var isSnes = input.isSnes;
-            var other = input.other;
-            var GyroAnalogSliders = input.GyroAnalogSliders;
+            var isPro = input.IsPro;
+            var isLeft = input.IsLeft;
+            var isSNES = input.IsSNES;
+            var other = input.Other;
+            var gyroAnalogSliders = input._gyroAnalogSliders;
 
-            var buttons = input.buttons;
-            var stick = input.stick;
-            var stick2 = input.stick2;
-            var sliderVal = input.sliderVal;
+            var buttons = input._buttons;
+            var stick = input._stick;
+            var stick2 = input._stick2;
+            var sliderVal = input._sliderVal;
 
             if (isPro)
             {
-                output.a = buttons[(int)(!swapAB ? Button.B : Button.A)];
-                output.b = buttons[(int)(!swapAB ? Button.A : Button.B)];
-                output.y = buttons[(int)(!swapXY ? Button.X : Button.Y)];
-                output.x = buttons[(int)(!swapXY ? Button.Y : Button.X)];
+                output.A = buttons[(int)(!swapAB ? Button.B : Button.A)];
+                output.B = buttons[(int)(!swapAB ? Button.A : Button.B)];
+                output.Y = buttons[(int)(!swapXY ? Button.X : Button.Y)];
+                output.X = buttons[(int)(!swapXY ? Button.Y : Button.X)];
 
-                output.dpad_up = buttons[(int)Button.DPAD_UP];
-                output.dpad_down = buttons[(int)Button.DPAD_DOWN];
-                output.dpad_left = buttons[(int)Button.DPAD_LEFT];
-                output.dpad_right = buttons[(int)Button.DPAD_RIGHT];
+                output.DpadUp = buttons[(int)Button.DpadUp];
+                output.DpadDown = buttons[(int)Button.DpadDown];
+                output.DpadLeft = buttons[(int)Button.DpadLeft];
+                output.DpadRight = buttons[(int)Button.DpadRight];
 
-                output.back = buttons[(int)Button.MINUS];
-                output.start = buttons[(int)Button.PLUS];
-                output.guide = buttons[(int)Button.HOME];
+                output.Back = buttons[(int)Button.Minus];
+                output.Start = buttons[(int)Button.Plus];
+                output.Guide = buttons[(int)Button.Home];
 
-                output.shoulder_left = buttons[(int)Button.SHOULDER_1];
-                output.shoulder_right = buttons[(int)Button.SHOULDER2_1];
+                output.ShoulderLeft = buttons[(int)Button.Shoulder1];
+                output.ShoulderRight = buttons[(int)Button.Shoulder21];
 
-                output.thumb_stick_left = buttons[(int)Button.STICK];
-                output.thumb_stick_right = buttons[(int)Button.STICK2];
+                output.ThumbStickLeft = buttons[(int)Button.Stick];
+                output.ThumbStickRight = buttons[(int)Button.Stick2];
             }
             else
             {
                 // no need for && other != this
                 if (other != null)
                 {
-                    output.a = !swapAB
-                            ? buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)]
-                            : buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)];
-                    output.b = !swapAB
-                            ? buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)]
-                            : buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)];
-                    output.x = !swapXY
-                            ? buttons[(int)(isLeft ? Button.Y : Button.DPAD_LEFT)]
-                            : buttons[(int)(isLeft ? Button.X : Button.DPAD_UP)];
-                    output.y = !swapXY
-                            ? buttons[(int)(isLeft ? Button.X : Button.DPAD_UP)]
-                            : buttons[(int)(isLeft ? Button.Y : Button.DPAD_LEFT)];
+                    output.A = !swapAB
+                            ? buttons[(int)(isLeft ? Button.B : Button.DpadDown)]
+                            : buttons[(int)(isLeft ? Button.A : Button.DpadRight)];
+                    output.B = !swapAB
+                            ? buttons[(int)(isLeft ? Button.A : Button.DpadRight)]
+                            : buttons[(int)(isLeft ? Button.B : Button.DpadDown)];
+                    output.X = !swapXY
+                            ? buttons[(int)(isLeft ? Button.Y : Button.DpadLeft)]
+                            : buttons[(int)(isLeft ? Button.X : Button.DpadUp)];
+                    output.Y = !swapXY
+                            ? buttons[(int)(isLeft ? Button.X : Button.DpadUp)]
+                            : buttons[(int)(isLeft ? Button.Y : Button.DpadLeft)];
 
-                    output.dpad_up = buttons[(int)(isLeft ? Button.DPAD_UP : Button.X)];
-                    output.dpad_down = buttons[(int)(isLeft ? Button.DPAD_DOWN : Button.B)];
-                    output.dpad_left = buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.Y)];
-                    output.dpad_right = buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.A)];
+                    output.DpadUp = buttons[(int)(isLeft ? Button.DpadUp : Button.X)];
+                    output.DpadDown = buttons[(int)(isLeft ? Button.DpadDown : Button.B)];
+                    output.DpadLeft = buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)];
+                    output.DpadRight = buttons[(int)(isLeft ? Button.DpadRight : Button.A)];
 
-                    output.back = buttons[(int)Button.MINUS];
-                    output.start = buttons[(int)Button.PLUS];
-                    output.guide = buttons[(int)Button.HOME];
+                    output.Back = buttons[(int)Button.Minus];
+                    output.Start = buttons[(int)Button.Plus];
+                    output.Guide = buttons[(int)Button.Home];
 
-                    output.shoulder_left = buttons[(int)(isLeft ? Button.SHOULDER_1 : Button.SHOULDER2_1)];
-                    output.shoulder_right = buttons[(int)(isLeft ? Button.SHOULDER2_1 : Button.SHOULDER_1)];
+                    output.ShoulderLeft = buttons[(int)(isLeft ? Button.Shoulder1 : Button.Shoulder21)];
+                    output.ShoulderRight = buttons[(int)(isLeft ? Button.Shoulder21 : Button.Shoulder1)];
 
-                    output.thumb_stick_left = buttons[(int)(isLeft ? Button.STICK : Button.STICK2)];
-                    output.thumb_stick_right = buttons[(int)(isLeft ? Button.STICK2 : Button.STICK)];
+                    output.ThumbStickLeft = buttons[(int)(isLeft ? Button.Stick : Button.Stick2)];
+                    output.ThumbStickRight = buttons[(int)(isLeft ? Button.Stick2 : Button.Stick)];
                 }
                 else
                 {
                     // single joycon mode
-                    output.a = !swapAB
-                            ? buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.DPAD_RIGHT)]
-                            : buttons[(int)(isLeft ? Button.DPAD_DOWN : Button.DPAD_UP)];
-                    output.b = !swapAB
-                            ? buttons[(int)(isLeft ? Button.DPAD_DOWN : Button.DPAD_UP)]
-                            : buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.DPAD_RIGHT)];
-                    output.x = !swapXY
-                            ? buttons[(int)(isLeft ? Button.DPAD_UP : Button.DPAD_DOWN)]
-                            : buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.DPAD_LEFT)];
-                    output.y = !swapXY
-                            ? buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.DPAD_LEFT)]
-                            : buttons[(int)(isLeft ? Button.DPAD_UP : Button.DPAD_DOWN)];
+                    output.A = !swapAB
+                            ? buttons[(int)(isLeft ? Button.DpadLeft : Button.DpadRight)]
+                            : buttons[(int)(isLeft ? Button.DpadDown : Button.DpadUp)];
+                    output.B = !swapAB
+                            ? buttons[(int)(isLeft ? Button.DpadDown : Button.DpadUp)]
+                            : buttons[(int)(isLeft ? Button.DpadLeft : Button.DpadRight)];
+                    output.X = !swapXY
+                            ? buttons[(int)(isLeft ? Button.DpadUp : Button.DpadDown)]
+                            : buttons[(int)(isLeft ? Button.DpadRight : Button.DpadLeft)];
+                    output.Y = !swapXY
+                            ? buttons[(int)(isLeft ? Button.DpadRight : Button.DpadLeft)]
+                            : buttons[(int)(isLeft ? Button.DpadUp : Button.DpadDown)];
 
-                    output.back = buttons[(int)Button.MINUS] | buttons[(int)Button.HOME];
-                    output.start = buttons[(int)Button.PLUS] | buttons[(int)Button.CAPTURE];
+                    output.Back = buttons[(int)Button.Minus] | buttons[(int)Button.Home];
+                    output.Start = buttons[(int)Button.Plus] | buttons[(int)Button.Capture];
 
-                    output.shoulder_left = buttons[(int)Button.SL];
-                    output.shoulder_right = buttons[(int)Button.SR];
+                    output.ShoulderLeft = buttons[(int)Button.SL];
+                    output.ShoulderRight = buttons[(int)Button.SR];
 
-                    output.thumb_stick_left = buttons[(int)Button.STICK];
+                    output.ThumbStickLeft = buttons[(int)Button.Stick];
                 }
             }
 
             // overwrite guide button if it's custom-mapped
             if (Config.Value("home") != "0")
             {
-                output.guide = false;
+                output.Guide = false;
             }
 
-            if (!isSnes)
+            if (!isSNES)
             {
                 if (other != null || isPro)
                 {
                     // no need for && other != this
-                    output.axis_left_x = CastStickValue(other == input && !isLeft ? stick2[0] : stick[0]);
-                    output.axis_left_y = CastStickValue(other == input && !isLeft ? stick2[1] : stick[1]);
+                    output.AxisLeftX = CastStickValue(other == input && !isLeft ? stick2[0] : stick[0]);
+                    output.AxisLeftY = CastStickValue(other == input && !isLeft ? stick2[1] : stick[1]);
 
-                    output.axis_right_x = CastStickValue(other == input && !isLeft ? stick[0] : stick2[0]);
-                    output.axis_right_y = CastStickValue(other == input && !isLeft ? stick[1] : stick2[1]);
+                    output.AxisRightX = CastStickValue(other == input && !isLeft ? stick[0] : stick2[0]);
+                    output.AxisRightY = CastStickValue(other == input && !isLeft ? stick[1] : stick2[1]);
                 }
                 else
                 {
                     // single joycon mode
-                    output.axis_left_y = CastStickValue((isLeft ? 1 : -1) * stick[0]);
-                    output.axis_left_x = CastStickValue((isLeft ? -1 : 1) * stick[1]);
+                    output.AxisLeftY = CastStickValue((isLeft ? 1 : -1) * stick[0]);
+                    output.AxisLeftX = CastStickValue((isLeft ? -1 : 1) * stick[1]);
                 }
             }
 
             if (isPro || other != null)
             {
-                var lval = GyroAnalogSliders ? sliderVal[0] : byte.MaxValue;
-                var rval = GyroAnalogSliders ? sliderVal[1] : byte.MaxValue;
-                output.trigger_left = (byte)(buttons[(int)(isLeft ? Button.SHOULDER_2 : Button.SHOULDER2_2)] ? lval : 0);
-                output.trigger_right = (byte)(buttons[(int)(isLeft ? Button.SHOULDER2_2 : Button.SHOULDER_2)] ? rval : 0);
+                var lval = gyroAnalogSliders ? sliderVal[0] : byte.MaxValue;
+                var rval = gyroAnalogSliders ? sliderVal[1] : byte.MaxValue;
+                output.TriggerLeft = (byte)(buttons[(int)(isLeft ? Button.Shoulder2 : Button.Shoulder22)] ? lval : 0);
+                output.TriggerRight = (byte)(buttons[(int)(isLeft ? Button.Shoulder22 : Button.Shoulder2)] ? rval : 0);
             }
             else
             {
-                output.trigger_left = (byte)(buttons[(int)(isLeft ? Button.SHOULDER_2 : Button.SHOULDER_1)] ? byte.MaxValue : 0);
-                output.trigger_right = (byte)(buttons[(int)(isLeft ? Button.SHOULDER_1 : Button.SHOULDER_2)] ? byte.MaxValue : 0);
+                output.TriggerLeft = (byte)(buttons[(int)(isLeft ? Button.Shoulder2 : Button.Shoulder1)] ? byte.MaxValue : 0);
+                output.TriggerRight = (byte)(buttons[(int)(isLeft ? Button.Shoulder1 : Button.Shoulder2)] ? byte.MaxValue : 0);
             }
 
             return output;
@@ -1972,254 +1974,254 @@ namespace BetterJoyForCemu
         {
             var output = new OutputControllerDualShock4InputState();
 
-            var swapAB = input.swapAB;
-            var swapXY = input.swapXY;
+            var swapAB = input._swapAB;
+            var swapXY = input._swapXY;
 
-            var isPro = input.isPro;
-            var isLeft = input.isLeft;
-            var isSnes = input.isSnes;
-            var other = input.other;
-            var GyroAnalogSliders = input.GyroAnalogSliders;
+            var isPro = input.IsPro;
+            var isLeft = input.IsLeft;
+            var isSNES = input.IsSNES;
+            var other = input.Other;
+            var gyroAnalogSliders = input._gyroAnalogSliders;
 
-            var buttons = input.buttons;
-            var stick = input.stick;
-            var stick2 = input.stick2;
-            var sliderVal = input.sliderVal;
+            var buttons = input._buttons;
+            var stick = input._stick;
+            var stick2 = input._stick2;
+            var sliderVal = input._sliderVal;
 
             if (isPro)
             {
-                output.cross = buttons[(int)(!swapAB ? Button.B : Button.A)];
-                output.circle = buttons[(int)(!swapAB ? Button.A : Button.B)];
-                output.triangle = buttons[(int)(!swapXY ? Button.X : Button.Y)];
-                output.square = buttons[(int)(!swapXY ? Button.Y : Button.X)];
+                output.Cross = buttons[(int)(!swapAB ? Button.B : Button.A)];
+                output.Circle = buttons[(int)(!swapAB ? Button.A : Button.B)];
+                output.Triangle = buttons[(int)(!swapXY ? Button.X : Button.Y)];
+                output.Square = buttons[(int)(!swapXY ? Button.Y : Button.X)];
 
 
-                if (buttons[(int)Button.DPAD_UP])
+                if (buttons[(int)Button.DpadUp])
                 {
-                    if (buttons[(int)Button.DPAD_LEFT])
+                    if (buttons[(int)Button.DpadLeft])
                     {
-                        output.dPad = DpadDirection.Northwest;
+                        output.DPad = DpadDirection.Northwest;
                     }
-                    else if (buttons[(int)Button.DPAD_RIGHT])
+                    else if (buttons[(int)Button.DpadRight])
                     {
-                        output.dPad = DpadDirection.Northeast;
+                        output.DPad = DpadDirection.Northeast;
                     }
                     else
                     {
-                        output.dPad = DpadDirection.North;
+                        output.DPad = DpadDirection.North;
                     }
                 }
-                else if (buttons[(int)Button.DPAD_DOWN])
+                else if (buttons[(int)Button.DpadDown])
                 {
-                    if (buttons[(int)Button.DPAD_LEFT])
+                    if (buttons[(int)Button.DpadLeft])
                     {
-                        output.dPad = DpadDirection.Southwest;
+                        output.DPad = DpadDirection.Southwest;
                     }
-                    else if (buttons[(int)Button.DPAD_RIGHT])
+                    else if (buttons[(int)Button.DpadRight])
                     {
-                        output.dPad = DpadDirection.Southeast;
+                        output.DPad = DpadDirection.Southeast;
                     }
                     else
                     {
-                        output.dPad = DpadDirection.South;
+                        output.DPad = DpadDirection.South;
                     }
                 }
-                else if (buttons[(int)Button.DPAD_LEFT])
+                else if (buttons[(int)Button.DpadLeft])
                 {
-                    output.dPad = DpadDirection.West;
+                    output.DPad = DpadDirection.West;
                 }
-                else if (buttons[(int)Button.DPAD_RIGHT])
+                else if (buttons[(int)Button.DpadRight])
                 {
-                    output.dPad = DpadDirection.East;
+                    output.DPad = DpadDirection.East;
                 }
 
-                output.share = buttons[(int)Button.CAPTURE];
-                output.options = buttons[(int)Button.PLUS];
-                output.ps = buttons[(int)Button.HOME];
-                output.touchpad = buttons[(int)Button.MINUS];
-                output.shoulder_left = buttons[(int)Button.SHOULDER_1];
-                output.shoulder_right = buttons[(int)Button.SHOULDER2_1];
-                output.thumb_left = buttons[(int)Button.STICK];
-                output.thumb_right = buttons[(int)Button.STICK2];
+                output.Share = buttons[(int)Button.Capture];
+                output.Options = buttons[(int)Button.Plus];
+                output.Ps = buttons[(int)Button.Home];
+                output.Touchpad = buttons[(int)Button.Minus];
+                output.ShoulderLeft = buttons[(int)Button.Shoulder1];
+                output.ShoulderRight = buttons[(int)Button.Shoulder21];
+                output.ThumbLeft = buttons[(int)Button.Stick];
+                output.ThumbRight = buttons[(int)Button.Stick2];
             }
             else
             {
                 if (other != null)
                 {
                     // no need for && other != this
-                    output.cross = !swapAB
-                            ? buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)]
-                            : buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)];
-                    output.circle = swapAB
-                            ? buttons[(int)(isLeft ? Button.B : Button.DPAD_DOWN)]
-                            : buttons[(int)(isLeft ? Button.A : Button.DPAD_RIGHT)];
-                    output.triangle = !swapXY
-                            ? buttons[(int)(isLeft ? Button.X : Button.DPAD_UP)]
-                            : buttons[(int)(isLeft ? Button.Y : Button.DPAD_LEFT)];
-                    output.square = swapXY
-                            ? buttons[(int)(isLeft ? Button.X : Button.DPAD_UP)]
-                            : buttons[(int)(isLeft ? Button.Y : Button.DPAD_LEFT)];
+                    output.Cross = !swapAB
+                            ? buttons[(int)(isLeft ? Button.B : Button.DpadDown)]
+                            : buttons[(int)(isLeft ? Button.A : Button.DpadRight)];
+                    output.Circle = swapAB
+                            ? buttons[(int)(isLeft ? Button.B : Button.DpadDown)]
+                            : buttons[(int)(isLeft ? Button.A : Button.DpadRight)];
+                    output.Triangle = !swapXY
+                            ? buttons[(int)(isLeft ? Button.X : Button.DpadUp)]
+                            : buttons[(int)(isLeft ? Button.Y : Button.DpadLeft)];
+                    output.Square = swapXY
+                            ? buttons[(int)(isLeft ? Button.X : Button.DpadUp)]
+                            : buttons[(int)(isLeft ? Button.Y : Button.DpadLeft)];
 
-                    if (buttons[(int)(isLeft ? Button.DPAD_UP : Button.X)])
+                    if (buttons[(int)(isLeft ? Button.DpadUp : Button.X)])
                     {
-                        if (buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.Y)])
+                        if (buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)])
                         {
-                            output.dPad = DpadDirection.Northwest;
+                            output.DPad = DpadDirection.Northwest;
                         }
-                        else if (buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.A)])
+                        else if (buttons[(int)(isLeft ? Button.DpadRight : Button.A)])
                         {
-                            output.dPad = DpadDirection.Northeast;
+                            output.DPad = DpadDirection.Northeast;
                         }
                         else
                         {
-                            output.dPad = DpadDirection.North;
+                            output.DPad = DpadDirection.North;
                         }
                     }
-                    else if (buttons[(int)(isLeft ? Button.DPAD_DOWN : Button.B)])
+                    else if (buttons[(int)(isLeft ? Button.DpadDown : Button.B)])
                     {
-                        if (buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.Y)])
+                        if (buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)])
                         {
-                            output.dPad = DpadDirection.Southwest;
+                            output.DPad = DpadDirection.Southwest;
                         }
-                        else if (buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.A)])
+                        else if (buttons[(int)(isLeft ? Button.DpadRight : Button.A)])
                         {
-                            output.dPad = DpadDirection.Southeast;
+                            output.DPad = DpadDirection.Southeast;
                         }
                         else
                         {
-                            output.dPad = DpadDirection.South;
+                            output.DPad = DpadDirection.South;
                         }
                     }
-                    else if (buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.Y)])
+                    else if (buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)])
                     {
-                        output.dPad = DpadDirection.West;
+                        output.DPad = DpadDirection.West;
                     }
-                    else if (buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.A)])
+                    else if (buttons[(int)(isLeft ? Button.DpadRight : Button.A)])
                     {
-                        output.dPad = DpadDirection.East;
+                        output.DPad = DpadDirection.East;
                     }
 
-                    output.share = buttons[(int)Button.CAPTURE];
-                    output.options = buttons[(int)Button.PLUS];
-                    output.ps = buttons[(int)Button.HOME];
-                    output.touchpad = buttons[(int)Button.MINUS];
-                    output.shoulder_left = buttons[(int)(isLeft ? Button.SHOULDER_1 : Button.SHOULDER2_1)];
-                    output.shoulder_right = buttons[(int)(isLeft ? Button.SHOULDER2_1 : Button.SHOULDER_1)];
-                    output.thumb_left = buttons[(int)(isLeft ? Button.STICK : Button.STICK2)];
-                    output.thumb_right = buttons[(int)(isLeft ? Button.STICK2 : Button.STICK)];
+                    output.Share = buttons[(int)Button.Capture];
+                    output.Options = buttons[(int)Button.Plus];
+                    output.Ps = buttons[(int)Button.Home];
+                    output.Touchpad = buttons[(int)Button.Minus];
+                    output.ShoulderLeft = buttons[(int)(isLeft ? Button.Shoulder1 : Button.Shoulder21)];
+                    output.ShoulderRight = buttons[(int)(isLeft ? Button.Shoulder21 : Button.Shoulder1)];
+                    output.ThumbLeft = buttons[(int)(isLeft ? Button.Stick : Button.Stick2)];
+                    output.ThumbRight = buttons[(int)(isLeft ? Button.Stick2 : Button.Stick)];
                 }
                 else
                 {
                     // single joycon mode
-                    output.cross = !swapAB
-                            ? buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.DPAD_RIGHT)]
-                            : buttons[(int)(isLeft ? Button.DPAD_DOWN : Button.DPAD_UP)];
-                    output.circle = swapAB
-                            ? buttons[(int)(isLeft ? Button.DPAD_LEFT : Button.DPAD_RIGHT)]
-                            : buttons[(int)(isLeft ? Button.DPAD_DOWN : Button.DPAD_UP)];
-                    output.triangle = !swapXY
-                            ? buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.DPAD_LEFT)]
-                            : buttons[(int)(isLeft ? Button.DPAD_UP : Button.DPAD_DOWN)];
-                    output.square = swapXY
-                            ? buttons[(int)(isLeft ? Button.DPAD_RIGHT : Button.DPAD_LEFT)]
-                            : buttons[(int)(isLeft ? Button.DPAD_UP : Button.DPAD_DOWN)];
+                    output.Cross = !swapAB
+                            ? buttons[(int)(isLeft ? Button.DpadLeft : Button.DpadRight)]
+                            : buttons[(int)(isLeft ? Button.DpadDown : Button.DpadUp)];
+                    output.Circle = swapAB
+                            ? buttons[(int)(isLeft ? Button.DpadLeft : Button.DpadRight)]
+                            : buttons[(int)(isLeft ? Button.DpadDown : Button.DpadUp)];
+                    output.Triangle = !swapXY
+                            ? buttons[(int)(isLeft ? Button.DpadRight : Button.DpadLeft)]
+                            : buttons[(int)(isLeft ? Button.DpadUp : Button.DpadDown)];
+                    output.Square = swapXY
+                            ? buttons[(int)(isLeft ? Button.DpadRight : Button.DpadLeft)]
+                            : buttons[(int)(isLeft ? Button.DpadUp : Button.DpadDown)];
 
-                    output.ps = buttons[(int)Button.MINUS] | buttons[(int)Button.HOME];
-                    output.options = buttons[(int)Button.PLUS] | buttons[(int)Button.CAPTURE];
+                    output.Ps = buttons[(int)Button.Minus] | buttons[(int)Button.Home];
+                    output.Options = buttons[(int)Button.Plus] | buttons[(int)Button.Capture];
 
-                    output.shoulder_left = buttons[(int)Button.SL];
-                    output.shoulder_right = buttons[(int)Button.SR];
+                    output.ShoulderLeft = buttons[(int)Button.SL];
+                    output.ShoulderRight = buttons[(int)Button.SR];
 
-                    output.thumb_left = buttons[(int)Button.STICK];
+                    output.ThumbLeft = buttons[(int)Button.Stick];
                 }
             }
 
             // overwrite guide button if it's custom-mapped
             if (Config.Value("home") != "0")
             {
-                output.ps = false;
+                output.Ps = false;
             }
 
-            if (!isSnes)
+            if (!isSNES)
             {
                 if (other != null || isPro)
                 {
                     // no need for && other != this
-                    output.thumb_left_x = CastStickValueByte(other == input && !isLeft ? -stick2[0] : -stick[0]);
-                    output.thumb_left_y = CastStickValueByte(other == input && !isLeft ? stick2[1] : stick[1]);
-                    output.thumb_right_x = CastStickValueByte(other == input && !isLeft ? -stick[0] : -stick2[0]);
-                    output.thumb_right_y = CastStickValueByte(other == input && !isLeft ? stick[1] : stick2[1]);
+                    output.ThumbLeftX = CastStickValueByte(other == input && !isLeft ? -stick2[0] : -stick[0]);
+                    output.ThumbLeftY = CastStickValueByte(other == input && !isLeft ? stick2[1] : stick[1]);
+                    output.ThumbRightX = CastStickValueByte(other == input && !isLeft ? -stick[0] : -stick2[0]);
+                    output.ThumbRightY = CastStickValueByte(other == input && !isLeft ? stick[1] : stick2[1]);
                 }
                 else
                 {
                     // single joycon mode
-                    output.thumb_left_y = CastStickValueByte((isLeft ? 1 : -1) * stick[0]);
-                    output.thumb_left_x = CastStickValueByte((isLeft ? 1 : -1) * stick[1]);
+                    output.ThumbLeftY = CastStickValueByte((isLeft ? 1 : -1) * stick[0]);
+                    output.ThumbLeftX = CastStickValueByte((isLeft ? 1 : -1) * stick[1]);
                 }
             }
 
             if (isPro || other != null)
             {
-                var lval = GyroAnalogSliders ? sliderVal[0] : byte.MaxValue;
-                var rval = GyroAnalogSliders ? sliderVal[1] : byte.MaxValue;
-                output.trigger_left_value = (byte)(buttons[(int)(isLeft ? Button.SHOULDER_2 : Button.SHOULDER2_2)] ? lval : 0);
-                output.trigger_right_value = (byte)(buttons[(int)(isLeft ? Button.SHOULDER2_2 : Button.SHOULDER_2)] ? rval : 0);
+                var lval = gyroAnalogSliders ? sliderVal[0] : byte.MaxValue;
+                var rval = gyroAnalogSliders ? sliderVal[1] : byte.MaxValue;
+                output.TriggerLeftValue = (byte)(buttons[(int)(isLeft ? Button.Shoulder2 : Button.Shoulder22)] ? lval : 0);
+                output.TriggerRightValue = (byte)(buttons[(int)(isLeft ? Button.Shoulder22 : Button.Shoulder2)] ? rval : 0);
             }
             else
             {
-                output.trigger_left_value = (byte)(buttons[(int)(isLeft ? Button.SHOULDER_2 : Button.SHOULDER_1)] ? byte.MaxValue : 0);
-                output.trigger_right_value = (byte)(buttons[(int)(isLeft ? Button.SHOULDER_1 : Button.SHOULDER_2)] ? byte.MaxValue : 0);
+                output.TriggerLeftValue = (byte)(buttons[(int)(isLeft ? Button.Shoulder2 : Button.Shoulder1)] ? byte.MaxValue : 0);
+                output.TriggerRightValue = (byte)(buttons[(int)(isLeft ? Button.Shoulder1 : Button.Shoulder2)] ? byte.MaxValue : 0);
             }
 
             // Output digital L2 / R2 in addition to analog L2 / R2
-            output.trigger_left = output.trigger_left_value > 0;
-            output.trigger_right = output.trigger_right_value > 0;
+            output.TriggerLeft = output.TriggerLeftValue > 0;
+            output.TriggerRight = output.TriggerRightValue > 0;
 
             return output;
         }
 
-        public string getControllerName()
+        public string GetControllerName()
         {
-            return isPro ? "Pro Controller" : isSnes ? "SNES Controller" : isLeft ? "Joycon Left" : "Joycon Right";
+            return IsPro ? "Pro Controller" : IsSNES ? "SNES Controller" : IsLeft ? "Joycon Left" : "Joycon Right";
         }
 
         private struct Rumble
         {
-            private readonly Queue<float[]> queue;
-            private SpinLock queueLock;
+            private readonly Queue<float[]> _queue;
+            private SpinLock _queueLock;
 
-            public void set_vals(float low_freq, float high_freq, float amplitude)
+            public void set_vals(float lowFreq, float highFreq, float amplitude)
             {
-                float[] rumbleQueue = { low_freq, high_freq, amplitude };
+                float[] rumbleQueue = { lowFreq, highFreq, amplitude };
                 // Keep a queue of 15 items, discard oldest item if queue is full.
                 var lockTaken = false;
                 try
                 {
-                    queueLock.Enter(ref lockTaken);
-                    if (queue.Count > 15)
+                    _queueLock.Enter(ref lockTaken);
+                    if (_queue.Count > 15)
                     {
-                        queue.Dequeue();
+                        _queue.Dequeue();
                     }
 
-                    queue.Enqueue(rumbleQueue);
+                    _queue.Enqueue(rumbleQueue);
                 }
                 finally
                 {
                     if (lockTaken)
                     {
-                        queueLock.Exit();
+                        _queueLock.Exit();
                     }
                 }
             }
 
-            public Rumble(float[] rumble_info)
+            public Rumble(float[] rumbleInfo)
             {
-                queue = new Queue<float[]>();
-                queueLock = new SpinLock();
-                queue.Enqueue(rumble_info);
+                _queue = new Queue<float[]>();
+                _queueLock = new SpinLock();
+                _queue.Enqueue(rumbleInfo);
             }
 
-            private float clamp(float x, float min, float max)
+            private float Clamp(float x, float min, float max)
             {
                 if (x < min)
                 {
@@ -2236,100 +2238,100 @@ namespace BetterJoyForCemu
 
             private byte EncodeAmp(float amp)
             {
-                byte en_amp;
+                byte enAmp;
 
                 if (amp == 0)
                 {
-                    en_amp = 0;
+                    enAmp = 0;
                 }
                 else if (amp < 0.117)
                 {
-                    en_amp = (byte)((Math.Log(amp * 1000, 2) * 32 - 0x60) / (5 - Math.Pow(amp, 2)) - 1);
+                    enAmp = (byte)((Math.Log(amp * 1000, 2) * 32 - 0x60) / (5 - Math.Pow(amp, 2)) - 1);
                 }
                 else if (amp < 0.23)
                 {
-                    en_amp = (byte)(Math.Log(amp * 1000, 2) * 32 - 0x60 - 0x5c);
+                    enAmp = (byte)(Math.Log(amp * 1000, 2) * 32 - 0x60 - 0x5c);
                 }
                 else
                 {
-                    en_amp = (byte)((Math.Log(amp * 1000, 2) * 32 - 0x60) * 2 - 0xf6);
+                    enAmp = (byte)((Math.Log(amp * 1000, 2) * 32 - 0x60) * 2 - 0xf6);
                 }
 
-                return en_amp;
+                return enAmp;
             }
 
             public byte[] GetData()
             {
-                float[] queued_data = null;
+                float[] queuedData = null;
                 var lockTaken = false;
                 try
                 {
-                    queueLock.Enter(ref lockTaken);
-                    if (queue.Count > 0)
+                    _queueLock.Enter(ref lockTaken);
+                    if (_queue.Count > 0)
                     {
-                        queued_data = queue.Dequeue();
+                        queuedData = _queue.Dequeue();
                     }
                 }
                 finally
                 {
                     if (lockTaken)
                     {
-                        queueLock.Exit();
+                        _queueLock.Exit();
                     }
                 }
 
-                if (queued_data == null)
+                if (queuedData == null)
                 {
                     return null;
                 }
 
-                var rumble_data = new byte[8];
+                var rumbleData = new byte[8];
 
-                if (queued_data[2] == 0.0f)
+                if (queuedData[2] == 0.0f)
                 {
-                    rumble_data[0] = 0x0;
-                    rumble_data[1] = 0x1;
-                    rumble_data[2] = 0x40;
-                    rumble_data[3] = 0x40;
+                    rumbleData[0] = 0x0;
+                    rumbleData[1] = 0x1;
+                    rumbleData[2] = 0x40;
+                    rumbleData[3] = 0x40;
                 }
                 else
                 {
-                    queued_data[0] = clamp(queued_data[0], 40.875885f, 626.286133f);
-                    queued_data[1] = clamp(queued_data[1], 81.75177f, 1252.572266f);
+                    queuedData[0] = Clamp(queuedData[0], 40.875885f, 626.286133f);
+                    queuedData[1] = Clamp(queuedData[1], 81.75177f, 1252.572266f);
 
-                    queued_data[2] = clamp(queued_data[2], 0.0f, 1.0f);
+                    queuedData[2] = Clamp(queuedData[2], 0.0f, 1.0f);
 
-                    var hf = (ushort)((Math.Round(32f * Math.Log(queued_data[1] * 0.1f, 2)) - 0x60) * 4);
-                    var lf = (byte)(Math.Round(32f * Math.Log(queued_data[0] * 0.1f, 2)) - 0x40);
-                    var hf_amp = EncodeAmp(queued_data[2]);
+                    var hf = (ushort)((Math.Round(32f * Math.Log(queuedData[1] * 0.1f, 2)) - 0x60) * 4);
+                    var lf = (byte)(Math.Round(32f * Math.Log(queuedData[0] * 0.1f, 2)) - 0x40);
+                    var hfAmp = EncodeAmp(queuedData[2]);
 
-                    var lf_amp = (ushort)(Math.Round((double)hf_amp) * .5);
-                    var parity = (byte)(lf_amp % 2);
+                    var lfAmp = (ushort)(Math.Round((double)hfAmp) * .5);
+                    var parity = (byte)(lfAmp % 2);
                     if (parity > 0)
                     {
-                        --lf_amp;
+                        --lfAmp;
                     }
 
-                    lf_amp = (ushort)(lf_amp >> 1);
-                    lf_amp += 0x40;
+                    lfAmp = (ushort)(lfAmp >> 1);
+                    lfAmp += 0x40;
                     if (parity > 0)
                     {
-                        lf_amp |= 0x8000;
+                        lfAmp |= 0x8000;
                     }
 
-                    hf_amp = (byte)(hf_amp - hf_amp % 2); // make even at all times to prevent weird hum
-                    rumble_data[0] = (byte)(hf & 0xff);
-                    rumble_data[1] = (byte)(((hf >> 8) & 0xff) + hf_amp);
-                    rumble_data[2] = (byte)(((lf_amp >> 8) & 0xff) + lf);
-                    rumble_data[3] = (byte)(lf_amp & 0xff);
+                    hfAmp = (byte)(hfAmp - hfAmp % 2); // make even at all times to prevent weird hum
+                    rumbleData[0] = (byte)(hf & 0xff);
+                    rumbleData[1] = (byte)(((hf >> 8) & 0xff) + hfAmp);
+                    rumbleData[2] = (byte)(((lfAmp >> 8) & 0xff) + lf);
+                    rumbleData[3] = (byte)(lfAmp & 0xff);
                 }
 
                 for (var i = 0; i < 4; ++i)
                 {
-                    rumble_data[4 + i] = rumble_data[i];
+                    rumbleData[4 + i] = rumbleData[i];
                 }
 
-                return rumble_data;
+                return rumbleData;
             }
         }
     }

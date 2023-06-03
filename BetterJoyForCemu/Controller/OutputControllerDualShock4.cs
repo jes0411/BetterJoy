@@ -19,60 +19,60 @@ namespace BetterJoyForCemu.Controller
 
     public struct OutputControllerDualShock4InputState
     {
-        public bool triangle;
-        public bool circle;
-        public bool cross;
-        public bool square;
+        public bool Triangle;
+        public bool Circle;
+        public bool Cross;
+        public bool Square;
 
-        public bool trigger_left;
-        public bool trigger_right;
+        public bool TriggerLeft;
+        public bool TriggerRight;
 
-        public bool shoulder_left;
-        public bool shoulder_right;
+        public bool ShoulderLeft;
+        public bool ShoulderRight;
 
-        public bool options;
-        public bool share;
-        public bool ps;
-        public bool touchpad;
+        public bool Options;
+        public bool Share;
+        public bool Ps;
+        public bool Touchpad;
 
-        public bool thumb_left;
-        public bool thumb_right;
+        public bool ThumbLeft;
+        public bool ThumbRight;
 
-        public DpadDirection dPad;
+        public DpadDirection DPad;
 
-        public byte thumb_left_x;
-        public byte thumb_left_y;
-        public byte thumb_right_x;
-        public byte thumb_right_y;
+        public byte ThumbLeftX;
+        public byte ThumbLeftY;
+        public byte ThumbRightX;
+        public byte ThumbRightY;
 
-        public byte trigger_left_value;
-        public byte trigger_right_value;
+        public byte TriggerLeftValue;
+        public byte TriggerRightValue;
 
         public bool IsEqual(OutputControllerDualShock4InputState other)
         {
-            var buttons = triangle == other.triangle
-                          && circle == other.circle
-                          && cross == other.cross
-                          && square == other.square
-                          && trigger_left == other.trigger_left
-                          && trigger_right == other.trigger_right
-                          && shoulder_left == other.shoulder_left
-                          && shoulder_right == other.shoulder_right
-                          && options == other.options
-                          && share == other.share
-                          && ps == other.ps
-                          && touchpad == other.touchpad
-                          && thumb_left == other.thumb_left
-                          && thumb_right == other.thumb_right
-                          && dPad == other.dPad;
+            var buttons = Triangle == other.Triangle
+                          && Circle == other.Circle
+                          && Cross == other.Cross
+                          && Square == other.Square
+                          && TriggerLeft == other.TriggerLeft
+                          && TriggerRight == other.TriggerRight
+                          && ShoulderLeft == other.ShoulderLeft
+                          && ShoulderRight == other.ShoulderRight
+                          && Options == other.Options
+                          && Share == other.Share
+                          && Ps == other.Ps
+                          && Touchpad == other.Touchpad
+                          && ThumbLeft == other.ThumbLeft
+                          && ThumbRight == other.ThumbRight
+                          && DPad == other.DPad;
 
-            var axis = thumb_left_x == other.thumb_left_x
-                       && thumb_left_y == other.thumb_left_y
-                       && thumb_right_x == other.thumb_right_x
-                       && thumb_right_y == other.thumb_right_y;
+            var axis = ThumbLeftX == other.ThumbLeftX
+                       && ThumbLeftY == other.ThumbLeftY
+                       && ThumbRightX == other.ThumbRightX
+                       && ThumbRightY == other.ThumbRightY;
 
-            var triggers = trigger_left_value == other.trigger_left_value
-                           && trigger_right_value == other.trigger_right_value;
+            var triggers = TriggerLeftValue == other.TriggerLeftValue
+                           && TriggerRightValue == other.TriggerRightValue;
 
             return buttons && axis && triggers;
         }
@@ -82,19 +82,19 @@ namespace BetterJoyForCemu.Controller
     {
         public delegate void DualShock4FeedbackReceivedEventHandler(DualShock4FeedbackReceivedEventArgs e);
 
-        private readonly IDualShock4Controller controller;
+        private readonly IDualShock4Controller _controller;
 
-        private OutputControllerDualShock4InputState current_state;
+        private OutputControllerDualShock4InputState _currentState;
 
         public OutputControllerDualShock4()
         {
-            controller = Program.emClient.CreateDualShock4Controller();
+            _controller = Program.EmClient.CreateDualShock4Controller();
             Init();
         }
 
-        public OutputControllerDualShock4(ushort vendor_id, ushort product_id)
+        public OutputControllerDualShock4(ushort vendorId, ushort productId)
         {
-            controller = Program.emClient.CreateDualShock4Controller(vendor_id, product_id);
+            _controller = Program.EmClient.CreateDualShock4Controller(vendorId, productId);
             Init();
         }
 
@@ -102,11 +102,11 @@ namespace BetterJoyForCemu.Controller
 
         private void Init()
         {
-            controller.AutoSubmitReport = false;
-            controller.FeedbackReceived += FeedbackReceivedRcv;
+            _controller.AutoSubmitReport = false;
+            _controller.FeedbackReceived += FeedbackReceivedRcv;
         }
 
-        private void FeedbackReceivedRcv(object _sender, DualShock4FeedbackReceivedEventArgs e)
+        private void FeedbackReceivedRcv(object sender, DualShock4FeedbackReceivedEventArgs e)
         {
             if (FeedbackReceived != null)
             {
@@ -116,60 +116,60 @@ namespace BetterJoyForCemu.Controller
 
         public void Connect()
         {
-            controller.Connect();
+            _controller.Connect();
         }
 
         public void Disconnect()
         {
-            controller.Disconnect();
+            _controller.Disconnect();
         }
 
-        public bool UpdateInput(OutputControllerDualShock4InputState new_state)
+        public bool UpdateInput(OutputControllerDualShock4InputState newState)
         {
-            if (current_state.IsEqual(new_state))
+            if (_currentState.IsEqual(newState))
             {
                 return false;
             }
 
-            DoUpdateInput(new_state);
+            DoUpdateInput(newState);
 
             return true;
         }
 
-        private void DoUpdateInput(OutputControllerDualShock4InputState new_state)
+        private void DoUpdateInput(OutputControllerDualShock4InputState newState)
         {
-            controller.SetButtonState(DualShock4Button.Triangle, new_state.triangle);
-            controller.SetButtonState(DualShock4Button.Circle, new_state.circle);
-            controller.SetButtonState(DualShock4Button.Cross, new_state.cross);
-            controller.SetButtonState(DualShock4Button.Square, new_state.square);
+            _controller.SetButtonState(DualShock4Button.Triangle, newState.Triangle);
+            _controller.SetButtonState(DualShock4Button.Circle, newState.Circle);
+            _controller.SetButtonState(DualShock4Button.Cross, newState.Cross);
+            _controller.SetButtonState(DualShock4Button.Square, newState.Square);
 
-            controller.SetButtonState(DualShock4Button.ShoulderLeft, new_state.shoulder_left);
-            controller.SetButtonState(DualShock4Button.ShoulderRight, new_state.shoulder_right);
+            _controller.SetButtonState(DualShock4Button.ShoulderLeft, newState.ShoulderLeft);
+            _controller.SetButtonState(DualShock4Button.ShoulderRight, newState.ShoulderRight);
 
-            controller.SetButtonState(DualShock4Button.TriggerLeft, new_state.trigger_left);
-            controller.SetButtonState(DualShock4Button.TriggerRight, new_state.trigger_right);
+            _controller.SetButtonState(DualShock4Button.TriggerLeft, newState.TriggerLeft);
+            _controller.SetButtonState(DualShock4Button.TriggerRight, newState.TriggerRight);
 
-            controller.SetButtonState(DualShock4Button.ThumbLeft, new_state.thumb_left);
-            controller.SetButtonState(DualShock4Button.ThumbRight, new_state.thumb_right);
+            _controller.SetButtonState(DualShock4Button.ThumbLeft, newState.ThumbLeft);
+            _controller.SetButtonState(DualShock4Button.ThumbRight, newState.ThumbRight);
 
-            controller.SetButtonState(DualShock4Button.Share, new_state.share);
-            controller.SetButtonState(DualShock4Button.Options, new_state.options);
-            controller.SetButtonState(DualShock4SpecialButton.Ps, new_state.ps);
-            controller.SetButtonState(DualShock4SpecialButton.Touchpad, new_state.touchpad);
+            _controller.SetButtonState(DualShock4Button.Share, newState.Share);
+            _controller.SetButtonState(DualShock4Button.Options, newState.Options);
+            _controller.SetButtonState(DualShock4SpecialButton.Ps, newState.Ps);
+            _controller.SetButtonState(DualShock4SpecialButton.Touchpad, newState.Touchpad);
 
-            controller.SetDPadDirection(MapDPadDirection(new_state.dPad));
+            _controller.SetDPadDirection(MapDPadDirection(newState.DPad));
 
-            controller.SetAxisValue(DualShock4Axis.LeftThumbX, new_state.thumb_left_x);
-            controller.SetAxisValue(DualShock4Axis.LeftThumbY, new_state.thumb_left_y);
-            controller.SetAxisValue(DualShock4Axis.RightThumbX, new_state.thumb_right_x);
-            controller.SetAxisValue(DualShock4Axis.RightThumbY, new_state.thumb_right_y);
+            _controller.SetAxisValue(DualShock4Axis.LeftThumbX, newState.ThumbLeftX);
+            _controller.SetAxisValue(DualShock4Axis.LeftThumbY, newState.ThumbLeftY);
+            _controller.SetAxisValue(DualShock4Axis.RightThumbX, newState.ThumbRightX);
+            _controller.SetAxisValue(DualShock4Axis.RightThumbY, newState.ThumbRightY);
 
-            controller.SetSliderValue(DualShock4Slider.LeftTrigger, new_state.trigger_left_value);
-            controller.SetSliderValue(DualShock4Slider.RightTrigger, new_state.trigger_right_value);
+            _controller.SetSliderValue(DualShock4Slider.LeftTrigger, newState.TriggerLeftValue);
+            _controller.SetSliderValue(DualShock4Slider.RightTrigger, newState.TriggerRightValue);
 
-            controller.SubmitReport();
+            _controller.SubmitReport();
 
-            current_state = new_state;
+            _currentState = newState;
         }
 
         private DualShock4DPadDirection MapDPadDirection(DpadDirection dPad)

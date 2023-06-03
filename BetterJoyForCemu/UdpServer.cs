@@ -17,12 +17,12 @@ namespace BetterJoyForCemu
     {
         private enum MessageType
         {
-            DSUC_VersionReq = 0x100000,
-            DSUS_VersionRsp = 0x100000,
-            DSUC_ListPorts = 0x100001,
-            DSUS_PortInfo = 0x100001,
-            DSUC_PadDataReq = 0x100002,
-            DSUS_PadDataRsp = 0x100002
+            DsucVersionReq = 0x100000,
+            DsusVersionRsp = 0x100000,
+            DsucListPorts = 0x100001,
+            DsusPortInfo = 0x100001,
+            DsucPadDataReq = 0x100002,
+            DsusPadDataRsp = 0x100002
         }
 
         private const ushort MaxProtocolVersion = 1001;
@@ -75,7 +75,7 @@ namespace BetterJoyForCemu
         }
 
         private async Task SendPacket(
-            IPEndPoint clientEP,
+            IPEndPoint clientEp,
             byte[] usefulData,
             ushort reqProtocolVersion = MaxProtocolVersion
         )
@@ -85,7 +85,7 @@ namespace BetterJoyForCemu
             var packetDataMem = packetDataBuffer.Memory;
 
             // needed to use span in async function
-            void makePacket()
+            void MakePacket()
             {
                 var packetData = packetDataMem.Span;
 
@@ -94,11 +94,11 @@ namespace BetterJoyForCemu
                 FinishPacket(packetData);
             }
 
-            makePacket();
+            MakePacket();
 
             try
             {
-                await _udpSock.SendToAsync(clientEP, packetDataMem);
+                await _udpSock.SendToAsync(clientEp, packetDataMem);
             }
             catch (SocketException /*e*/) { }
         }
@@ -153,7 +153,7 @@ namespace BetterJoyForCemu
             return true;
         }
 
-        private List<byte[]> ProcessIncoming(Span<byte> localMsg, IPEndPoint clientEP)
+        private List<byte[]> ProcessIncoming(Span<byte> localMsg, IPEndPoint clientEp)
         {
             var replies = new List<byte[]>();
 
@@ -170,11 +170,11 @@ namespace BetterJoyForCemu
 
             switch (messageType)
             {
-                case (uint)MessageType.DSUC_VersionReq:
+                case (uint)MessageType.DsucVersionReq:
                 {
                     var outputData = new byte[8];
                     var outIdx = 0;
-                    Array.Copy(BitConverter.GetBytes((uint)MessageType.DSUS_VersionRsp), 0, outputData, outIdx, 4);
+                    Array.Copy(BitConverter.GetBytes((uint)MessageType.DsusVersionRsp), 0, outputData, outIdx, 4);
                     outIdx += 4;
                     Array.Copy(BitConverter.GetBytes(MaxProtocolVersion), 0, outputData, outIdx, 2);
                     outIdx += 2;
@@ -184,7 +184,7 @@ namespace BetterJoyForCemu
                     replies.Add(outputData);
                     break;
                 }
-                case (uint)MessageType.DSUC_ListPorts:
+                case (uint)MessageType.DsucListPorts:
                 {
                     // Requested information on gamepads - return MAC address
                     var numPadRequests = BitConverter.ToInt32(localMsg.Slice(currIdx, 4));
@@ -207,7 +207,7 @@ namespace BetterJoyForCemu
 
                                 var outIdx = 0;
                                 Array.Copy(
-                                    BitConverter.GetBytes((uint)MessageType.DSUS_PortInfo),
+                                    BitConverter.GetBytes((uint)MessageType.DsusPortInfo),
                                     0,
                                     outputData,
                                     outIdx,
@@ -216,9 +216,9 @@ namespace BetterJoyForCemu
                                 outIdx += 4;
 
                                 outputData[outIdx++] = (byte)padData.PadId;
-                                outputData[outIdx++] = (byte)padData.constate;
-                                outputData[outIdx++] = (byte)padData.model;
-                                outputData[outIdx++] = (byte)padData.connection;
+                                outputData[outIdx++] = (byte)padData.Constate;
+                                outputData[outIdx++] = (byte)padData.Model;
+                                outputData[outIdx++] = (byte)padData.Connection;
 
                                 var addressBytes = padData.PadMacAddress.GetAddressBytes();
                                 if (addressBytes.Length == 6)
@@ -240,7 +240,7 @@ namespace BetterJoyForCemu
                                     outputData[outIdx++] = 0;
                                 }
 
-                                outputData[outIdx++] = (byte)padData.battery;
+                                outputData[outIdx++] = (byte)padData.Battery;
                                 outputData[outIdx++] = 0;
 
                                 replies.Add(outputData);
@@ -250,7 +250,7 @@ namespace BetterJoyForCemu
 
                     break;
                 }
-                case (uint)MessageType.DSUC_PadDataReq:
+                case (uint)MessageType.DsucPadDataReq:
                 {
                     var regFlags = localMsg[currIdx++];
                     var idToReg = localMsg[currIdx++];
@@ -264,7 +264,7 @@ namespace BetterJoyForCemu
 
                     lock (_clients)
                     {
-                        if (_clients.TryGetValue(clientEP, out var client))
+                        if (_clients.TryGetValue(clientEp, out var client))
                         {
                             client.RequestPadInfo(regFlags, idToReg, macToReg);
                         }
@@ -272,7 +272,7 @@ namespace BetterJoyForCemu
                         {
                             var clientTimes = new ClientRequestTimes();
                             clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
-                            _clients[clientEP] = clientTimes;
+                            _clients[clientEp] = clientTimes;
                         }
                     }
 
@@ -344,10 +344,10 @@ namespace BetterJoyForCemu
             }
 
             // Ignore ICMP
-            var IOC_IN = 0x80000000;
-            uint IOC_VENDOR = 0x18000000;
-            var SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
-            _udpSock.IOControl((int)SIO_UDP_CONNRESET, new[] { Convert.ToByte(false) }, null);
+            var iocIn = 0x80000000;
+            uint iocVendor = 0x18000000;
+            var sioUdpConnreset = iocIn | iocVendor | 12;
+            _udpSock.IOControl((int)sioUdpConnreset, new[] { Convert.ToByte(false) }, null);
 
             var randomBuf = new byte[4];
             new Random().NextBytes(randomBuf);
@@ -564,13 +564,13 @@ namespace BetterJoyForCemu
             var outputData = reportBufferMem.Span;
 
             var outIdx = BeginPacket(outputData);
-            BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), (uint)MessageType.DSUS_PadDataRsp);
+            BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), (uint)MessageType.DsusPadDataRsp);
             outIdx += 4;
 
             outputData[outIdx++] = (byte)hidReport.PadId;
-            outputData[outIdx++] = (byte)hidReport.constate;
-            outputData[outIdx++] = (byte)hidReport.model;
-            outputData[outIdx++] = (byte)hidReport.connection;
+            outputData[outIdx++] = (byte)hidReport.Constate;
+            outputData[outIdx++] = (byte)hidReport.Model;
+            outputData[outIdx++] = (byte)hidReport.Connection;
             {
                 ReadOnlySpan<byte> padMac = hidReport.PadMacAddress.GetAddressBytes();
                 foreach (var number in padMac)
@@ -579,10 +579,10 @@ namespace BetterJoyForCemu
                 }
             }
 
-            outputData[outIdx++] = (byte)hidReport.battery;
+            outputData[outIdx++] = (byte)hidReport.Battery;
             outputData[outIdx++] = 1;
 
-            BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), hidReport.packetCounter);
+            BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), hidReport.PacketCounter);
             outIdx += 4;
 
             ReportToBuffer(hidReport, outputData, ref outIdx);

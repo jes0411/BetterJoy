@@ -6,65 +6,65 @@ namespace BetterJoyForCemu.Controller
     public struct OutputControllerXbox360InputState
     {
         // buttons
-        public bool thumb_stick_left;
-        public bool thumb_stick_right;
+        public bool ThumbStickLeft;
+        public bool ThumbStickRight;
 
-        public bool y;
-        public bool x;
-        public bool b;
-        public bool a;
+        public bool Y;
+        public bool X;
+        public bool B;
+        public bool A;
 
-        public bool start;
-        public bool back;
+        public bool Start;
+        public bool Back;
 
-        public bool guide;
+        public bool Guide;
 
-        public bool shoulder_left;
-        public bool shoulder_right;
+        public bool ShoulderLeft;
+        public bool ShoulderRight;
 
         // dpad
-        public bool dpad_up;
-        public bool dpad_right;
-        public bool dpad_down;
-        public bool dpad_left;
+        public bool DpadUp;
+        public bool DpadRight;
+        public bool DpadDown;
+        public bool DpadLeft;
 
         // axis
-        public short axis_left_x;
-        public short axis_left_y;
+        public short AxisLeftX;
+        public short AxisLeftY;
 
-        public short axis_right_x;
-        public short axis_right_y;
+        public short AxisRightX;
+        public short AxisRightY;
 
         // triggers
-        public byte trigger_left;
-        public byte trigger_right;
+        public byte TriggerLeft;
+        public byte TriggerRight;
 
         public bool IsEqual(OutputControllerXbox360InputState other)
         {
-            var buttons = thumb_stick_left == other.thumb_stick_left
-                          && thumb_stick_right == other.thumb_stick_right
-                          && y == other.y
-                          && x == other.x
-                          && b == other.b
-                          && a == other.a
-                          && start == other.start
-                          && back == other.back
-                          && guide == other.guide
-                          && shoulder_left == other.shoulder_left
-                          && shoulder_right == other.shoulder_right;
+            var buttons = ThumbStickLeft == other.ThumbStickLeft
+                          && ThumbStickRight == other.ThumbStickRight
+                          && Y == other.Y
+                          && X == other.X
+                          && B == other.B
+                          && A == other.A
+                          && Start == other.Start
+                          && Back == other.Back
+                          && Guide == other.Guide
+                          && ShoulderLeft == other.ShoulderLeft
+                          && ShoulderRight == other.ShoulderRight;
 
-            var dpad = dpad_up == other.dpad_up
-                       && dpad_right == other.dpad_right
-                       && dpad_down == other.dpad_down
-                       && dpad_left == other.dpad_left;
+            var dpad = DpadUp == other.DpadUp
+                       && DpadRight == other.DpadRight
+                       && DpadDown == other.DpadDown
+                       && DpadLeft == other.DpadLeft;
 
-            var axis = axis_left_x == other.axis_left_x
-                       && axis_left_y == other.axis_left_y
-                       && axis_right_x == other.axis_right_x
-                       && axis_right_y == other.axis_right_y;
+            var axis = AxisLeftX == other.AxisLeftX
+                       && AxisLeftY == other.AxisLeftY
+                       && AxisRightX == other.AxisRightX
+                       && AxisRightY == other.AxisRightY;
 
-            var triggers = trigger_left == other.trigger_left
-                           && trigger_right == other.trigger_right;
+            var triggers = TriggerLeft == other.TriggerLeft
+                           && TriggerRight == other.TriggerRight;
 
             return buttons && dpad && axis && triggers;
         }
@@ -74,19 +74,19 @@ namespace BetterJoyForCemu.Controller
     {
         public delegate void Xbox360FeedbackReceivedEventHandler(Xbox360FeedbackReceivedEventArgs e);
 
-        private readonly IXbox360Controller xbox_controller;
+        private readonly IXbox360Controller _xboxController;
 
-        private OutputControllerXbox360InputState current_state;
+        private OutputControllerXbox360InputState _currentState;
 
         public OutputControllerXbox360()
         {
-            xbox_controller = Program.emClient.CreateXbox360Controller();
+            _xboxController = Program.EmClient.CreateXbox360Controller();
             Init();
         }
 
-        public OutputControllerXbox360(ushort vendor_id, ushort product_id)
+        public OutputControllerXbox360(ushort vendorId, ushort productId)
         {
-            xbox_controller = Program.emClient.CreateXbox360Controller(vendor_id, product_id);
+            _xboxController = Program.EmClient.CreateXbox360Controller(vendorId, productId);
             Init();
         }
 
@@ -94,11 +94,11 @@ namespace BetterJoyForCemu.Controller
 
         private void Init()
         {
-            xbox_controller.FeedbackReceived += FeedbackReceivedRcv;
-            xbox_controller.AutoSubmitReport = false;
+            _xboxController.FeedbackReceived += FeedbackReceivedRcv;
+            _xboxController.AutoSubmitReport = false;
         }
 
-        private void FeedbackReceivedRcv(object _sender, Xbox360FeedbackReceivedEventArgs e)
+        private void FeedbackReceivedRcv(object sender, Xbox360FeedbackReceivedEventArgs e)
         {
             if (FeedbackReceived != null)
             {
@@ -106,62 +106,62 @@ namespace BetterJoyForCemu.Controller
             }
         }
 
-        public bool UpdateInput(OutputControllerXbox360InputState new_state)
+        public bool UpdateInput(OutputControllerXbox360InputState newState)
         {
-            if (current_state.IsEqual(new_state))
+            if (_currentState.IsEqual(newState))
             {
                 return false;
             }
 
-            DoUpdateInput(new_state);
+            DoUpdateInput(newState);
 
             return true;
         }
 
         public void Connect()
         {
-            xbox_controller.Connect();
+            _xboxController.Connect();
             DoUpdateInput(new OutputControllerXbox360InputState());
         }
 
         public void Disconnect()
         {
-            xbox_controller.Disconnect();
+            _xboxController.Disconnect();
         }
 
-        private void DoUpdateInput(OutputControllerXbox360InputState new_state)
+        private void DoUpdateInput(OutputControllerXbox360InputState newState)
         {
-            xbox_controller.SetButtonState(Xbox360Button.LeftThumb, new_state.thumb_stick_left);
-            xbox_controller.SetButtonState(Xbox360Button.RightThumb, new_state.thumb_stick_right);
+            _xboxController.SetButtonState(Xbox360Button.LeftThumb, newState.ThumbStickLeft);
+            _xboxController.SetButtonState(Xbox360Button.RightThumb, newState.ThumbStickRight);
 
-            xbox_controller.SetButtonState(Xbox360Button.Y, new_state.y);
-            xbox_controller.SetButtonState(Xbox360Button.X, new_state.x);
-            xbox_controller.SetButtonState(Xbox360Button.B, new_state.b);
-            xbox_controller.SetButtonState(Xbox360Button.A, new_state.a);
+            _xboxController.SetButtonState(Xbox360Button.Y, newState.Y);
+            _xboxController.SetButtonState(Xbox360Button.X, newState.X);
+            _xboxController.SetButtonState(Xbox360Button.B, newState.B);
+            _xboxController.SetButtonState(Xbox360Button.A, newState.A);
 
-            xbox_controller.SetButtonState(Xbox360Button.Start, new_state.start);
-            xbox_controller.SetButtonState(Xbox360Button.Back, new_state.back);
-            xbox_controller.SetButtonState(Xbox360Button.Guide, new_state.guide);
+            _xboxController.SetButtonState(Xbox360Button.Start, newState.Start);
+            _xboxController.SetButtonState(Xbox360Button.Back, newState.Back);
+            _xboxController.SetButtonState(Xbox360Button.Guide, newState.Guide);
 
-            xbox_controller.SetButtonState(Xbox360Button.Up, new_state.dpad_up);
-            xbox_controller.SetButtonState(Xbox360Button.Right, new_state.dpad_right);
-            xbox_controller.SetButtonState(Xbox360Button.Down, new_state.dpad_down);
-            xbox_controller.SetButtonState(Xbox360Button.Left, new_state.dpad_left);
+            _xboxController.SetButtonState(Xbox360Button.Up, newState.DpadUp);
+            _xboxController.SetButtonState(Xbox360Button.Right, newState.DpadRight);
+            _xboxController.SetButtonState(Xbox360Button.Down, newState.DpadDown);
+            _xboxController.SetButtonState(Xbox360Button.Left, newState.DpadLeft);
 
-            xbox_controller.SetButtonState(Xbox360Button.LeftShoulder, new_state.shoulder_left);
-            xbox_controller.SetButtonState(Xbox360Button.RightShoulder, new_state.shoulder_right);
+            _xboxController.SetButtonState(Xbox360Button.LeftShoulder, newState.ShoulderLeft);
+            _xboxController.SetButtonState(Xbox360Button.RightShoulder, newState.ShoulderRight);
 
-            xbox_controller.SetAxisValue(Xbox360Axis.LeftThumbX, new_state.axis_left_x);
-            xbox_controller.SetAxisValue(Xbox360Axis.LeftThumbY, new_state.axis_left_y);
-            xbox_controller.SetAxisValue(Xbox360Axis.RightThumbX, new_state.axis_right_x);
-            xbox_controller.SetAxisValue(Xbox360Axis.RightThumbY, new_state.axis_right_y);
+            _xboxController.SetAxisValue(Xbox360Axis.LeftThumbX, newState.AxisLeftX);
+            _xboxController.SetAxisValue(Xbox360Axis.LeftThumbY, newState.AxisLeftY);
+            _xboxController.SetAxisValue(Xbox360Axis.RightThumbX, newState.AxisRightX);
+            _xboxController.SetAxisValue(Xbox360Axis.RightThumbY, newState.AxisRightY);
 
-            xbox_controller.SetSliderValue(Xbox360Slider.LeftTrigger, new_state.trigger_left);
-            xbox_controller.SetSliderValue(Xbox360Slider.RightTrigger, new_state.trigger_right);
+            _xboxController.SetSliderValue(Xbox360Slider.LeftTrigger, newState.TriggerLeft);
+            _xboxController.SetSliderValue(Xbox360Slider.RightTrigger, newState.TriggerRight);
 
-            xbox_controller.SubmitReport();
+            _xboxController.SubmitReport();
 
-            current_state = new_state;
+            _currentState = newState;
         }
     }
 }

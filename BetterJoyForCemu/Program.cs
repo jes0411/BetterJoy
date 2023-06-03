@@ -16,62 +16,62 @@ using Nefarius.ViGEm.Client.Exceptions;
 using WindowsInput;
 using WindowsInput.Events.Sources;
 using static BetterJoyForCemu._3rdPartyControllers;
-using static BetterJoyForCemu.HIDapi;
+using static BetterJoyForCemu.HIDApi;
 using Timer = System.Timers.Timer;
 
 namespace BetterJoyForCemu
 {
     public class JoyconManager
     {
-        private const ushort vendor_id = 0x57e;
-        private const ushort product_l = 0x2006;
-        private const ushort product_r = 0x2007;
-        private const ushort product_pro = 0x2009;
-        private const ushort product_snes = 0x2017;
+        private const ushort VendorId = 0x57e;
+        private const ushort ProductL = 0x2006;
+        private const ushort ProductR = 0x2007;
+        private const ushort ProductPro = 0x2009;
+        private const ushort ProductSNES = 0x2017;
 
-        private const double defaultCheckInterval = 5000;
-        private const double fastCheckInterval = 500;
-        private readonly object checkControllerLock = new();
+        private const double DefaultCheckInterval = 5000;
+        private const double FastCheckInterval = 500;
+        private readonly object _checkControllerLock = new();
 
-        private Timer controllerCheck;
-        private bool dropControllers;
-        public bool EnableIMU = true;
-        public bool EnableLocalize = false;
+        private Timer _controllerCheck;
+        private bool _dropControllers;
+        public readonly bool EnableIMU = true;
+        public readonly bool EnableLocalize = false;
 
-        public MainForm form;
-        public bool isRunning;
+        public MainForm Form;
+        public bool IsRunning;
 
-        public ConcurrentList<Joycon> j { get; private set; } // Array of all connected Joy-Cons
+        public ConcurrentList<Joycon> J { get; private set; } // Array of all connected Joy-Cons
 
         public static JoyconManager Instance { get; private set; }
 
         public void Awake()
         {
             Instance = this;
-            j = new ConcurrentList<Joycon>();
+            J = new ConcurrentList<Joycon>();
             hid_init();
         }
 
         public void Start()
         {
-            controllerCheck = new Timer();
-            controllerCheck.Elapsed += CheckForNewControllersTime;
-            controllerCheck.AutoReset = false;
+            _controllerCheck = new Timer();
+            _controllerCheck.Elapsed += CheckForNewControllersTime;
+            _controllerCheck.AutoReset = false;
 
             Task.Run(
                 () =>
                 {
                     CheckForNewControllersTrigger(true);
-                    isRunning = true;
+                    IsRunning = true;
                 }
             );
         }
 
         private bool ControllerAlreadyAdded(string path)
         {
-            foreach (var v in j)
+            foreach (var v in J)
             {
-                if (v.path == path)
+                if (v.Path == path)
                 {
                     return true;
                 }
@@ -83,37 +83,37 @@ namespace BetterJoyForCemu
         private void CleanUp()
         {
             // removes dropped controllers from list
-            if (dropControllers)
+            if (_dropControllers)
             {
-                foreach (var v in j)
+                foreach (var v in J)
                 {
                     v.Drop();
                 }
 
-                dropControllers = false;
+                _dropControllers = false;
             }
 
             var rem = new List<Joycon>();
-            foreach (var joycon in j)
+            foreach (var joycon in J)
             {
-                if (joycon.state == Joycon.state_.DROPPED)
+                if (joycon.State == Joycon.Status.Dropped)
                 {
-                    if (joycon.other != null)
+                    if (joycon.Other != null)
                     {
-                        joycon.other.other = null; // The other of the other is the joycon itself
+                        joycon.Other.Other = null; // The other of the other is the joycon itself
                     }
 
                     joycon.Detach();
                     rem.Add(joycon);
 
-                    form.removeController(joycon);
-                    form.AppendTextBox($"Removed dropped {joycon.getControllerName()}. Can be reconnected.");
+                    Form.RemoveController(joycon);
+                    Form.AppendTextBox($"Removed dropped {joycon.GetControllerName()}. Can be reconnected.");
                 }
             }
 
             foreach (var v in rem)
             {
-                j.Remove(v);
+                J.Remove(v);
             }
         }
 
@@ -124,7 +124,7 @@ namespace BetterJoyForCemu
 
         private void CheckForNewControllersTrigger(bool forceScan = false)
         {
-            if (!Monitor.TryEnter(checkControllerLock))
+            if (!Monitor.TryEnter(_checkControllerLock))
             {
                 return;
             }
@@ -133,39 +133,39 @@ namespace BetterJoyForCemu
             {
                 CleanUp();
 
-                var checkInterval = defaultCheckInterval;
+                var checkInterval = DefaultCheckInterval;
                 if (Config.IntValue("ProgressiveScan") == 1 || forceScan)
                 {
                     checkInterval = CheckForNewControllers();
                 }
 
-                setControllerCheckInterval(checkInterval);
-                controllerCheck.Start();
+                SetControllerCheckInterval(checkInterval);
+                _controllerCheck.Start();
             }
             finally
             {
-                Monitor.Exit(checkControllerLock);
+                Monitor.Exit(_checkControllerLock);
             }
         }
 
-        private void setControllerCheckInterval(double interval)
+        private void SetControllerCheckInterval(double interval)
         {
-            if (interval == controllerCheck.Interval)
+            if (interval == _controllerCheck.Interval)
             {
                 return;
             }
 
             // Avoid triggering the elapsed event when changing the interval (see note in https://learn.microsoft.com/en-us/dotnet/api/system.timers.timer.interval?view=net-7.0)
-            var wasEnabled = controllerCheck.Enabled;
+            var wasEnabled = _controllerCheck.Enabled;
             if (!wasEnabled)
             {
-                controllerCheck.Enabled = true;
+                _controllerCheck.Enabled = true;
             }
 
-            controllerCheck.Interval = interval;
+            _controllerCheck.Interval = interval;
             if (!wasEnabled)
             {
-                controllerCheck.Enabled = false;
+                _controllerCheck.Enabled = false;
             }
         }
 
@@ -174,11 +174,11 @@ namespace BetterJoyForCemu
             switch (type)
             {
                 case 1:
-                    return product_pro;
+                    return ProductPro;
                 case 2:
-                    return product_l;
+                    return ProductL;
                 case 3:
-                    return product_r;
+                    return ProductR;
             }
 
             return 0;
@@ -189,28 +189,28 @@ namespace BetterJoyForCemu
             // move all code for initializing devices here and well as the initial code from Start()
             var isLeft = false;
             var ptr = hid_enumerate(0x0, 0x0);
-            var top_ptr = ptr;
+            var topPtr = ptr;
 
             var foundNew = false;
-            for (hid_device_info enumerate; ptr != IntPtr.Zero; ptr = enumerate.next)
+            for (HIDDeviceInfo enumerate; ptr != IntPtr.Zero; ptr = enumerate.Next)
             {
-                enumerate = (hid_device_info)Marshal.PtrToStructure(ptr, typeof(hid_device_info));
+                enumerate = (HIDDeviceInfo)Marshal.PtrToStructure(ptr, typeof(HIDDeviceInfo));
 
-                if (enumerate.serial_number == null)
+                if (enumerate.SerialNumber == null)
                 {
                     continue;
                 }
 
-                var validController = (enumerate.product_id == product_l || enumerate.product_id == product_r ||
-                                       enumerate.product_id == product_pro || enumerate.product_id == product_snes) &&
-                                      enumerate.vendor_id == vendor_id;
+                var validController = (enumerate.ProductId == ProductL || enumerate.ProductId == ProductR ||
+                                       enumerate.ProductId == ProductPro || enumerate.ProductId == ProductSNES) &&
+                                      enumerate.VendorId == VendorId;
 
                 // check list of custom controllers specified
                 SController thirdParty = null;
-                foreach (var v in Program.thirdPartyCons)
+                foreach (var v in Program.ThirdPartyCons)
                 {
-                    if (enumerate.vendor_id == v.vendor_id && enumerate.product_id == v.product_id &&
-                        enumerate.serial_number == v.serial_number)
+                    if (enumerate.VendorId == v.VendorId && enumerate.ProductId == v.ProductId &&
+                        enumerate.SerialNumber == v.SerialNumber)
                     {
                         validController = true;
                         thirdParty = v;
@@ -218,42 +218,42 @@ namespace BetterJoyForCemu
                     }
                 }
 
-                var prod_id = thirdParty == null ? enumerate.product_id : TypeToProdId(thirdParty.type);
-                if (prod_id == 0)
+                var prodId = thirdParty == null ? enumerate.ProductId : TypeToProdId(thirdParty.Type);
+                if (prodId == 0)
                 {
-                    ptr = enumerate.next; // controller was not assigned a type, but advance ptr anyway
+                    ptr = enumerate.Next; // controller was not assigned a type, but advance ptr anyway
                     continue;
                 }
 
-                if (validController && !ControllerAlreadyAdded(enumerate.path))
+                if (validController && !ControllerAlreadyAdded(enumerate.Path))
                 {
-                    switch (prod_id)
+                    switch (prodId)
                     {
-                        case product_l:
+                        case ProductL:
                             isLeft = true;
-                            form.AppendTextBox("Left Joy-Con connected.");
+                            Form.AppendTextBox("Left Joy-Con connected.");
                             break;
-                        case product_r:
+                        case ProductR:
                             isLeft = false;
-                            form.AppendTextBox("Right Joy-Con connected.");
+                            Form.AppendTextBox("Right Joy-Con connected.");
                             break;
-                        case product_pro:
+                        case ProductPro:
                             isLeft = true;
-                            form.AppendTextBox("Pro controller connected.");
+                            Form.AppendTextBox("Pro controller connected.");
                             break;
-                        case product_snes:
+                        case ProductSNES:
                             isLeft = true;
-                            form.AppendTextBox("SNES controller connected.");
+                            Form.AppendTextBox("SNES controller connected.");
                             break;
                         default:
-                            form.AppendTextBox("Non Joy-Con Nintendo input device skipped.");
+                            Form.AppendTextBox("Non Joy-Con Nintendo input device skipped.");
                             break;
                     }
 
-                    var handle = hid_open_path(enumerate.path);
+                    var handle = hid_open_path(enumerate.Path);
                     if (handle == IntPtr.Zero)
                     {
-                        form.AppendTextBox(
+                        Form.AppendTextBox(
                             "Unable to open path to device - are you using the correct (64 vs 32-bit) version for your PC?"
                         );
                         break;
@@ -262,41 +262,43 @@ namespace BetterJoyForCemu
                     hid_set_nonblocking(handle, 1);
 
                     // Add controller to block-list for HidHide
-                    Program.addDeviceToBlocklist(handle);
+                    Program.AddDeviceToBlocklist(handle);
 
-                    var type = Joycon.ControllerType.JOYCON;
-                    if (prod_id == product_pro)
+                    var type = Joycon.ControllerType.Joycon;
+                    if (prodId == ProductPro)
                     {
-                        type = Joycon.ControllerType.PRO;
+                        type = Joycon.ControllerType.Pro;
                     }
-                    else if (prod_id == product_snes)
+                    else if (prodId == ProductSNES)
                     {
                         type = Joycon.ControllerType.SNES;
                     }
 
-                    var indexController = j.Count;
-                    var isUSB = enumerate.bus_type == BusType.USB;
+                    var indexController = J.Count;
+                    var isUSB = enumerate.BusType == BusType.USB;
                     var controller = new Joycon(
                         handle,
                         EnableIMU,
                         EnableLocalize && EnableIMU,
                         0.05f,
                         isLeft,
-                        enumerate.path,
-                        enumerate.serial_number,
+                        enumerate.Path,
+                        enumerate.SerialNumber,
                         isUSB,
                         indexController,
                         type,
                         thirdParty != null
-                    );
-                    controller.form = form;
+                    )
+                    {
+                        Form = Form
+                    };
 
                     var mac = new byte[6];
                     try
                     {
                         for (var n = 0; n < 6; n++)
                         {
-                            mac[n] = byte.Parse(enumerate.serial_number.AsSpan(n * 2, 2), NumberStyles.HexNumber);
+                            mac[n] = byte.Parse(enumerate.SerialNumber.AsSpan(n * 2, 2), NumberStyles.HexNumber);
                         }
                     }
                     catch (Exception /*e*/)
@@ -306,28 +308,28 @@ namespace BetterJoyForCemu
 
                     controller.PadMacAddress = new PhysicalAddress(mac);
 
-                    j.Add(controller);
+                    J.Add(controller);
                     if (indexController < 4)
                     {
-                        form.addController(controller);
+                        Form.AddController(controller);
                     }
 
                     foundNew = true;
                 }
             }
 
-            hid_free_enumeration(top_ptr);
+            hid_free_enumeration(topPtr);
 
             if (foundNew)
             {
                 // attempt to auto join-up joycons on connection
                 Joycon temp = null;
-                foreach (var v in j)
+                foreach (var v in J)
                 {
                     // Do not attach two controllers if they are either:
                     // - Not a Joycon
                     // - Already attached to another Joycon (that isn't itself)
-                    if (v.isPro || (v.other != null && v.other != v))
+                    if (v.IsPro || (v.Other != null && v.Other != v))
                     {
                         continue;
                     }
@@ -338,13 +340,13 @@ namespace BetterJoyForCemu
                     {
                         temp = v;
                     }
-                    else if (temp.isLeft != v.isLeft && v.other == null)
+                    else if (temp.IsLeft != v.IsLeft && v.Other == null)
                     {
-                        temp.other = v;
-                        v.other = temp;
+                        temp.Other = v;
+                        v.Other = temp;
 
                         temp.DisconnectViGEm();
-                        form.joinJoycon(v, temp);
+                        Form.JoinJoycon(v, temp);
 
                         temp = null; // repeat
                     }
@@ -353,10 +355,10 @@ namespace BetterJoyForCemu
 
             var dropped = false;
             var on = bool.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
-            foreach (var jc in j)
+            foreach (var jc in J)
             {
                 // Connect device straight away
-                if (jc.state == Joycon.state_.NOT_ATTACHED)
+                if (jc.State == Joycon.Status.NotAttached)
                 {
                     try
                     {
@@ -368,36 +370,37 @@ namespace BetterJoyForCemu
                         jc.Drop();
                         dropped = true;
 
-                        form.AppendTextBox($"Could not connect {jc.getControllerName()} ({e.Message}). Dropped.");
+                        Form.AppendTextBox($"Could not connect {jc.GetControllerName()} ({e.Message}). Dropped.");
                         continue;
                     }
 
                     jc.SetHomeLight(on);
 
-                    jc.Begin();
-                    if (form.allowCalibration)
+                    if (Form.AllowCalibration)
                     {
-                        jc.getActiveIMUData();
-                        jc.getActiveSticksData();
+                        jc.GetActiveIMUData();
+                        jc.GetActiveSticksData();
                     }
+
+                    jc.Begin();
                 }
             }
 
-            var checkInterval = dropped ? fastCheckInterval : defaultCheckInterval;
+            var checkInterval = dropped ? FastCheckInterval : DefaultCheckInterval;
             return checkInterval;
         }
 
         public void OnApplicationQuit()
         {
-            lock (checkControllerLock)
+            lock (_checkControllerLock)
             {
-                controllerCheck?.Stop();
-                controllerCheck?.Dispose();
-                isRunning = false;
+                _controllerCheck?.Stop();
+                _controllerCheck?.Dispose();
+                IsRunning = false;
             }
 
             var powerOff = bool.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]);
-            foreach (var v in j)
+            foreach (var v in J)
             {
                 if (powerOff)
                 {
@@ -413,43 +416,43 @@ namespace BetterJoyForCemu
 
     internal class Program
     {
-        public static PhysicalAddress btMAC = new(new byte[] { 0, 0, 0, 0, 0, 0 });
-        public static UdpServer server;
+        public static PhysicalAddress BtMac = new(new byte[] { 0, 0, 0, 0, 0, 0 });
+        public static UdpServer Server;
 
-        public static ViGEmClient emClient;
+        public static ViGEmClient EmClient;
 
-        public static JoyconManager mgr;
+        public static JoyconManager Mgr;
 
-        private static MainForm form;
+        private static MainForm _form;
 
-        public static ConcurrentList<SController> thirdPartyCons = new();
+        public static readonly ConcurrentList<SController> ThirdPartyCons = new();
 
-        private static bool useHidHide = bool.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
+        private static bool _useHIDHide = bool.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
 
-        private static IKeyboardEventSource keyboard;
-        private static IMouseEventSource mouse;
+        private static IKeyboardEventSource _keyboard;
+        private static IMouseEventSource _mouse;
 
-        private static readonly HashSet<string> blockedDeviceInstances = new();
+        private static readonly HashSet<string> BlockedDeviceInstances = new();
 
-        private static bool isRunning;
+        private static bool _isRunning;
 
-        private static readonly string appGuid = "1bf709e9-c133-41df-933a-c9ff3f664c7b"; // randomly-generated
-        private static Mutex mutexInstance;
+        private static readonly string AppGuid = "1bf709e9-c133-41df-933a-c9ff3f664c7b"; // randomly-generated
+        private static Mutex _mutexInstance;
 
         public static void Start()
         {
-            useHidHide = startHidHide();
+            _useHIDHide = StartHIDHide();
 
             if (bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]) ||
                 bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]))
             {
                 try
                 {
-                    emClient = new ViGEmClient(); // Manages emulated XInput
+                    EmClient = new ViGEmClient(); // Manages emulated XInput
                 }
                 catch (VigemBusNotFoundException)
                 {
-                    form.AppendTextBox("Could not start VigemBus. Make sure drivers are installed correctly.");
+                    _form.AppendTextBox("Could not start VigemBus. Make sure drivers are installed correctly.");
                 }
             }
 
@@ -461,40 +464,44 @@ namespace BetterJoyForCemu
                 {
                     if (nic.Name.Split()[0] == "Bluetooth")
                     {
-                        btMAC = nic.GetPhysicalAddress();
+                        BtMac = nic.GetPhysicalAddress();
                     }
                 }
             }
 
-            var controllers = GetSaved3rdPartyControllers();
-            update3rdPartyControllers(controllers);
+            var controllers = GetSaved3RdPartyControllers();
+            Update3RdPartyControllers(controllers);
 
-            mgr = new JoyconManager();
-            mgr.form = form;
-            mgr.Awake();
+            Mgr = new JoyconManager
+            {
+                Form = _form
+            };
+            Mgr.Awake();
 
-            server = new UdpServer(mgr.j);
-            server.Form = form;
+            Server = new UdpServer(Mgr.J)
+            {
+                Form = _form
+            };
 
-            server.Start(
+            Server.Start(
                 IPAddress.Parse(ConfigurationManager.AppSettings["IP"]),
                 int.Parse(ConfigurationManager.AppSettings["Port"])
             );
 
             // Capture keyboard + mouse events for binding's sake
-            keyboard = Capture.Global.KeyboardAsync();
-            keyboard.KeyEvent += Keyboard_KeyEvent;
-            mouse = Capture.Global.MouseAsync();
-            mouse.MouseEvent += Mouse_MouseEvent;
+            _keyboard = Capture.Global.KeyboardAsync();
+            _keyboard.KeyEvent += Keyboard_KeyEvent;
+            _mouse = Capture.Global.MouseAsync();
+            _mouse.MouseEvent += Mouse_MouseEvent;
 
-            form.AppendTextBox("All systems go");
-            mgr.Start();
-            isRunning = true;
+            _form.AppendTextBox("All systems go");
+            Mgr.Start();
+            _isRunning = true;
         }
 
-        private static bool startHidHide()
+        private static bool StartHIDHide()
         {
-            if (!useHidHide)
+            if (!_useHIDHide)
             {
                 return false;
             }
@@ -502,7 +509,7 @@ namespace BetterJoyForCemu
             var hidHideService = new HidHideControlService();
             if (!hidHideService.IsInstalled)
             {
-                form.AppendTextBox("HidHide is not installed.");
+                _form.AppendTextBox("HIDHide is not installed.");
                 return false;
             }
 
@@ -512,7 +519,7 @@ namespace BetterJoyForCemu
             }
             catch (Exception /*e*/)
             {
-                form.AppendTextBox("Unable to set HidHide in whitelist mode.");
+                _form.AppendTextBox("Unable to set HIDHide in whitelist mode.");
                 return false;
             }
 
@@ -536,7 +543,7 @@ namespace BetterJoyForCemu
             }
             catch (Exception /*e*/)
             {
-                form.AppendTextBox("Unable to add program to whitelist.");
+                _form.AppendTextBox("Unable to add program to whitelist.");
                 return false;
             }
 
@@ -546,17 +553,17 @@ namespace BetterJoyForCemu
             }
             catch (Exception /*e*/)
             {
-                form.AppendTextBox("Unable to hide devices.");
+                _form.AppendTextBox("Unable to hide devices.");
                 return false;
             }
 
-            form.AppendTextBox("HidHide is enabled.");
+            _form.AppendTextBox("HIDHide is enabled.");
             return true;
         }
 
-        public static void addDeviceToBlocklist(IntPtr handle)
+        public static void AddDeviceToBlocklist(IntPtr handle)
         {
-            if (!useHidHide)
+            if (!_useHIDHide)
             {
                 return;
             }
@@ -568,7 +575,7 @@ namespace BetterJoyForCemu
                 var instance = GetInstance(handle);
                 if (instance.Length == 0)
                 {
-                    form.AppendTextBox("Unable to get device instance.");
+                    _form.AppendTextBox("Unable to get device instance.");
                 }
                 else
                 {
@@ -578,7 +585,7 @@ namespace BetterJoyForCemu
                 var parentInstance = GetParentInstance(handle);
                 if (parentInstance.Length == 0)
                 {
-                    form.AppendTextBox("Unable to get device parent instance.");
+                    _form.AppendTextBox("Unable to get device parent instance.");
                 }
                 else
                 {
@@ -590,21 +597,21 @@ namespace BetterJoyForCemu
                     throw new Exception("hidapi error");
                 }
 
-                blockDeviceInstances(devices);
+                BlockDeviceInstances(devices);
             }
             catch (Exception e)
             {
-                form.AppendTextBox($"Unable to add controller to block-list ({e.Message}).");
+                _form.AppendTextBox($"Unable to add controller to block-list ({e.Message}).");
             }
         }
 
-        public static void blockDeviceInstances(IList<string> instances)
+        public static void BlockDeviceInstances(IList<string> instances)
         {
             var hidHideService = new HidHideControlService();
             foreach (var instance in instances)
             {
                 hidHideService.AddBlockedInstanceId(instance);
-                blockedDeviceInstances.Add(instance);
+                BlockedDeviceInstances.Add(instance);
             }
         }
 
@@ -612,10 +619,10 @@ namespace BetterJoyForCemu
         {
             if (e.Data.ButtonDown != null)
             {
-                var res_val = Config.Value("reset_mouse");
-                if (res_val.StartsWith("mse_"))
+                var resVal = Config.Value("reset_mouse");
+                if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonDown.Button == int.Parse(res_val.AsSpan(4)))
+                    if ((int)e.Data.ButtonDown.Button == int.Parse(resVal.AsSpan(4)))
                     {
                         Simulate.Events()
                                 .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
@@ -623,14 +630,14 @@ namespace BetterJoyForCemu
                     }
                 }
 
-                res_val = Config.Value("active_gyro");
-                if (res_val.StartsWith("mse_"))
+                resVal = Config.Value("active_gyro");
+                if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonDown.Button == int.Parse(res_val.AsSpan(4)))
+                    if ((int)e.Data.ButtonDown.Button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in mgr.j)
+                        foreach (var i in Mgr.J)
                         {
-                            i.active_gyro = true;
+                            i.ActiveGyro = true;
                         }
                     }
                 }
@@ -638,14 +645,14 @@ namespace BetterJoyForCemu
 
             if (e.Data.ButtonUp != null)
             {
-                var res_val = Config.Value("active_gyro");
-                if (res_val.StartsWith("mse_"))
+                var resVal = Config.Value("active_gyro");
+                if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonUp.Button == int.Parse(res_val.AsSpan(4)))
+                    if ((int)e.Data.ButtonUp.Button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in mgr.j)
+                        foreach (var i in Mgr.J)
                         {
-                            i.active_gyro = false;
+                            i.ActiveGyro = false;
                         }
                     }
                 }
@@ -656,10 +663,10 @@ namespace BetterJoyForCemu
         {
             if (e.Data.KeyDown != null)
             {
-                var res_val = Config.Value("reset_mouse");
-                if (res_val.StartsWith("key_"))
+                var resVal = Config.Value("reset_mouse");
+                if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyDown.Key == int.Parse(res_val.AsSpan(4)))
+                    if ((int)e.Data.KeyDown.Key == int.Parse(resVal.AsSpan(4)))
                     {
                         Simulate.Events()
                                 .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
@@ -667,14 +674,14 @@ namespace BetterJoyForCemu
                     }
                 }
 
-                res_val = Config.Value("active_gyro");
-                if (res_val.StartsWith("key_"))
+                resVal = Config.Value("active_gyro");
+                if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyDown.Key == int.Parse(res_val.AsSpan(4)))
+                    if ((int)e.Data.KeyDown.Key == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in mgr.j)
+                        foreach (var i in Mgr.J)
                         {
-                            i.active_gyro = true;
+                            i.ActiveGyro = true;
                         }
                     }
                 }
@@ -682,14 +689,14 @@ namespace BetterJoyForCemu
 
             if (e.Data.KeyUp != null)
             {
-                var res_val = Config.Value("active_gyro");
-                if (res_val.StartsWith("key_"))
+                var resVal = Config.Value("active_gyro");
+                if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyUp.Key == int.Parse(res_val.AsSpan(4)))
+                    if ((int)e.Data.KeyUp.Key == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in mgr.j)
+                        foreach (var i in Mgr.J)
                         {
-                            i.active_gyro = false;
+                            i.ActiveGyro = false;
                         }
                     }
                 }
@@ -698,29 +705,29 @@ namespace BetterJoyForCemu
 
         public static void Stop()
         {
-            if (!isRunning)
+            if (!_isRunning)
             {
                 return;
             }
 
-            isRunning = false;
+            _isRunning = false;
 
-            stopHidHide();
+            StopHIDHide();
 
-            keyboard?.Dispose();
-            mouse?.Dispose();
-            mgr?.OnApplicationQuit();
-            server?.Stop();
+            _keyboard?.Dispose();
+            _mouse?.Dispose();
+            Mgr?.OnApplicationQuit();
+            Server?.Stop();
         }
 
-        public static void allowAnotherInstance()
+        public static void AllowAnotherInstance()
         {
-            mutexInstance?.Close();
+            _mutexInstance?.Close();
         }
 
-        public static void stopHidHide()
+        public static void StopHIDHide()
         {
-            if (!useHidHide)
+            if (!_useHIDHide)
             {
                 return;
             }
@@ -733,21 +740,21 @@ namespace BetterJoyForCemu
             }
             catch (Exception /*e*/)
             {
-                form.AppendTextBox("Unable to remove program from whitelist.");
+                _form.AppendTextBox("Unable to remove program from whitelist.");
             }
 
             if (bool.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"]))
             {
                 try
                 {
-                    foreach (var instance in blockedDeviceInstances)
+                    foreach (var instance in BlockedDeviceInstances)
                     {
                         hidHideService.RemoveBlockedInstanceId(instance);
                     }
                 }
                 catch (Exception /*e*/)
                 {
-                    form.AppendTextBox("Unable to purge blacklisted devices.");
+                    _form.AppendTextBox("Unable to purge blacklisted devices.");
                 }
             }
 
@@ -757,13 +764,13 @@ namespace BetterJoyForCemu
             }
             catch (Exception /*e*/)
             {
-                form.AppendTextBox("Unable to disable HidHide.");
+                _form.AppendTextBox("Unable to disable HIDHide.");
             }
         }
 
-        public static void update3rdPartyControllers(List<SController> controllers)
+        public static void Update3RdPartyControllers(List<SController> controllers)
         {
-            thirdPartyCons.Set(controllers);
+            ThirdPartyCons.Set(controllers);
         }
 
         private static void Main(string[] args)
@@ -774,9 +781,9 @@ namespace BetterJoyForCemu
             // Set the correct DLL for the current OS
             SetupDlls();
 
-            using (mutexInstance = new Mutex(false, "Global\\" + appGuid))
+            using (_mutexInstance = new Mutex(false, "Global\\" + AppGuid))
             {
-                if (!mutexInstance.WaitOne(0, false))
+                if (!_mutexInstance.WaitOne(0, false))
                 {
                     MessageBox.Show("Instance already running.", "BetterJoy");
                     return;
@@ -784,8 +791,8 @@ namespace BetterJoyForCemu
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                form = new MainForm();
-                Application.Run(form);
+                _form = new MainForm();
+                Application.Run(_form);
             }
         }
 

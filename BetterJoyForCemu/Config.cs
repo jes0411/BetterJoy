@@ -7,15 +7,15 @@ namespace BetterJoyForCemu
 {
     public static class Config
     {
-        private const int settingsNum = 11; // currently - ProgressiveScan, StartInTray + special buttons
+        private const int SettingsNum = 11; // currently - ProgressiveScan, StartInTray + special buttons
 
         // stores dynamic configuration, including
-        private static readonly string path;
-        private static readonly Dictionary<string, string> variables = new();
+        private static readonly string Path;
+        private static readonly Dictionary<string, string> Variables = new();
 
         static Config()
         {
-            path = Path.GetDirectoryName(Environment.ProcessPath) + "\\settings";
+            Path = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "\\settings";
         }
 
         public static string GetDefaultValue(string s)
@@ -27,7 +27,7 @@ namespace BetterJoyForCemu
                 case "capture":
                     return "key_" + (int)KeyCode.PrintScreen;
                 case "reset_mouse":
-                    return "joy_" + (int)Joycon.Button.STICK;
+                    return "joy_" + (int)Joycon.Button.Stick;
             }
 
             return "0";
@@ -62,37 +62,37 @@ namespace BetterJoyForCemu
                          "shake", "reset_mouse", "active_gyro"
                      })
             {
-                variables[s] = GetDefaultValue(s);
+                Variables[s] = GetDefaultValue(s);
             }
 
-            if (File.Exists(path))
+            if (File.Exists(Path))
             {
                 // Reset settings file if old settings
-                if (CountLinesInFile(path) < settingsNum)
+                if (CountLinesInFile(Path) < SettingsNum)
                 {
-                    File.Delete(path);
+                    File.Delete(Path);
                     Init(caliIMUData, caliSticksData);
                     return;
                 }
 
-                using (var file = new StreamReader(path))
+                using (var file = new StreamReader(Path))
                 {
                     var line = string.Empty;
-                    var lineNO = 0;
+                    var lineNo = 0;
                     while ((line = file.ReadLine()) != null)
                     {
                         var vs = line.Split();
                         try
                         {
-                            if (lineNO < settingsNum)
+                            if (lineNo < SettingsNum)
                             {
                                 // load in basic settings
-                                variables[vs[0]] = vs[1];
+                                Variables[vs[0]] = vs[1];
                             }
                             else
                             {
                                 // load in calibration presets
-                                if (lineNO == settingsNum)
+                                if (lineNo == SettingsNum)
                                 {
                                     // IMU
                                     caliIMUData.Clear();
@@ -113,7 +113,7 @@ namespace BetterJoyForCemu
                                         );
                                     }
                                 }
-                                else if (lineNO == settingsNum + 1)
+                                else if (lineNo == SettingsNum + 1)
                                 {
                                     // Sticks
                                     caliSticksData.Clear();
@@ -138,17 +138,17 @@ namespace BetterJoyForCemu
                         }
                         catch { }
 
-                        lineNO++;
+                        lineNo++;
                     }
                 }
             }
             else
             {
-                using (var file = new StreamWriter(path))
+                using (var file = new StreamWriter(Path))
                 {
-                    foreach (var k in variables.Keys)
+                    foreach (var k in Variables.Keys)
                     {
-                        file.WriteLine("{0} {1}", k, variables[k]);
+                        file.WriteLine("{0} {1}", k, Variables[k]);
                     }
 
                     // IMU Calibration
@@ -186,39 +186,39 @@ namespace BetterJoyForCemu
 
         public static int IntValue(string key)
         {
-            if (!variables.ContainsKey(key))
+            if (!Variables.ContainsKey(key))
             {
                 return 0;
             }
 
-            return int.Parse(variables[key]);
+            return int.Parse(Variables[key]);
         }
 
         public static string Value(string key)
         {
-            if (!variables.ContainsKey(key))
+            if (!Variables.ContainsKey(key))
             {
                 return "";
             }
 
-            return variables[key];
+            return Variables[key];
         }
 
         public static bool SetValue(string key, string value)
         {
-            if (!variables.ContainsKey(key))
+            if (!Variables.ContainsKey(key))
             {
                 return false;
             }
 
-            variables[key] = value;
+            Variables[key] = value;
             return true;
         }
 
         public static void SaveCaliIMUData(List<KeyValuePair<string, float[]>> caliData)
         {
-            var txt = File.ReadAllLines(path);
-            if (txt.Length < settingsNum + 1) // no custom IMU calibrations yet
+            var txt = File.ReadAllLines(Path);
+            if (txt.Length < SettingsNum + 1) // no custom IMU calibrations yet
             {
                 Array.Resize(ref txt, txt.Length + 1);
             }
@@ -235,14 +235,14 @@ namespace BetterJoyForCemu
                 caliStr += space + caliData[i].Key + "," + string.Join(",", caliData[i].Value);
             }
 
-            txt[settingsNum] = caliStr;
-            File.WriteAllLines(path, txt);
+            txt[SettingsNum] = caliStr;
+            File.WriteAllLines(Path, txt);
         }
 
         public static void SaveCaliSticksData(List<KeyValuePair<string, ushort[]>> caliData)
         {
-            var txt = File.ReadAllLines(path);
-            if (txt.Length < settingsNum + 2) // no custom sticks calibrations yet
+            var txt = File.ReadAllLines(Path);
+            if (txt.Length < SettingsNum + 2) // no custom sticks calibrations yet
             {
                 Array.Resize(ref txt, txt.Length + 1);
             }
@@ -259,21 +259,21 @@ namespace BetterJoyForCemu
                 caliStr += space + caliData[i].Key + "," + string.Join(",", caliData[i].Value);
             }
 
-            txt[settingsNum + 1] = caliStr;
-            File.WriteAllLines(path, txt);
+            txt[SettingsNum + 1] = caliStr;
+            File.WriteAllLines(Path, txt);
         }
 
         public static void Save()
         {
-            var txt = File.ReadAllLines(path);
-            var NO = 0;
-            foreach (var k in variables.Keys)
+            var txt = File.ReadAllLines(Path);
+            var no = 0;
+            foreach (var k in Variables.Keys)
             {
-                txt[NO] = string.Format("{0} {1}", k, variables[k]);
-                NO++;
+                txt[no] = $"{k} {Variables[k]}";
+                no++;
             }
 
-            File.WriteAllLines(path, txt);
+            File.WriteAllLines(Path, txt);
         }
     }
 }

@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using static BetterJoyForCemu.HIDapi;
+using static BetterJoyForCemu.HIDApi;
 
 namespace BetterJoyForCemu
 {
     public partial class _3rdPartyControllers : Form
     {
-        private static readonly string path;
+        private static readonly string Path;
 
         static _3rdPartyControllers()
         {
-            path = Path.GetDirectoryName(Environment.ProcessPath)
+            Path = System.IO.Path.GetDirectoryName(Environment.ProcessPath)
                    + "\\3rdPartyControllers";
         }
 
@@ -29,26 +29,26 @@ namespace BetterJoyForCemu
             group_props.Controls.Add(chooseType);
             group_props.Enabled = false;
 
-            GetSaved3rdPartyControllers().ForEach(controller => list_customControllers.Items.Add(controller));
+            GetSaved3RdPartyControllers().ForEach(controller => list_customControllers.Items.Add(controller));
             RefreshControllerList();
         }
 
-        public static List<SController> GetSaved3rdPartyControllers()
+        public static List<SController> GetSaved3RdPartyControllers()
         {
             var controllers = new List<SController>();
 
-            if (File.Exists(path))
+            if (File.Exists(Path))
             {
-                using var file = new StreamReader(path);
+                using var file = new StreamReader(Path);
                 var line = string.Empty;
                 while ((line = file.ReadLine()) != null && line != string.Empty)
                 {
                     var split = line.Split('|');
                     //won't break existing config file
-                    var serial_number = "";
+                    var serialNumber = "";
                     if (split.Length > 4)
                     {
-                        serial_number = split[4];
+                        serialNumber = split[4];
                     }
 
                     controllers.Add(
@@ -57,7 +57,7 @@ namespace BetterJoyForCemu
                             ushort.Parse(split[1]),
                             ushort.Parse(split[2]),
                             byte.Parse(split[3]),
-                            serial_number
+                            serialNumber
                         )
                     );
                 }
@@ -66,7 +66,7 @@ namespace BetterJoyForCemu
             return controllers;
         }
 
-        private List<SController> GetActive3rdPartyControllers()
+        private List<SController> GetActive3RdPartyControllers()
         {
             var controllers = new List<SController>();
 
@@ -80,8 +80,8 @@ namespace BetterJoyForCemu
 
         private void CopyCustomControllers()
         {
-            var controllers = GetActive3rdPartyControllers();
-            Program.update3rdPartyControllers(controllers);
+            var controllers = GetActive3RdPartyControllers();
+            Program.Update3RdPartyControllers(controllers);
         }
 
         private bool ContainsText(ListBox a, string manu)
@@ -93,12 +93,12 @@ namespace BetterJoyForCemu
                     continue;
                 }
 
-                if (v.name == null)
+                if (v.Name == null)
                 {
                     continue;
                 }
 
-                if (v.name.Equals(manu))
+                if (v.Name.Equals(manu))
                 {
                     return true;
                 }
@@ -111,32 +111,32 @@ namespace BetterJoyForCemu
         {
             list_allControllers.Items.Clear();
             var ptr = hid_enumerate(0x0, 0x0);
-            var top_ptr = ptr;
+            var topPtr = ptr;
 
             // Add device to list
-            for (hid_device_info enumerate; ptr != IntPtr.Zero; ptr = enumerate.next)
+            for (HIDDeviceInfo enumerate; ptr != IntPtr.Zero; ptr = enumerate.Next)
             {
-                enumerate = (hid_device_info)Marshal.PtrToStructure(ptr, typeof(hid_device_info));
+                enumerate = (HIDDeviceInfo)Marshal.PtrToStructure(ptr, typeof(HIDDeviceInfo));
 
-                if (enumerate.serial_number == null)
+                if (enumerate.SerialNumber == null)
                 {
                     continue;
                 }
 
                 // TODO: try checking against interface number instead
-                var name = enumerate.product_string + '(' + enumerate.vendor_id + '-' + enumerate.product_id + '-' +
-                           enumerate.serial_number + ')';
+                var name = enumerate.ProductString + '(' + enumerate.VendorId + '-' + enumerate.ProductId + '-' +
+                           enumerate.SerialNumber + ')';
                 if (!ContainsText(list_customControllers, name) && !ContainsText(list_allControllers, name))
                 {
                     list_allControllers.Items.Add(
-                        new SController(name, enumerate.vendor_id, enumerate.product_id, 0, enumerate.serial_number)
+                        new SController(name, enumerate.VendorId, enumerate.ProductId, 0, enumerate.SerialNumber)
                     );
                     // 0 type is undefined
                     Console.WriteLine("Found controller " + name);
                 }
             }
 
-            hid_free_enumeration(top_ptr);
+            hid_free_enumeration(topPtr);
         }
 
         private void btn_add_Click(object sender, EventArgs e)
@@ -169,7 +169,7 @@ namespace BetterJoyForCemu
                 sc += v.Serialise() + "\r\n";
             }
 
-            File.WriteAllText(path, sc);
+            File.WriteAllText(Path, sc);
             CopyCustomControllers();
         }
 
@@ -193,7 +193,7 @@ namespace BetterJoyForCemu
         {
             if (list_allControllers.SelectedItem != null)
             {
-                tip_device.Show((list_allControllers.SelectedItem as SController).name, list_allControllers);
+                tip_device.Show((list_allControllers.SelectedItem as SController).Name, list_allControllers);
             }
         }
 
@@ -202,9 +202,9 @@ namespace BetterJoyForCemu
             if (list_customControllers.SelectedItem != null)
             {
                 var v = list_customControllers.SelectedItem as SController;
-                tip_device.Show(v.name, list_customControllers);
+                tip_device.Show(v.Name, list_customControllers);
 
-                chooseType.SelectedIndex = v.type - 1;
+                chooseType.SelectedIndex = v.Type - 1;
 
                 group_props.Enabled = true;
             }
@@ -236,25 +236,25 @@ namespace BetterJoyForCemu
             if (list_customControllers.SelectedItem != null)
             {
                 var v = list_customControllers.SelectedItem as SController;
-                v.type = (byte)(chooseType.SelectedIndex + 1);
+                v.Type = (byte)(chooseType.SelectedIndex + 1);
             }
         }
 
         public class SController
         {
-            public string name;
-            public ushort product_id;
-            public string serial_number;
-            public byte type; // 1 is pro, 2 is left joy, 3 is right joy
-            public ushort vendor_id;
+            public readonly string Name;
+            public readonly ushort ProductId;
+            public readonly string SerialNumber;
+            public byte Type; // 1 is pro, 2 is left joy, 3 is right joy
+            public readonly ushort VendorId;
 
-            public SController(string name, ushort vendor_id, ushort product_id, byte type, string serial_number)
+            public SController(string name, ushort vendorId, ushort productId, byte type, string serialNumber)
             {
-                this.product_id = product_id;
-                this.vendor_id = vendor_id;
-                this.type = type;
-                this.serial_number = serial_number;
-                this.name = name;
+                ProductId = productId;
+                VendorId = vendorId;
+                Type = type;
+                SerialNumber = serialNumber;
+                Name = name;
             }
 
             public override bool Equals(object obj)
@@ -266,22 +266,22 @@ namespace BetterJoyForCemu
                 }
 
                 var s = (SController)obj;
-                return s.product_id == product_id && s.vendor_id == vendor_id && s.serial_number == serial_number;
+                return s.ProductId == ProductId && s.VendorId == VendorId && s.SerialNumber == SerialNumber;
             }
 
             public override int GetHashCode()
             {
-                return Tuple.Create(product_id, vendor_id, serial_number).GetHashCode();
+                return Tuple.Create(ProductId, VendorId, SerialNumber).GetHashCode();
             }
 
             public override string ToString()
             {
-                return name ?? $"Unidentified Device ({product_id})";
+                return Name ?? $"Unidentified Device ({ProductId})";
             }
 
             public string Serialise()
             {
-                return $"{name}|{vendor_id}|{product_id}|{type}|{serial_number}";
+                return $"{Name}|{VendorId}|{ProductId}|{Type}|{SerialNumber}";
             }
         }
     }

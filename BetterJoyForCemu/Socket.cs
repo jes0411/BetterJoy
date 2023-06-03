@@ -15,7 +15,7 @@ namespace BetterJoyForCemu
     // https://github.com/enclave-networks/research.udp-perf
     internal sealed class UdpAwaitableSocketAsyncEventArgs : SocketAsyncEventArgs, IValueTaskSource<int>
     {
-        private static readonly Action<object?> _completedSentinel =
+        private static readonly Action<object?> CompletedSentinel =
                 state => throw new InvalidOperationException("Task misuse");
 
         private Action<object?>? _continuation;
@@ -39,7 +39,7 @@ namespace BetterJoyForCemu
             }
 
             // If _continuation isn't _completedSentinel, we're still going.
-            return !ReferenceEquals(_continuation, _completedSentinel) ? ValueTaskSourceStatus.Pending :
+            return !ReferenceEquals(_continuation, CompletedSentinel) ? ValueTaskSourceStatus.Pending :
                     SocketError == SocketError.Success                 ? ValueTaskSourceStatus.Succeeded :
                                                                          ValueTaskSourceStatus.Faulted;
         }
@@ -86,7 +86,7 @@ namespace BetterJoyForCemu
             Action<object>? prevContinuation = Interlocked.CompareExchange(ref _continuation, continuation, null);
 
             // Check whether we've already finished.
-            if (ReferenceEquals(prevContinuation, _completedSentinel))
+            if (ReferenceEquals(prevContinuation, CompletedSentinel))
             {
                 // This means the operation has already completed; most likely because we completed before
                 // we could attach the continuation.
@@ -156,13 +156,13 @@ namespace BetterJoyForCemu
             // This Interlocked.Exchange is intended to ensure that only one path can end up invoking the
             // continuation that completes the ValueTask. We swap for our _completedSentinel, and only proceed if
             // there was a continuation action present in that field.
-            if (c != null || (c = Interlocked.CompareExchange(ref _continuation, _completedSentinel, null)) != null)
+            if (c != null || (c = Interlocked.CompareExchange(ref _continuation, CompletedSentinel, null)) != null)
             {
                 var continuationState = UserToken;
                 UserToken = null;
 
                 // Mark us as done.
-                _continuation = _completedSentinel;
+                _continuation = CompletedSentinel;
 
                 // Invoke the continuation. Because this completion is, by its nature, happening asynchronously,
                 // we don't need to force an async invoke.
@@ -203,10 +203,10 @@ namespace BetterJoyForCemu
         // The main reason we want to pool these (apart from just reducing allocations), is that, on windows at least, within the depths 
         // of the underlying SocketAsyncEventArgs implementation, each one holds an instance of PreAllocatedNativeOverlapped,
         // an IOCP-specific object which is VERY expensive to allocate each time.        
-        private static readonly ObjectPool<UdpAwaitableSocketAsyncEventArgs> _socketEventPool =
+        private static readonly ObjectPool<UdpAwaitableSocketAsyncEventArgs> SocketEventPool =
                 ObjectPool.Create<UdpAwaitableSocketAsyncEventArgs>();
 
-        private static readonly IPEndPoint _blankEndpoint = new(IPAddress.Any, 0);
+        private static readonly IPEndPoint BlankEndpoint = new(IPAddress.Any, 0);
 
         /// <summary>
         ///     Send a block of data to a specified destination, and complete asynchronously.
@@ -222,7 +222,7 @@ namespace BetterJoyForCemu
         )
         {
             // Get an async argument from the socket event pool.
-            var asyncArgs = _socketEventPool.Get();
+            var asyncArgs = SocketEventPool.Get();
 
             asyncArgs.RemoteEndPoint = destination;
             asyncArgs.SetBuffer(MemoryMarshal.AsMemory(data));
@@ -233,7 +233,7 @@ namespace BetterJoyForCemu
             }
             finally
             {
-                _socketEventPool.Return(asyncArgs);
+                SocketEventPool.Return(asyncArgs);
             }
         }
 
@@ -247,9 +247,9 @@ namespace BetterJoyForCemu
         public static async ValueTask<SocketReceiveFromResult> ReceiveFromAsync(this Socket socket, Memory<byte> buffer)
         {
             // Get an async argument from the socket event pool.
-            var asyncArgs = _socketEventPool.Get();
+            var asyncArgs = SocketEventPool.Get();
 
-            asyncArgs.RemoteEndPoint = _blankEndpoint;
+            asyncArgs.RemoteEndPoint = BlankEndpoint;
             asyncArgs.SetBuffer(buffer);
 
             try
@@ -261,7 +261,7 @@ namespace BetterJoyForCemu
             }
             finally
             {
-                _socketEventPool.Return(asyncArgs);
+                SocketEventPool.Return(asyncArgs);
             }
         }
     }
