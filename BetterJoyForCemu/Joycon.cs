@@ -738,7 +738,7 @@ namespace BetterJoyForCemu {
         Dictionary<int, bool> mouse_toggle_btn = new Dictionary<int, bool>();
         private void Simulate(string s, bool click = true, bool up = false) {
             if (s.StartsWith("key_")) {
-                WindowsInput.Events.KeyCode key = (WindowsInput.Events.KeyCode)Int32.Parse(s.Substring(4));
+                WindowsInput.Events.KeyCode key = (WindowsInput.Events.KeyCode)Int32.Parse(s.AsSpan(4));
                 if (click) {
                     WindowsInput.Simulate.Events().Click(key).Invoke();
                 } else {
@@ -749,7 +749,7 @@ namespace BetterJoyForCemu {
                     }
                 }
             } else if (s.StartsWith("mse_")) {
-                WindowsInput.Events.ButtonCode button = (WindowsInput.Events.ButtonCode)Int32.Parse(s.Substring(4));
+                WindowsInput.Events.ButtonCode button = (WindowsInput.Events.ButtonCode)Int32.Parse(s.AsSpan(4));
                 if (click) {
                     WindowsInput.Simulate.Events().Click(button).Invoke();
                 } else {
@@ -879,7 +879,7 @@ namespace BetterJoyForCemu {
             }
 
             // Filtered IMU data
-            this.cur_rotation = AHRS.GetEulerAngles();
+            AHRS.GetEulerAngles(cur_rotation);
             const float dt = 0.015f; // 15ms
 
             if (GyroAnalogSliders && (other != null || isPro)) {
@@ -1001,7 +1001,7 @@ namespace BetterJoyForCemu {
             }
         }
 
-        public float[] otherStick = { 0, 0 };
+        private float[] otherStick = { 0, 0 };
 
         bool swapAB = Boolean.Parse(ConfigurationManager.AppSettings["SwapAB"]);
         bool swapXY = Boolean.Parse(ConfigurationManager.AppSettings["SwapXY"]);
@@ -1035,7 +1035,7 @@ namespace BetterJoyForCemu {
                     cal = noCalibrationSticksData;
                     dz = noCalibrationDeadzone;
                 }
-                stick = CenterSticks(stick_precal, cal, dz);
+                calculateStickCenter(stick_precal, cal, dz, stick);
 
                 if (isPro) {
                     stick2_precal[0] = (UInt16)(stick2_raw[0] | ((stick2_raw[1] & 0xf) << 8));
@@ -1052,22 +1052,27 @@ namespace BetterJoyForCemu {
                         cal = stick2_cal;
                         dz = deadzone2;
                     }
-                    stick2 = CenterSticks(stick2_precal, cal, dz);
+                    calculateStickCenter(stick2_precal, cal, dz, stick2);
                 }
                 if (!form.calibrateSticks) {
-                    DebugPrint($"Stick1: X={stick[0]} Y={stick[1]}. Stick2: X={stick2[0]} Y={stick2[1]}", DebugType.THREADING);
+                    //DebugPrint($"Stick1: X={stick[0]} Y={stick[1]}. Stick2: X={stick2[0]} Y={stick2[1]}", DebugType.THREADING);
                 }
 
                 // Read other Joycon's sticks
                 if (other != null && other != this) {
-                    if (isLeft) {
-                        stick2 = otherStick;
-                        other.otherStick = stick;
+                    lock (otherStick) {
+                        // Read other stick sent by other joycon
+                        if (isLeft) {
+                            Array.Copy(otherStick, stick2, 2);
+                        } else {
+                            stick = Interlocked.Exchange(ref stick2, stick);
+                            Array.Copy(otherStick, stick, 2);
+                        }
                     }
-                    else {
-                        Array.Copy(stick, stick2, 2);
-                        stick = otherStick;
-                        other.otherStick = stick2;
+
+                    lock (other.otherStick) {
+                        // Write stick to linked joycon
+                        Array.Copy(isLeft ? stick : stick2, other.otherStick, 2);
                     }
                 }
             }
@@ -1075,11 +1080,11 @@ namespace BetterJoyForCemu {
             // Set button states both for server and ViGEm
             lock (buttons) {
                 lock (down_) {
-                    for (int i = 0; i < buttons.Length; ++i) {
-                        down_[i] = buttons[i];
-                    }
+                    Array.Copy(buttons, down_, buttons.Length);
                 }
-                buttons = new bool[20];
+
+                Array.Clear(buttons);
+
                 int reportOffset = (isLeft ? 2 : 0);
 
                 buttons[(int)Button.DPAD_DOWN] = (report_buf[3 + reportOffset] & (isLeft ? 0x01 : 0x04)) != 0;
@@ -1239,16 +1244,17 @@ namespace BetterJoyForCemu {
             }
         }
 
-        // Should really be called calculating stick data
-        private float[] CenterSticks(UInt16[] vals, ushort[] cal, ushort dz) {
-            float[] s = { 0, 0 };
-            float dx = vals[0] - cal[2], dy = vals[1] - cal[3];
-            if (Math.Abs(dx * dx + dy * dy) < dz * dz)
-                return s;
+        private void calculateStickCenter(UInt16[] vals, ushort[] cal, ushort dz, float[] stick) {
+            float dx = vals[0] - cal[2];
+            float dy = vals[1] - cal[3];
 
-            s[0] = dx / (dx > 0 ? cal[0] : cal[4]);
-            s[1] = dy / (dy > 0 ? cal[1] : cal[5]);
-            return s;
+            if (Math.Abs(dx * dx + dy * dy) < dz * dz) {
+                stick[0] = 0;
+                stick[1] = 0;
+            } else {
+                stick[0] = dx / (dx > 0 ? cal[0] : cal[4]);
+                stick[1] = dy / (dy > 0 ? cal[1] : cal[5]);
+            }
         }
 
         private static short CastStickValue(float stick_value) {

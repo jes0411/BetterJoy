@@ -25,7 +25,7 @@ namespace BetterJoyForCemu {
         /// </summary>
         public float[] Quaternion { get; set; }
 
-        public float[] old_pitchYawRoll { get; set; }
+        public float[] OldPitchYawRoll { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MadgwickAHRS"/> class.
@@ -50,7 +50,7 @@ namespace BetterJoyForCemu {
             SamplePeriod = samplePeriod;
             Beta = beta;
             Quaternion = new float[] { 1f, 0f, 0f, 0f };
-            old_pitchYawRoll = new float[] { 0f, 0f, 0f };
+            OldPitchYawRoll = new float[] { 0f, 0f, 0f };
         }
 
         /// <summary>
@@ -139,20 +139,16 @@ namespace BetterJoyForCemu {
             Quaternion[3] = q4 * norm;
         }
 
-        public float[] GetEulerAngles() {
-            float[] pitchYawRoll = new float[3];
+        public void GetEulerAngles(float[] angles) {
+            OldPitchYawRoll.CopyTo(angles, 3);
+
             float q0 = Quaternion[0], q1 = Quaternion[1], q2 = Quaternion[2], q3 = Quaternion[3];
-            float sq1 = q1 * q1, sq2 = q2 * q2, sq3 = q3 * q3;          
-            pitchYawRoll[0] = (float)Math.Asin(2f * (q0 * q2 - q3 * q1));                            // Pitch 
-            pitchYawRoll[1] = (float)Math.Atan2(2f * (q0 * q3 + q1 * q2), 1 - 2f * (sq2 + sq3));     // Yaw
-            pitchYawRoll[2] = (float)Math.Atan2(2f * (q0 * q1 + q2 * q3), 1 - 2f * (sq1 + sq2));     // Roll 
+            float sq1 = q1 * q1, sq2 = q2 * q2, sq3 = q3 * q3;
+            angles[0] = (float)Math.Asin(2f * (q0 * q2 - q3 * q1));                            // Pitch 
+            angles[1] = (float)Math.Atan2(2f * (q0 * q3 + q1 * q2), 1 - 2f * (sq2 + sq3));     // Yaw
+            angles[2] = (float)Math.Atan2(2f * (q0 * q1 + q2 * q3), 1 - 2f * (sq1 + sq2));     // Roll 
 
-            float[] returnAngles = new float[6];
-            Array.Copy(pitchYawRoll, returnAngles, 3);
-            Array.Copy(old_pitchYawRoll, 0, returnAngles, 3, 3);
-            old_pitchYawRoll = pitchYawRoll;
-
-            return returnAngles;
+            Array.Copy(angles, OldPitchYawRoll, 3);
         }
     }
 }

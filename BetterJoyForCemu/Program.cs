@@ -462,12 +462,12 @@ namespace BetterJoyForCemu {
             if (e.Data.ButtonDown != null) {
                 string res_val = Config.Value("reset_mouse");
                 if (res_val.StartsWith("mse_"))
-                    if ((int)e.Data.ButtonDown.Button == Int32.Parse(res_val.Substring(4)))
+                    if ((int)e.Data.ButtonDown.Button == Int32.Parse(res_val.AsSpan(4)))
                         WindowsInput.Simulate.Events().MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2).Invoke();
 
                 res_val = Config.Value("active_gyro");
                 if (res_val.StartsWith("mse_"))
-                    if ((int)e.Data.ButtonDown.Button == Int32.Parse(res_val.Substring(4)))
+                    if ((int)e.Data.ButtonDown.Button == Int32.Parse(res_val.AsSpan(4)))
                         foreach (var i in mgr.j)
                             i.active_gyro = true;
             }
@@ -475,7 +475,7 @@ namespace BetterJoyForCemu {
             if (e.Data.ButtonUp != null) {
                 string res_val = Config.Value("active_gyro");
                 if (res_val.StartsWith("mse_"))
-                    if ((int)e.Data.ButtonUp.Button == Int32.Parse(res_val.Substring(4)))
+                    if ((int)e.Data.ButtonUp.Button == Int32.Parse(res_val.AsSpan(4)))
                         foreach (var i in mgr.j)
                             i.active_gyro = false;
             }
@@ -485,12 +485,12 @@ namespace BetterJoyForCemu {
             if (e.Data.KeyDown != null) {
                 string res_val = Config.Value("reset_mouse");
                 if (res_val.StartsWith("key_"))
-                    if ((int)e.Data.KeyDown.Key == Int32.Parse(res_val.Substring(4)))
+                    if ((int)e.Data.KeyDown.Key == Int32.Parse(res_val.AsSpan(4)))
                         WindowsInput.Simulate.Events().MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2).Invoke();
 
                 res_val = Config.Value("active_gyro");
                 if (res_val.StartsWith("key_"))
-                    if ((int)e.Data.KeyDown.Key == Int32.Parse(res_val.Substring(4)))
+                    if ((int)e.Data.KeyDown.Key == Int32.Parse(res_val.AsSpan(4)))
                         foreach (var i in mgr.j)
                             i.active_gyro = true;
             }
@@ -498,7 +498,7 @@ namespace BetterJoyForCemu {
             if (e.Data.KeyUp != null) {
                 string res_val = Config.Value("active_gyro");
                 if (res_val.StartsWith("key_"))
-                    if ((int)e.Data.KeyUp.Key == Int32.Parse(res_val.Substring(4)))
+                    if ((int)e.Data.KeyUp.Key == Int32.Parse(res_val.AsSpan(4)))
                         foreach (var i in mgr.j)
                             i.active_gyro = false;
             }

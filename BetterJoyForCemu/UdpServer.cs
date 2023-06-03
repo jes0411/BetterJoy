@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -20,8 +21,6 @@ namespace BetterJoyForCemu {
         private bool _running;
         private Task _receiveTask;
 
-        private byte[] _bufferReport;
-
         private readonly IList<Joycon> _controllers;
         private Dictionary<IPEndPoint, ClientRequestTimes> _clients;
 
@@ -30,7 +29,6 @@ namespace BetterJoyForCemu {
         public UdpServer(IList<Joycon> p) {
             _controllers = p;
             _clients = new Dictionary<IPEndPoint, ClientRequestTimes>();
-            _bufferReport = GC.AllocateArray<byte>(ReportSize, true);
         }
 
         enum MessageType {
@@ -99,19 +97,30 @@ namespace BetterJoyForCemu {
         }
 
         private void FinishPacket(Span<byte> packetBuffer) {
-            uint crcCalc = CalculateCrc32(packetBuffer);
-            BitConverter.TryWriteBytes(packetBuffer.Slice(8, 4), crcCalc);
+            CalculateCrc32(packetBuffer, packetBuffer.Slice(8, 4));
         }
 
         private async Task SendPacket(IPEndPoint clientEP, byte[] usefulData, ushort reqProtocolVersion = MaxProtocolVersion) {
-            byte[] packetData = new byte[usefulData.Length + 16];
-            int currIdx = BeginPacket(packetData, reqProtocolVersion);
-            Array.Copy(usefulData, 0, packetData, currIdx, usefulData.Length);
-            FinishPacket(packetData);
+            var pool = ArrayPool<byte>.Shared;
+            int size = usefulData.Length + 16;
+            byte[] buffer = pool.Rent(size);
+
+            void makePacket() { // needed to use span in async function
+                Span<byte> packetData = buffer.AsSpan(0, size);
+                packetData.Clear();
+
+                int currIdx = BeginPacket(packetData, reqProtocolVersion);
+                usefulData.AsSpan().CopyTo(packetData.Slice(currIdx));
+                FinishPacket(packetData);
+            }
+            makePacket();
 
             try {
-                await _udpSock.SendToAsync(clientEP, packetData.AsMemory());
+                Memory<byte> bufferMem = buffer.AsMemory(0, size);
+                await _udpSock.SendToAsync(clientEP, bufferMem);
             } catch (SocketException /*e*/) { }
+
+            pool.Return(buffer);
         }
 
         private static bool CheckIncomingValidity(Span<byte> localMsg, out int currIdx) {
@@ -133,9 +142,6 @@ namespace BetterJoyForCemu {
 
             uint packetSize = BitConverter.ToUInt16(localMsg.Slice(currIdx, 2));
             currIdx += 2;
-
-            if (packetSize < 0)
-                return false;
 
             packetSize += 16; //size of header
             if (packetSize > localMsg.Length)
@@ -338,7 +344,7 @@ namespace BetterJoyForCemu {
             _receiveTask.Wait(); // it rethrows exceptions
         }
 
-        private bool ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx) {
+        private void ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx) {
             /* Commented because we only care about the gyroscope and accelerometer
             var ds4 = Joycon.MapToDualShock4Input(hidReport);
 
@@ -406,38 +412,32 @@ namespace BetterJoyForCemu {
             outIdx += 8;
 
             //accelerometer
-            {
-                var accel = hidReport.GetAccel();
-                if (accel != Vector3.Zero) {
-                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), accel.Y);
-                    outIdx += 4;
-                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), -accel.Z);
-                    outIdx += 4;
-                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), accel.X);
-                    outIdx += 4;
-                } else {
-                    outIdx += 12;
-                    Console.WriteLine("No accelerometer reported.");
-                }
+            var accel = hidReport.GetAccel();
+            if (accel != Vector3.Zero) {
+                BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), accel.Y);
+                outIdx += 4;
+                BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), -accel.Z);
+                outIdx += 4;
+                BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), accel.X);
+                outIdx += 4;
+            } else {
+                outIdx += 12;
+                Console.WriteLine("No accelerometer reported.");
             }
 
             //gyroscope
-            {
-                var gyro = hidReport.GetGyro();
-                if (gyro != Vector3.Zero) {
-                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.Y);
-                    outIdx += 4;
-                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.Z);
-                    outIdx += 4;
-                    BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.X);
-                    outIdx += 4;
-                } else {
-                    outIdx += 12;
-                    Console.WriteLine("No gyroscope reported.");
-                }
+            var gyro = hidReport.GetGyro();
+            if (gyro != Vector3.Zero) {
+                BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.Y);
+                outIdx += 4;
+                BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.Z);
+                outIdx += 4;
+                BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), gyro.X);
+                outIdx += 4;
+            } else {
+                outIdx += 12;
+                Console.WriteLine("No gyroscope reported.");
             }
-
-            return true;
         }
 
         private static bool IsControllerTimedout(DateTime current, DateTime last) {
@@ -491,7 +491,9 @@ namespace BetterJoyForCemu {
             if (clientsList.Count <= 0)
                 return;
 
-            var outputData = _bufferReport.AsSpan();
+            var pool = ArrayPool<byte>.Shared;
+            byte[] buffer = pool.Rent(ReportSize);
+            Span<byte> outputData = buffer.AsSpan(0, ReportSize);
             outputData.Clear();
 
             int outIdx = BeginPacket(outputData, 1001);
@@ -515,23 +517,28 @@ namespace BetterJoyForCemu {
             BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), hidReport.packetCounter);
             outIdx += 4;
 
-            if (!ReportToBuffer(hidReport, outputData, ref outIdx))
-                return;
-
+            ReportToBuffer(hidReport, outputData, ref outIdx);
             FinishPacket(outputData);
 
             // Send in parallel to all clients
-            ReadOnlyMemory<byte> bufferMem = _bufferReport.AsMemory();
+            ReadOnlyMemory<byte> bufferMem = buffer.AsMemory().Slice(0, ReportSize);
             var tasks = clientsList.Select(async client => {
                 try {
                     await _udpSock.SendToAsync(client, bufferMem);
                 } catch (SocketException) { }
             });
             Task.WhenAll(tasks).Wait();
+
+            pool.Return(buffer);
+        }
+
+        private static int CalculateCrc32(ReadOnlySpan<byte> data, Span<byte> crc) {
+            return System.IO.Hashing.Crc32.Hash(data, crc);
         }
 
         private static uint CalculateCrc32(ReadOnlySpan<byte> data) {
-            byte[] crc = System.IO.Hashing.Crc32.Hash(data);
+            Span<byte> crc = stackalloc byte[4];
+            System.IO.Hashing.Crc32.Hash(data, crc);
             return BitConverter.ToUInt32(crc);
         }
     }
