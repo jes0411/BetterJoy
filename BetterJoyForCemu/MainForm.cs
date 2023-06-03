@@ -278,7 +278,7 @@ namespace BetterJoyForCemu {
         }
 
         private void btn_open3rdP_Click(object sender, EventArgs e) {
-            _3rdPartyControllers partyForm = new _3rdPartyControllers();
+            using _3rdPartyControllers partyForm = new _3rdPartyControllers();
             partyForm.ShowDialog();
         }
 
@@ -402,7 +402,7 @@ namespace BetterJoyForCemu {
         }
 
         private void btn_reassign_open_Click(object sender, EventArgs e) {
-            Reassign mapForm = new Reassign();
+            using Reassign mapForm = new Reassign();
             mapForm.ShowDialog();
         }
 
