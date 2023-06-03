@@ -140,14 +140,14 @@ namespace BetterJoyForCemu {
         private Int16[] gyr_sensiti = { 0, 0, 0 };
         private Vector3 gyr_g = Vector3.Zero;
 
-        private float[] cur_rotation; // Filtered IMU data
+        private float[] cur_rotation = { 0, 0, 0, 0, 0, 0 }; // Filtered IMU data
 
-        private short[] acc_sen = new short[3]{
+        private short[] acc_sen = {
             16384,
             16384,
             16384
         };
-        private short[] gyr_sen = new short[3]{
+        private short[] gyr_sen = {
             18642,
             18642,
             18642
@@ -166,7 +166,7 @@ namespace BetterJoyForCemu {
             private SpinLock queueLock;
 
             public void set_vals(float low_freq, float high_freq, float amplitude) {
-                float[] rumbleQueue = new float[] { low_freq, high_freq, amplitude };
+                float[] rumbleQueue = { low_freq, high_freq, amplitude };
                 // Keep a queue of 15 items, discard oldest item if queue is full.
                 bool lockTaken = false;
                 try {
@@ -325,8 +325,8 @@ namespace BetterJoyForCemu {
         private ushort activeStick1DeadZoneData;
         private ushort activeStick2DeadZoneData;
         private ushort noCalibrationDeadzone;
-        static private float defaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
-        static private float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
+        private static float defaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
+        private static float AHRS_beta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
         private MadgwickAHRS AHRS = new MadgwickAHRS(0.005f, AHRS_beta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
         public Joycon(IntPtr handle_, bool imu, bool localize, float alpha, bool left, string path, string serialNum, bool isUSB, int id = 0, ControllerType type = ControllerType.JOYCON, bool isThirdParty = false) {
@@ -570,9 +570,7 @@ namespace BetterJoyForCemu {
 
         public void Detach(bool close = true) {
             stop_polling = true;
-            if (PollThreadObj != null) {
-                PollThreadObj.Join();
-            }
+            PollThreadObj?.Join();
 
             DisconnectViGEm();
 
@@ -601,9 +599,8 @@ namespace BetterJoyForCemu {
         public void Drop()
         {
             stop_polling = true;
-            if (PollThreadObj != null) {
-                PollThreadObj.Join();
-            }
+            PollThreadObj?.Join();
+
             state = state_.DROPPED;
         }
 
@@ -799,7 +796,7 @@ namespace BetterJoyForCemu {
         bool GyroHoldToggle = Boolean.Parse(ConfigurationManager.AppSettings["GyroHoldToggle"]);
         bool GyroAnalogSliders = Boolean.Parse(ConfigurationManager.AppSettings["GyroAnalogSliders"]);
         int GyroAnalogSensitivity = Int32.Parse(ConfigurationManager.AppSettings["GyroAnalogSensitivity"]);
-        byte[] sliderVal = new byte[] { 0, 0 };
+        byte[] sliderVal = { 0, 0 };
 
         private void DoThingsWithButtons() {
             int powerOffButton = (int)((isPro || !isLeft || other != null) ? Button.HOME : Button.CAPTURE);
@@ -807,8 +804,7 @@ namespace BetterJoyForCemu {
             long timestamp = Stopwatch.GetTimestamp();
             if (HomeLongPowerOff && buttons[powerOffButton]) {
                 if ((timestamp - buttons_down_timestamp[powerOffButton]) / 10000 > 2000.0) {
-                    if (other != null)
-                        other.PowerOff();
+                    other?.PowerOff();
 
                     PowerOff();
                     return;
