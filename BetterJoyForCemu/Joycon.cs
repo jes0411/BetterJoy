@@ -409,21 +409,6 @@ namespace BetterJoyForCemu {
                 form.AppendTextBox("[J" + (PadId + 1) + "] " + s);
             }
         }
-        public bool GetButtonDown(Button b) {
-            return buttons_down[(int)b];
-        }
-        public bool GetButton(Button b) {
-            return buttons[(int)b];
-        }
-        public bool GetButtonUp(Button b) {
-            return buttons_up[(int)b];
-        }
-        public float[] GetStick() {
-            return stick;
-        }
-        public float[] GetStick2() {
-            return stick2;
-        }
         public Vector3 GetGyro() {
             return gyr_g;
         }
