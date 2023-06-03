@@ -10,11 +10,11 @@ namespace BetterJoyForCemu.Collections {
         private readonly IEnumerator<T> _inner;
         private readonly object _lock;
 
-        public SafeEnumerator(IEnumerator<T> inner, object @lock) {
-            _inner = inner;
+        public SafeEnumerator(IEnumerable<T> inner, object @lock) {
             _lock = @lock;
 
             Monitor.Enter(_lock);
+            _inner = inner.GetEnumerator();
         }
 
         public void Dispose() {
@@ -43,7 +43,7 @@ namespace BetterJoyForCemu.Collections {
     public class ConcurrentList<T> : IList<T> {
         #region Fields
 
-        private IList<T> _internalList;
+        private readonly IList<T> _internalList;
         private readonly object _lock = new object();
 
         #endregion
@@ -155,7 +155,7 @@ namespace BetterJoyForCemu.Collections {
         }
 
         protected virtual IEnumerator<T> LockInternalAndEnumerate() {
-            return new SafeEnumerator<T>(_internalList.GetEnumerator(), _lock);
+            return new SafeEnumerator<T>(_internalList, _lock);
         }
 
         #endregion
