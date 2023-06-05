@@ -29,11 +29,11 @@ namespace BetterJoyForCemu
             group_props.Controls.Add(chooseType);
             group_props.Enabled = false;
 
-            GetSaved3RdPartyControllers().ForEach(controller => list_customControllers.Items.Add(controller));
+            GetSavedThirdpartyControllers().ForEach(controller => list_customControllers.Items.Add(controller));
             RefreshControllerList();
         }
 
-        public static List<SController> GetSaved3RdPartyControllers()
+        public static List<SController> GetSavedThirdpartyControllers()
         {
             var controllers = new List<SController>();
 
@@ -66,7 +66,7 @@ namespace BetterJoyForCemu
             return controllers;
         }
 
-        private List<SController> GetActive3RdPartyControllers()
+        private List<SController> GetActiveThirdpartyControllers()
         {
             var controllers = new List<SController>();
 
@@ -80,8 +80,8 @@ namespace BetterJoyForCemu
 
         private void CopyCustomControllers()
         {
-            var controllers = GetActive3RdPartyControllers();
-            Program.Update3RdPartyControllers(controllers);
+            var controllers = GetActiveThirdpartyControllers();
+            Program.UpdateThirdpartyControllers(controllers);
         }
 
         private bool ContainsText(ListBox a, string manu)

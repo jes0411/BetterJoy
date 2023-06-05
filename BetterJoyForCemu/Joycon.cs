@@ -63,10 +63,10 @@ namespace BetterJoyForCemu
         public enum Status : uint
         {
             NotAttached,
+            Errored,
             Dropped,
             NoJoycons,
             Attached,
-            InputMode0X30,
             IMUDataOk
         }
 
@@ -194,7 +194,7 @@ namespace BetterJoyForCemu
         private bool _doLocalize;
         private float _filterweight;
 
-        public MainForm Form;
+        private MainForm _form;
 
         private byte _globalCount;
         private Vector3 _gyrG = Vector3.Zero;
@@ -223,11 +223,20 @@ namespace BetterJoyForCemu
 
         private Rumble _rumbleObj;
 
-        public bool Send = true;
-
         public readonly string SerialNumber;
         private long _shakedTime;
-        public Status State;
+
+        private Status _state;
+
+        public Status State
+        {
+            get => _state;
+            private set
+            {
+                _state = value;
+                OnStateChange(new StateChangedEventArgs(value));
+            }
+        }
 
         private float[] _stick = { 0, 0 };
         private float[] _stick2 = { 0, 0 };
@@ -241,7 +250,10 @@ namespace BetterJoyForCemu
 
         public readonly ControllerType Type = ControllerType.Joycon;
 
+        public EventHandler<StateChangedEventArgs> StateChanged;
+
         public Joycon(
+            MainForm form,
             IntPtr handle,
             bool imu,
             bool localize,
@@ -255,6 +267,7 @@ namespace BetterJoyForCemu
             bool isThirdParty = false
         )
         {
+            _form = form;
             SerialNumber = serialNum;
             _activeIMUData = new float[6];
             _activeStick1Data = new ushort[6];
@@ -303,7 +316,6 @@ namespace BetterJoyForCemu
         }
 
         public bool IsPro => Type is ControllerType.Pro or ControllerType.SNES;
-
         public bool IsSNES => Type == ControllerType.SNES;
 
         public Joycon Other
@@ -358,13 +370,13 @@ namespace BetterJoyForCemu
 
         public void GetActiveIMUData()
         {
-            _activeIMUData = Form.ActiveCaliIMUData(SerialNumber);
+            _activeIMUData = _form.ActiveCaliIMUData(SerialNumber);
         }
 
         public void GetActiveSticksData()
         {
             {
-                var activeSticksData = Form.ActiveCaliSticksData(SerialNumber);
+                var activeSticksData = _form.ActiveCaliSticksData(SerialNumber);
                 Array.Copy(activeSticksData, _activeStick1Data, 6);
                 Array.Copy(activeSticksData, 6, _activeStick2Data, 0, 6);
             }
@@ -402,6 +414,11 @@ namespace BetterJoyForCemu
             }
         }
 
+        private void OnStateChange(StateChangedEventArgs e)
+        {
+            StateChanged?.Invoke(this, e);
+        }
+
         public void DebugPrint(string s, DebugType d)
         {
             if (_debugType == DebugType.None)
@@ -411,7 +428,7 @@ namespace BetterJoyForCemu
 
             if (d == DebugType.All || d == _debugType || _debugType == DebugType.All)
             {
-                Form.AppendTextBox("[J" + (PadId + 1) + "] " + s);
+                _form.AppendTextBox("[J" + (PadId + 1) + "] " + s);
             }
         }
 
@@ -427,13 +444,16 @@ namespace BetterJoyForCemu
 
         public void Reset()
         {
-            Form.AppendTextBox("Resetting connection.");
+            _form.AppendTextBox("Resetting connection.");
             SetHCIState(0x01);
         }
 
-        public int Attach()
+        public void Attach()
         {
-            State = Status.Attached;
+            if (State > Status.Dropped)
+            {
+                return;
+            }
 
             // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
             // do not always send a response so we don't check if there is one
@@ -442,7 +462,7 @@ namespace BetterJoyForCemu
             // Connect
             if (IsUSB)
             {
-                Form.AppendTextBox("Using USB.");
+                _form.AppendTextBox("Using USB.");
 
                 var buf = new byte[ReportLen];
 
@@ -497,10 +517,10 @@ namespace BetterJoyForCemu
             }
             else
             {
-                Form.AppendTextBox("Using Bluetooth.");
+                _form.AppendTextBox("Using Bluetooth.");
             }
 
-            var ok = dump_calibration_data();
+            var ok = DumpCalibrationData();
             if (!ok)
             {
                 Reset();
@@ -522,9 +542,9 @@ namespace BetterJoyForCemu
             Subcommand(0x48, new byte[] { 0x01 }, 1); // enable vibrations
             Subcommand(0x3, new byte[] { 0x30 }, 1); // set report mode to NPad standard mode
 
-            DebugPrint("Done with init.", DebugType.Comms);
+            State = Status.Attached;
 
-            return 0;
+            DebugPrint("Done with init.", DebugType.Comms);
         }
 
         public void SetPlayerLED(byte leds = 0x0)
@@ -585,12 +605,12 @@ namespace BetterJoyForCemu
         private void BatteryChanged()
         {
             // battery changed level
-            Form.SetBatteryColor(this, Battery);
+            _form.SetBatteryColor(this, Battery);
 
             if (!IsUSB && Battery <= 1)
             {
                 var msg = $"Controller {PadId} ({GetControllerName()}) - low battery notification!";
-                Form.Tooltip(msg);
+                _form.Tooltip(msg);
             }
         }
 
@@ -601,6 +621,11 @@ namespace BetterJoyForCemu
 
         public void Detach(bool close = true)
         {
+            if (State == Status.NotAttached)
+            {
+                return;
+            }
+
             _stopPolling = true;
             _pollThreadObj?.Join();
 
@@ -633,12 +658,12 @@ namespace BetterJoyForCemu
             State = Status.NotAttached;
         }
 
-        public void Drop()
+        public void Drop(bool error = false)
         {
             _stopPolling = true;
             _pollThreadObj?.Join();
 
-            State = Status.Dropped;
+            State = error ? Status.Errored : Status.Dropped;
         }
 
         public void ConnectViGEm()
@@ -750,7 +775,7 @@ namespace BetterJoyForCemu
 
             if (_tsEn == buf[1] && !IsSNES)
             {
-                Form.AppendTextBox("Duplicate timestamp enqueued.");
+                _form.AppendTextBox("Duplicate timestamp enqueued.");
                 DebugPrint($"Duplicate timestamp enqueued. TS: {_tsEn:X2}", DebugType.Threading);
             }
 
@@ -762,13 +787,13 @@ namespace BetterJoyForCemu
 
         private void DetectShake()
         {
-            if (Form.ShakeInputEnabled)
+            if (_form.ShakeInputEnabled)
             {
                 var currentShakeTime = _shakeTimer.ElapsedMilliseconds;
 
                 // Shake detection logic
-                var isShaking = GetAccel().LengthSquared() >= Form.ShakeSesitivity;
-                if ((isShaking && currentShakeTime >= _shakedTime + Form.ShakeDelay) || (isShaking && _shakedTime == 0))
+                var isShaking = GetAccel().LengthSquared() >= _form.ShakeSesitivity;
+                if ((isShaking && currentShakeTime >= _shakedTime + _form.ShakeDelay) || (isShaking && _shakedTime == 0))
                 {
                     _shakedTime = currentShakeTime;
                     _hasShaked = true;
@@ -891,7 +916,7 @@ namespace BetterJoyForCemu
                 {
                     if (_buttonsDownTimestamp[(int)Button.Stick] - _lastDoubleClick < 3000000)
                     {
-                        Form.ConBtnClick(PadId); // trigger connection button click
+                        _form.ConBtnClick(PadId); // trigger connection button click
 
                         _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                         return;
@@ -1143,15 +1168,15 @@ namespace BetterJoyForCemu
                 }
                 else if (attempts > 240)
                 {
-                    State = Status.Dropped;
-                    Form.AppendTextBox("Dropped.");
+                    State = Status.Errored;
+                    _form.AppendTextBox("Dropped.");
                     DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.All);
                 }
                 else if (error == ReceiveError.InvalidHandle)
                 {
                     // should not happen
-                    State = Status.Dropped;
-                    Form.AppendTextBox("Dropped (invalid handle).");
+                    State = Status.Errored;
+                    _form.AppendTextBox("Dropped (invalid handle).");
                 }
                 else
                 {
@@ -1188,17 +1213,17 @@ namespace BetterJoyForCemu
                 _stickPrecal[1] = (ushort)((_stickRaw[1] >> 4) | (_stickRaw[2] << 4));
                 var cal = _stickCal;
                 var dz = _deadzone;
-                if (Form.AllowCalibration)
+                if (_form.AllowCalibration)
                 {
                     cal = _activeStick1Data;
                     dz = _activeStick1DeadZoneData;
-                    if (Form.CalibrateSticks)
+                    if (_form.CalibrateSticks)
                     {
-                        Form.Xs1.Add(_stickPrecal[0]);
-                        Form.Ys1.Add(_stickPrecal[1]);
+                        _form.Xs1.Add(_stickPrecal[0]);
+                        _form.Ys1.Add(_stickPrecal[1]);
                     }
                 }
-                else if (!Form.UseControllerStickCalibration)
+                else if (!_form.UseControllerStickCalibration)
                 {
                     cal = _noCalibrationSticksData;
                     dz = _noCalibrationDeadzone;
@@ -1210,17 +1235,17 @@ namespace BetterJoyForCemu
                 {
                     _stick2Precal[0] = (ushort)(_stick2Raw[0] | ((_stick2Raw[1] & 0xf) << 8));
                     _stick2Precal[1] = (ushort)((_stick2Raw[1] >> 4) | (_stick2Raw[2] << 4));
-                    if (Form.AllowCalibration)
+                    if (_form.AllowCalibration)
                     {
                         cal = _activeStick2Data;
                         dz = _activeStick2DeadZoneData;
-                        if (Form.CalibrateSticks)
+                        if (_form.CalibrateSticks)
                         {
-                            Form.Xs2.Add(_stick2Precal[0]);
-                            Form.Ys2.Add(_stick2Precal[1]);
+                            _form.Xs2.Add(_stick2Precal[0]);
+                            _form.Ys2.Add(_stick2Precal[1]);
                         }
                     }
-                    else if (Form.UseControllerStickCalibration)
+                    else if (_form.UseControllerStickCalibration)
                     {
                         cal = _stick2Cal;
                         dz = _deadzone2;
@@ -1229,7 +1254,7 @@ namespace BetterJoyForCemu
                     CalculateStickCenter(_stick2Precal, cal, dz, _stick2);
                 }
 
-                if (!Form.CalibrateSticks)
+                if (!_form.CalibrateSticks)
                 {
                     //DebugPrint($"Stick1: X={stick[0]} Y={stick[1]}. Stick2: X={stick2[0]} Y={stick2[1]}", DebugType.THREADING);
                 }
@@ -1369,30 +1394,30 @@ namespace BetterJoyForCemu
 
                 var direction = IsLeft ? 1 : -1;
 
-                if (Form.AllowCalibration)
+                if (_form.AllowCalibration)
                 {
                     _accG.X = (_accR[0] - _activeIMUData[3]) * (1.0f / _accSen[0]) * 4.0f;
                     _gyrG.X = (_gyrR[0] - _activeIMUData[0]) * (816.0f / _gyrSen[0]);
-                    if (Form.CalibrateIMU)
+                    if (_form.CalibrateIMU)
                     {
-                        Form.Xa.Add(_accR[0]);
-                        Form.Xg.Add(_gyrR[0]);
+                        _form.Xa.Add(_accR[0]);
+                        _form.Xg.Add(_gyrR[0]);
                     }
 
                     _accG.Y = direction * (_accR[1] - _activeIMUData[4]) * (1.0f / _accSen[1]) * 4.0f;
                     _gyrG.Y = -direction * (_gyrR[1] - _activeIMUData[1]) * (816.0f / _gyrSen[1]);
-                    if (Form.CalibrateIMU)
+                    if (_form.CalibrateIMU)
                     {
-                        Form.Ya.Add(_accR[1]);
-                        Form.Yg.Add(_gyrR[1]);
+                        _form.Ya.Add(_accR[1]);
+                        _form.Yg.Add(_gyrR[1]);
                     }
 
                     _accG.Z = direction * (_accR[2] - _activeIMUData[5]) * (1.0f / _accSen[2]) * 4.0f;
                     _gyrG.Z = -direction * (_gyrR[2] - _activeIMUData[2]) * (816.0f / _gyrSen[2]);
-                    if (Form.CalibrateIMU)
+                    if (_form.CalibrateIMU)
                     {
-                        Form.Za.Add(_accR[2]);
-                        Form.Zg.Add(_gyrR[2]);
+                        _form.Za.Add(_accR[2]);
+                        _form.Zg.Add(_gyrR[2]);
                     }
                 }
                 else
@@ -1467,11 +1492,11 @@ namespace BetterJoyForCemu
                 };
                 _pollThreadObj.Start();
 
-                Form.AppendTextBox("Starting poll thread.");
+                _form.AppendTextBox("Starting poll thread.");
             }
             else
             {
-                Form.AppendTextBox("Poll cannot start.");
+                _form.AppendTextBox("Poll cannot start.");
             }
         }
 
@@ -1512,7 +1537,7 @@ namespace BetterJoyForCemu
                 return;
             }
 
-            _rumbleObj.set_vals(lowFreq, highFreq, amp);
+            _rumbleObj.Enqueue(lowFreq, highFreq, amp);
         }
 
         // Run from poll thread
@@ -1598,7 +1623,7 @@ namespace BetterJoyForCemu
             return response;
         }
 
-        private bool dump_calibration_data()
+        private bool DumpCalibrationData()
         {
             if (IsSNES || IsThirdParty)
             {
@@ -1606,20 +1631,18 @@ namespace BetterJoyForCemu
             }
 
             var ok = true;
-            var buf = ReadSPICheck(
-                0x80,
-                IsLeft ? (byte)0x12 : (byte)0x1d,
-                9,
-                ref ok
-            ); // get user calibration data if possible
             var found = false;
+
+            // get user calibration data if possible
+            var buf = ReadSPICheck(0x80, IsLeft ? (byte)0x12 : (byte)0x1d, 9, ref ok);
+
             if (ok)
             {
                 for (var i = 0; i < 9; ++i)
                 {
                     if (buf[i] != 0xff)
                     {
-                        Form.AppendTextBox("Using user stick calibration data.");
+                        _form.AppendTextBox("Using user stick 1 calibration data.");
                         found = true;
                         break;
                     }
@@ -1627,7 +1650,7 @@ namespace BetterJoyForCemu
 
                 if (!found)
                 {
-                    Form.AppendTextBox("Using factory stick calibration data.");
+                    _form.AppendTextBox("Using factory stick 1 calibration data.");
                     buf = ReadSPICheck(0x60, IsLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
                 }
             }
@@ -1639,16 +1662,13 @@ namespace BetterJoyForCemu
             _stickCal[IsLeft ? 4 : 0] = (ushort)(((buf[7] << 8) & 0xF00) | buf[6]); // X Axis Min below center
             _stickCal[IsLeft ? 5 : 1] = (ushort)((buf[8] << 4) | (buf[7] >> 4)); // Y Axis Min below center
 
-            PrintArray(_stickCal, len: 6, start: 0, format: "Stick calibration data: {0:S}");
+            PrintArray(_stickCal, len: 6, start: 0, format: "Stick 1 calibration data: {0:S}");
 
             if (IsPro)
             {
-                buf = ReadSPICheck(
-                    0x80,
-                    !IsLeft ? (byte)0x12 : (byte)0x1d,
-                    9,
-                    ref ok
-                ); // get user calibration data if possible
+                // get user calibration data if possible
+                buf = ReadSPICheck(0x80, !IsLeft ? (byte)0x12 : (byte)0x1d, 9, ref ok);
+
                 found = false;
                 if (ok)
                 {
@@ -1656,7 +1676,7 @@ namespace BetterJoyForCemu
                     {
                         if (buf[i] != 0xff)
                         {
-                            Form.AppendTextBox("Using user stick calibration data.");
+                            _form.AppendTextBox("Using user stick 2 calibration data.");
                             found = true;
                             break;
                         }
@@ -1664,7 +1684,7 @@ namespace BetterJoyForCemu
 
                     if (!found)
                     {
-                        Form.AppendTextBox("Using factory stick calibration data.");
+                        _form.AppendTextBox("Using factory stick 2 calibration data.");
                         buf = ReadSPICheck(0x60, !IsLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
                     }
                 }
@@ -1676,7 +1696,7 @@ namespace BetterJoyForCemu
                 _stick2Cal[!IsLeft ? 4 : 0] = (ushort)(((buf[7] << 8) & 0xF00) | buf[6]); // X Axis Min below center
                 _stick2Cal[!IsLeft ? 5 : 1] = (ushort)((buf[8] << 4) | (buf[7] >> 4)); // Y Axis Min below center
 
-                PrintArray(_stick2Cal, len: 6, start: 0, format: "Stick calibration data: {0:S}");
+                PrintArray(_stick2Cal, len: 6, start: 0, format: "Stick 2 calibration data: {0:S}");
 
                 buf = ReadSPICheck(0x60, !IsLeft ? (byte)0x86 : (byte)0x98, 16, ref ok);
                 _deadzone2 = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]);
@@ -1736,7 +1756,7 @@ namespace BetterJoyForCemu
 
             if (!ok)
             {
-                Form.AppendTextBox("Error while reading calibration data.");
+                _form.AppendTextBox("Error while reading calibration data.");
             }
 
             return ok;
@@ -1794,7 +1814,7 @@ namespace BetterJoyForCemu
             }
             else
             {
-                Form.AppendTextBox("ReadSPI error");
+                _form.AppendTextBox("ReadSPI error");
             }
 
             return readBuf;
@@ -1828,6 +1848,16 @@ namespace BetterJoyForCemu
             }
 
             DebugPrint(string.Format(format, tostr), d);
+        }
+
+        public class StateChangedEventArgs : EventArgs
+        {
+            public Status State { get; }
+
+            public StateChangedEventArgs(Status state)
+            {
+                State = state;
+            }
         }
 
         private static OutputControllerXbox360InputState MapToXbox360Input(Joycon input)
@@ -2182,7 +2212,7 @@ namespace BetterJoyForCemu
 
         public string GetControllerName()
         {
-            return IsPro ? "Pro Controller" : IsSNES ? "SNES Controller" : IsLeft ? "Joycon Left" : "Joycon Right";
+            return IsPro ? "Pro controller" : IsSNES ? "SNES controller" : IsLeft ? "Left joycon" : "Right joycon";
         }
 
         private struct Rumble
@@ -2190,7 +2220,7 @@ namespace BetterJoyForCemu
             private readonly Queue<float[]> _queue;
             private SpinLock _queueLock;
 
-            public void set_vals(float lowFreq, float highFreq, float amplitude)
+            public void Enqueue(float lowFreq, float highFreq, float amplitude)
             {
                 float[] rumbleQueue = { lowFreq, highFreq, amplitude };
                 // Keep a queue of 15 items, discard oldest item if queue is full.

@@ -4,10 +4,9 @@ using System.Configuration;
 using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Windows.Forms;
 using BetterJoyForCemu.Collections;
 using Nefarius.Drivers.HidHide;
@@ -17,7 +16,6 @@ using WindowsInput;
 using WindowsInput.Events.Sources;
 using static BetterJoyForCemu._3rdPartyControllers;
 using static BetterJoyForCemu.HIDApi;
-using Timer = System.Timers.Timer;
 
 namespace BetterJoyForCemu
 {
@@ -29,144 +27,410 @@ namespace BetterJoyForCemu
         private const ushort ProductPro = 0x2009;
         private const ushort ProductSNES = 0x2017;
 
-        private const double DefaultCheckInterval = 5000;
-        private const double FastCheckInterval = 500;
-        private readonly object _checkControllerLock = new();
-
-        private Timer _controllerCheck;
-        private bool _dropControllers;
         public readonly bool EnableIMU = true;
         public readonly bool EnableLocalize = false;
 
-        public MainForm Form;
-        public bool IsRunning;
+        private readonly MainForm _form;
 
-        public ConcurrentList<Joycon> J { get; private set; } // Array of all connected Joy-Cons
+        private bool _isRunning = false;
+        private readonly CancellationTokenSource _cancellationTokenSource = new();
 
-        public static JoyconManager Instance { get; private set; }
+        public ConcurrentList<Joycon> Controllers { get; } = new(); // connected controllers
 
-        public void Awake()
+        private readonly Channel<DeviceNotification> _channelDeviceNotifications;
+
+        private int _hidCallbackHandle = 0;
+        private Task _devivesNotificationTask = null;
+
+        private class DeviceNotification
         {
-            Instance = this;
-            J = new ConcurrentList<Joycon>();
-            hid_init();
+            public enum Type
+            {
+                Unknown,
+                Connected,
+                Disconnected,
+                Errored
+            }
+
+            public readonly Type Notification;
+            public readonly object Data;
+
+            public DeviceNotification(Type notification, object data) // data must be immutable
+            {
+                Notification = notification;
+                Data = data;
+            }
         }
 
-        public void Start()
+        public JoyconManager(MainForm form)
         {
-            _controllerCheck = new Timer();
-            _controllerCheck.Elapsed += CheckForNewControllersTime;
-            _controllerCheck.AutoReset = false;
+            _form = form;
 
-            Task.Run(
-                () =>
+            _channelDeviceNotifications = Channel.CreateUnbounded<DeviceNotification>(
+                new UnboundedChannelOptions
                 {
-                    CheckForNewControllersTrigger(true);
-                    IsRunning = true;
+                    SingleWriter = false,
+                    SingleReader = true,
+                    AllowSynchronousContinuations = false
                 }
             );
         }
 
-        private bool ControllerAlreadyAdded(string path)
+        public bool Start()
         {
-            foreach (var v in J)
+            if (_isRunning)
             {
-                if (v.Path == path)
-                {
-                    return true;
-                }
+                return true;
             }
 
-            return false;
-        }
-
-        private void CleanUp()
-        {
-            // removes dropped controllers from list
-            if (_dropControllers)
+            int ret = hid_init();
+            if (ret != 0)
             {
-                foreach (var v in J)
-                {
-                    v.Drop();
-                }
-
-                _dropControllers = false;
+                _form.AppendTextBox("Could not initialize hidapi");
+                return false;
             }
 
-            var rem = new List<Joycon>();
-            foreach (var joycon in J)
+            ret = hid_hotplug_register_callback(
+                0x0,
+                0x0,
+                (int)(HotplugEvent.DeviceArrived | HotplugEvent.DeviceLeft),
+                (int)HotplugFlag.Enumerate,
+                OnDeviceNotification,
+                _channelDeviceNotifications.Writer,
+                out _hidCallbackHandle
+            );
+
+            if (ret != 0)
             {
-                if (joycon.State == Joycon.Status.Dropped)
+                _form.AppendTextBox(("Could not register hidapi callback"));
+                hid_exit();
+                return false;
+            }
+
+            _devivesNotificationTask = Task.Run(
+                async () =>
                 {
-                    if (joycon.Other != null)
+                    try
                     {
-                        joycon.Other.Other = null; // The other of the other is the joycon itself
+                        await ProcessDevicesNotifications(_cancellationTokenSource.Token);
                     }
+                    catch (OperationCanceledException e) when (e.CancellationToken == _cancellationTokenSource.Token) { }
+                }
+            );
 
-                    joycon.Detach();
-                    rem.Add(joycon);
+            _isRunning = true;
+            return true;
+        }
 
-                    Form.RemoveController(joycon);
-                    Form.AppendTextBox($"Removed dropped {joycon.GetControllerName()}. Can be reconnected.");
+        private static int OnDeviceNotification(int callbackHandle, HIDDeviceInfo deviceInfo, int ev, object pUserData)
+        {
+            var channelWriter = (ChannelWriter<DeviceNotification>)pUserData;
+            var deviceEvent = (HotplugEvent)ev;
+
+            var notification = DeviceNotification.Type.Unknown;
+            switch (deviceEvent)
+            {
+                case HotplugEvent.DeviceArrived:
+                    notification = DeviceNotification.Type.Connected;
+                    break;
+                case HotplugEvent.DeviceLeft:
+                    notification = DeviceNotification.Type.Disconnected;
+                    break;
+            }
+
+            var job = new DeviceNotification(notification, deviceInfo);
+
+            while (!channelWriter.TryWrite(job)) { }
+
+            return 0;
+        }
+
+        private async Task ProcessDevicesNotifications(CancellationToken token)
+        {
+            var channelReader = _channelDeviceNotifications.Reader;
+
+            while (await channelReader.WaitToReadAsync(token))
+            {
+                while (channelReader.TryRead(out var job))
+                {
+                    switch (job.Notification)
+                    {
+                        case DeviceNotification.Type.Connected:
+                        {
+                            var deviceInfos = (HIDDeviceInfo)job.Data;
+                            OnDeviceConnected(deviceInfos);
+                            break;
+                        }
+                        case DeviceNotification.Type.Disconnected:
+                        {
+                            var deviceInfos = (HIDDeviceInfo)job.Data;
+                            OnDeviceDisconnected(deviceInfos);
+                            break;
+                        }
+                        case DeviceNotification.Type.Errored:
+                        {
+                            var controller = (Joycon)job.Data;
+                            OnDeviceErrored(controller);
+                            break;
+                        }
+                    }
                 }
             }
-
-            foreach (var v in rem)
-            {
-                J.Remove(v);
-            }
         }
 
-        private void CheckForNewControllersTime(object source, ElapsedEventArgs e)
+        private void OnDeviceConnected(HIDDeviceInfo info)
         {
-            CheckForNewControllersTrigger();
-        }
-
-        private void CheckForNewControllersTrigger(bool forceScan = false)
-        {
-            if (!Monitor.TryEnter(_checkControllerLock))
+            if (info.SerialNumber == null || GetControllerByPath(info.Path) != null)
             {
                 return;
             }
 
+            var validController = (info.ProductId == ProductL || info.ProductId == ProductR ||
+                                   info.ProductId == ProductPro || info.ProductId == ProductSNES) &&
+                                  info.VendorId == VendorId;
+
+            // check if it's a custom controller
+            SController thirdParty = null;
+            foreach (var v in Program.ThirdpartyCons)
+            {
+                if (info.VendorId == v.VendorId &&
+                    info.ProductId == v.ProductId &&
+                    info.SerialNumber == v.SerialNumber)
+                {
+                    validController = true;
+                    thirdParty = v;
+                    break;
+                }
+            }
+
+            if (!validController)
+            {
+                return;
+            }
+
+            var prodId = thirdParty == null ? info.ProductId : TypeToProdId(thirdParty.Type);
+            if (prodId == 0)
+            {
+                // controller was not assigned a type
+                return;
+            }
+
+            bool isUSB = info.BusType == BusType.USB;
+            var isLeft = false;
+            var type = Joycon.ControllerType.Joycon;
+
+            switch (prodId)
+            {
+                case ProductL:
+                    isLeft = true;
+                    break;
+                case ProductR:
+                    break;
+                case ProductPro:
+                    isLeft = true;
+                    type = Joycon.ControllerType.Pro;
+                    break;
+                case ProductSNES:
+                    isLeft = true;
+                    type = Joycon.ControllerType.SNES;
+                    break;
+            }
+
+            OnDeviceConnected(info.Path, info.SerialNumber, type, isLeft, isUSB, thirdParty != null);
+        }
+
+        private void OnDeviceConnected(string path, string serial, Joycon.ControllerType type, bool isLeft, bool isUSB, bool isThirdparty)
+        {
+            switch (type)
+            {
+                case Joycon.ControllerType.Joycon:
+                    _form.AppendTextBox(isLeft ? "Left joycon connected." : "Right joycon connected.");
+                    break;
+                case Joycon.ControllerType.Pro:
+                    _form.AppendTextBox("Pro controller connected.");
+                    break;
+                case Joycon.ControllerType.SNES:
+                    _form.AppendTextBox("SNES controller connected.");
+                    break;
+            }
+
+            var handle = hid_open_path(path);
+            if (handle == IntPtr.Zero)
+            {
+                _form.AppendTextBox("Unable to open path to device - device disconnected or incorrect hidapi version (32 bits vs 64 bits)");
+                return;
+            }
+
+            hid_set_nonblocking(handle, 1);
+
+            // Add controller to block-list for HidHide
+            Program.AddDeviceToBlocklist(handle);
+
+            var indexController = Controllers.Count;
+            var controller = new Joycon(
+                _form,
+                handle,
+                EnableIMU,
+                EnableLocalize && EnableIMU,
+                0.05f,
+                isLeft,
+                path,
+                serial,
+                isUSB,
+                indexController,
+                type,
+                isThirdparty
+            );
+            controller.StateChanged += OnControllerStateChanged;
+
+            var mac = new byte[6];
             try
             {
-                CleanUp();
-
-                var checkInterval = DefaultCheckInterval;
-                if (Config.IntValue("ProgressiveScan") == 1 || forceScan)
+                for (var n = 0; n < 6 && n < serial.Length; n++)
                 {
-                    checkInterval = CheckForNewControllers();
+                    mac[n] = byte.Parse(serial.AsSpan(n * 2, 2), NumberStyles.HexNumber);
                 }
-
-                SetControllerCheckInterval(checkInterval);
-                _controllerCheck.Start();
             }
-            finally
+            catch (Exception)
             {
-                Monitor.Exit(_checkControllerLock);
+                // could not parse mac address
             }
+
+            controller.PadMacAddress = new PhysicalAddress(mac);
+
+            // Connect device straight away
+            try
+            {
+                controller.ConnectViGEm();
+                controller.Attach();
+            }
+            catch (Exception e)
+            {
+                controller.Drop(true);
+
+                _form.AppendTextBox($"Could not connect {controller.GetControllerName()} ({e.Message}). Dropped.");
+                return;
+            }
+
+            if (!controller.IsPro)
+            {
+                // attempt to auto join-up joycons on connection
+                foreach (var otherController in Controllers)
+                {
+                    if (otherController.IsPro || // not a joycon
+                        otherController.Other != null || // already associated
+                        controller.IsLeft == otherController.IsLeft)
+                    {
+                        continue;
+                    }
+
+                    controller.Other = otherController;
+                    otherController.Other = controller;
+                    break;
+                }
+            }
+
+            Controllers.Add(controller);
+            if (indexController < 4)
+            {
+                _form.AddController(controller);
+            }
+
+            if (controller.Other != null)
+            {
+                controller.Other.DisconnectViGEm();
+                _form.JoinJoycon(controller, controller.Other);
+            }
+
+            if (_form.AllowCalibration)
+            {
+                controller.GetActiveIMUData();
+                controller.GetActiveSticksData();
+            }
+
+            var ledOn = bool.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
+            controller.SetHomeLight(ledOn);
+
+            controller.Begin();
         }
 
-        private void SetControllerCheckInterval(double interval)
+        private void OnDeviceDisconnected(HIDDeviceInfo info)
         {
-            if (interval == _controllerCheck.Interval)
+            var controller = GetControllerByPath(info.Path);
+
+            OnDeviceDisconnected(controller);
+        }
+
+        private void OnDeviceDisconnected(Joycon controller)
+        {
+            if (controller == null)
             {
                 return;
             }
 
-            // Avoid triggering the elapsed event when changing the interval (see note in https://learn.microsoft.com/en-us/dotnet/api/system.timers.timer.interval?view=net-7.0)
-            var wasEnabled = _controllerCheck.Enabled;
-            if (!wasEnabled)
+            controller.StateChanged -= OnControllerStateChanged;
+            controller.Detach();
+
+            if (controller.Other != null)
             {
-                _controllerCheck.Enabled = true;
+                controller.Other.Other = null; // The other of the other is the joycon itself
+                try
+                {
+                    controller.Other.ConnectViGEm();
+                }
+                catch (Exception)
+                {
+                    _form.AppendTextBox("Could not connect the fake controller for the unjoined joycon.");
+                }
             }
 
-            _controllerCheck.Interval = interval;
-            if (!wasEnabled)
+            Controllers.Remove(controller);
+            _form.RemoveController(controller);
+
+            _form.AppendTextBox($"{controller.GetControllerName()} disconnected.");
+        }
+
+        private void OnDeviceErrored(Joycon controller)
+        {
+            if (controller.State > Joycon.Status.Dropped)
             {
-                _controllerCheck.Enabled = false;
+                // device not in error anymore (after a reset or a reconnection from the system)
+                return;
             }
+            OnDeviceDisconnected(controller);
+            OnDeviceConnected(controller.Path, controller.SerialNumber, controller.Type, controller.IsLeft, controller.IsUSB, controller.IsThirdParty);
+        }
+
+        private void OnControllerStateChanged(object sender, Joycon.StateChangedEventArgs e)
+        {
+            if (sender == null)
+            {
+                return;
+            }
+
+            var controller = (Joycon)sender;
+            var writer = _channelDeviceNotifications.Writer;
+
+            switch (e.State)
+            {
+                case Joycon.Status.Errored:
+                    var notification = new DeviceNotification(DeviceNotification.Type.Errored, controller);
+                    while (!writer.TryWrite(notification)) { }
+                    break;
+            }
+        }
+
+        private Joycon GetControllerByPath(string path)
+        {
+            foreach (var controller in Controllers)
+            {
+                if (controller.Path == path)
+                {
+                    return controller;
+                }
+            }
+
+            return null;
         }
 
         private ushort TypeToProdId(byte type)
@@ -184,230 +448,35 @@ namespace BetterJoyForCemu
             return 0;
         }
 
-        public double CheckForNewControllers()
+        public async Task Stop()
         {
-            // move all code for initializing devices here and well as the initial code from Start()
-            var isLeft = false;
-            var ptr = hid_enumerate(0x0, 0x0);
-            var topPtr = ptr;
-
-            var foundNew = false;
-            for (HIDDeviceInfo enumerate; ptr != IntPtr.Zero; ptr = enumerate.Next)
+            if (!_isRunning)
             {
-                enumerate = (HIDDeviceInfo)Marshal.PtrToStructure(ptr, typeof(HIDDeviceInfo));
-
-                if (enumerate.SerialNumber == null)
-                {
-                    continue;
-                }
-
-                var validController = (enumerate.ProductId == ProductL || enumerate.ProductId == ProductR ||
-                                       enumerate.ProductId == ProductPro || enumerate.ProductId == ProductSNES) &&
-                                      enumerate.VendorId == VendorId;
-
-                // check list of custom controllers specified
-                SController thirdParty = null;
-                foreach (var v in Program.ThirdPartyCons)
-                {
-                    if (enumerate.VendorId == v.VendorId && enumerate.ProductId == v.ProductId &&
-                        enumerate.SerialNumber == v.SerialNumber)
-                    {
-                        validController = true;
-                        thirdParty = v;
-                        break;
-                    }
-                }
-
-                var prodId = thirdParty == null ? enumerate.ProductId : TypeToProdId(thirdParty.Type);
-                if (prodId == 0)
-                {
-                    ptr = enumerate.Next; // controller was not assigned a type, but advance ptr anyway
-                    continue;
-                }
-
-                if (validController && !ControllerAlreadyAdded(enumerate.Path))
-                {
-                    switch (prodId)
-                    {
-                        case ProductL:
-                            isLeft = true;
-                            Form.AppendTextBox("Left Joy-Con connected.");
-                            break;
-                        case ProductR:
-                            isLeft = false;
-                            Form.AppendTextBox("Right Joy-Con connected.");
-                            break;
-                        case ProductPro:
-                            isLeft = true;
-                            Form.AppendTextBox("Pro controller connected.");
-                            break;
-                        case ProductSNES:
-                            isLeft = true;
-                            Form.AppendTextBox("SNES controller connected.");
-                            break;
-                        default:
-                            Form.AppendTextBox("Non Joy-Con Nintendo input device skipped.");
-                            break;
-                    }
-
-                    var handle = hid_open_path(enumerate.Path);
-                    if (handle == IntPtr.Zero)
-                    {
-                        Form.AppendTextBox(
-                            "Unable to open path to device - are you using the correct (64 vs 32-bit) version for your PC?"
-                        );
-                        break;
-                    }
-
-                    hid_set_nonblocking(handle, 1);
-
-                    // Add controller to block-list for HidHide
-                    Program.AddDeviceToBlocklist(handle);
-
-                    var type = Joycon.ControllerType.Joycon;
-                    if (prodId == ProductPro)
-                    {
-                        type = Joycon.ControllerType.Pro;
-                    }
-                    else if (prodId == ProductSNES)
-                    {
-                        type = Joycon.ControllerType.SNES;
-                    }
-
-                    var indexController = J.Count;
-                    var isUSB = enumerate.BusType == BusType.USB;
-                    var controller = new Joycon(
-                        handle,
-                        EnableIMU,
-                        EnableLocalize && EnableIMU,
-                        0.05f,
-                        isLeft,
-                        enumerate.Path,
-                        enumerate.SerialNumber,
-                        isUSB,
-                        indexController,
-                        type,
-                        thirdParty != null
-                    )
-                    {
-                        Form = Form
-                    };
-
-                    var mac = new byte[6];
-                    try
-                    {
-                        for (var n = 0; n < 6; n++)
-                        {
-                            mac[n] = byte.Parse(enumerate.SerialNumber.AsSpan(n * 2, 2), NumberStyles.HexNumber);
-                        }
-                    }
-                    catch (Exception /*e*/)
-                    {
-                        // could not parse mac address
-                    }
-
-                    controller.PadMacAddress = new PhysicalAddress(mac);
-
-                    J.Add(controller);
-                    if (indexController < 4)
-                    {
-                        Form.AddController(controller);
-                    }
-
-                    foundNew = true;
-                }
+                return;
             }
+            _isRunning = false;
 
-            hid_free_enumeration(topPtr);
+            _cancellationTokenSource.Cancel();
 
-            if (foundNew)
+            if (_hidCallbackHandle != 0)
             {
-                // attempt to auto join-up joycons on connection
-                Joycon temp = null;
-                foreach (var v in J)
-                {
-                    // Do not attach two controllers if they are either:
-                    // - Not a Joycon
-                    // - Already attached to another Joycon (that isn't itself)
-                    if (v.IsPro || (v.Other != null && v.Other != v))
-                    {
-                        continue;
-                    }
-
-                    // Otherwise, iterate through and find the Joycon with the lowest
-                    // id that has not been attached already (Does not include self)
-                    if (temp == null)
-                    {
-                        temp = v;
-                    }
-                    else if (temp.IsLeft != v.IsLeft && v.Other == null)
-                    {
-                        temp.Other = v;
-                        v.Other = temp;
-
-                        temp.DisconnectViGEm();
-                        Form.JoinJoycon(v, temp);
-
-                        temp = null; // repeat
-                    }
-                }
+                hid_hotplug_deregister_callback(_hidCallbackHandle);
             }
-
-            var dropped = false;
-            var on = bool.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
-            foreach (var jc in J)
-            {
-                // Connect device straight away
-                if (jc.State == Joycon.Status.NotAttached)
-                {
-                    try
-                    {
-                        jc.ConnectViGEm();
-                        jc.Attach();
-                    }
-                    catch (Exception e)
-                    {
-                        jc.Drop();
-                        dropped = true;
-
-                        Form.AppendTextBox($"Could not connect {jc.GetControllerName()} ({e.Message}). Dropped.");
-                        continue;
-                    }
-
-                    jc.SetHomeLight(on);
-
-                    if (Form.AllowCalibration)
-                    {
-                        jc.GetActiveIMUData();
-                        jc.GetActiveSticksData();
-                    }
-
-                    jc.Begin();
-                }
-            }
-
-            var checkInterval = dropped ? FastCheckInterval : DefaultCheckInterval;
-            return checkInterval;
-        }
-
-        public void OnApplicationQuit()
-        {
-            lock (_checkControllerLock)
-            {
-                _controllerCheck?.Stop();
-                _controllerCheck?.Dispose();
-                IsRunning = false;
-            }
+            
+            await _devivesNotificationTask;
+            _cancellationTokenSource.Dispose();
 
             var powerOff = bool.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]);
-            foreach (var v in J)
+            foreach (var controller in Controllers)
             {
+                controller.StateChanged -= OnControllerStateChanged;
+
                 if (powerOff)
                 {
-                    v.PowerOff();
+                    controller.PowerOff();
                 }
 
-                v.Detach();
+                controller.Detach();
             }
 
             hid_exit();
@@ -425,7 +494,7 @@ namespace BetterJoyForCemu
 
         private static MainForm _form;
 
-        public static readonly ConcurrentList<SController> ThirdPartyCons = new();
+        public static readonly ConcurrentList<SController> ThirdpartyCons = new();
 
         private static bool _useHIDHide = bool.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
 
@@ -469,19 +538,11 @@ namespace BetterJoyForCemu
                 }
             }
 
-            var controllers = GetSaved3RdPartyControllers();
-            Update3RdPartyControllers(controllers);
+            var controllers = GetSavedThirdpartyControllers();
+            UpdateThirdpartyControllers(controllers);
 
-            Mgr = new JoyconManager
-            {
-                Form = _form
-            };
-            Mgr.Awake();
-
-            Server = new UdpServer(Mgr.J)
-            {
-                Form = _form
-            };
+            Mgr = new JoyconManager(_form);
+            Server = new UdpServer(_form, Mgr.Controllers);
 
             Server.Start(
                 IPAddress.Parse(ConfigurationManager.AppSettings["IP"]),
@@ -635,7 +696,7 @@ namespace BetterJoyForCemu
                 {
                     if ((int)e.Data.ButtonDown.Button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.J)
+                        foreach (var i in Mgr.Controllers)
                         {
                             i.ActiveGyro = true;
                         }
@@ -650,7 +711,7 @@ namespace BetterJoyForCemu
                 {
                     if ((int)e.Data.ButtonUp.Button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.J)
+                        foreach (var i in Mgr.Controllers)
                         {
                             i.ActiveGyro = false;
                         }
@@ -679,7 +740,7 @@ namespace BetterJoyForCemu
                 {
                     if ((int)e.Data.KeyDown.Key == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.J)
+                        foreach (var i in Mgr.Controllers)
                         {
                             i.ActiveGyro = true;
                         }
@@ -694,7 +755,7 @@ namespace BetterJoyForCemu
                 {
                     if ((int)e.Data.KeyUp.Key == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.J)
+                        foreach (var i in Mgr.Controllers)
                         {
                             i.ActiveGyro = false;
                         }
@@ -703,7 +764,7 @@ namespace BetterJoyForCemu
             }
         }
 
-        public static void Stop()
+        public static async Task Stop()
         {
             if (!_isRunning)
             {
@@ -716,8 +777,15 @@ namespace BetterJoyForCemu
 
             _keyboard?.Dispose();
             _mouse?.Dispose();
-            Mgr?.OnApplicationQuit();
-            Server?.Stop();
+            if (Mgr != null)
+            {
+                await Mgr.Stop();
+            }
+
+            if (Server != null)
+            {
+                await Server.Stop();
+            }
         }
 
         public static void AllowAnotherInstance()
@@ -768,9 +836,9 @@ namespace BetterJoyForCemu
             }
         }
 
-        public static void Update3RdPartyControllers(List<SController> controllers)
+        public static void UpdateThirdpartyControllers(List<SController> controllers)
         {
-            ThirdPartyCons.Set(controllers);
+            ThirdpartyCons.Set(controllers);
         }
 
         private static void Main(string[] args)

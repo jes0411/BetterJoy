@@ -1,5 +1,7 @@
-﻿namespace BetterJoyForCemu {
-    partial class MainForm {
+﻿namespace BetterJoyForCemu
+{
+    partial class MainForm
+    {
         /// <summary>
         /// Required designer variable.
         /// </summary>
@@ -9,8 +11,10 @@
         /// Clean up any resources being used.
         /// </summary>
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing) {
-            if (disposing) {
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
                 components?.Dispose();
             }
             base.Dispose(disposing);
@@ -22,351 +26,351 @@
         /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
-        private void InitializeComponent() {
-            this.components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
-            this.console = new System.Windows.Forms.TextBox();
-            this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
-            this.contextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.version_lbl = new System.Windows.Forms.Label();
-            this.passiveScanBox = new System.Windows.Forms.CheckBox();
-            this.donationLink = new System.Windows.Forms.LinkLabel();
-            this.conCntrls = new System.Windows.Forms.GroupBox();
-            this.loc4 = new System.Windows.Forms.Button();
-            this.loc3 = new System.Windows.Forms.Button();
-            this.loc2 = new System.Windows.Forms.Button();
-            this.loc1 = new System.Windows.Forms.Button();
-            this.con4 = new System.Windows.Forms.Button();
-            this.con3 = new System.Windows.Forms.Button();
-            this.con2 = new System.Windows.Forms.Button();
-            this.con1 = new System.Windows.Forms.Button();
-            this.btnTip = new System.Windows.Forms.ToolTip(this.components);
-            this.foldLbl = new System.Windows.Forms.Label();
-            this.startInTrayBox = new System.Windows.Forms.CheckBox();
-            this.btn_open3rdP = new System.Windows.Forms.Button();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.settingsTable = new System.Windows.Forms.TableLayoutPanel();
-            this.rightPanel = new System.Windows.Forms.Panel();
-            this.settingsApply = new System.Windows.Forms.Button();
-            this.AutoCalibrate = new System.Windows.Forms.Button();
-            this.btn_reassign_open = new System.Windows.Forms.Button();
-            this.contextMenu.SuspendLayout();
-            this.conCntrls.SuspendLayout();
-            this.groupBox1.SuspendLayout();
-            this.rightPanel.SuspendLayout();
-            this.SuspendLayout();
+        private void InitializeComponent()
+        {
+            components = new System.ComponentModel.Container();
+            var resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
+            console = new System.Windows.Forms.TextBox();
+            notifyIcon = new System.Windows.Forms.NotifyIcon(components);
+            contextMenu = new System.Windows.Forms.ContextMenuStrip(components);
+            exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            version_lbl = new System.Windows.Forms.Label();
+            donationLink = new System.Windows.Forms.LinkLabel();
+            conCntrls = new System.Windows.Forms.GroupBox();
+            loc4 = new System.Windows.Forms.Button();
+            loc3 = new System.Windows.Forms.Button();
+            loc2 = new System.Windows.Forms.Button();
+            loc1 = new System.Windows.Forms.Button();
+            con4 = new System.Windows.Forms.Button();
+            con3 = new System.Windows.Forms.Button();
+            con2 = new System.Windows.Forms.Button();
+            con1 = new System.Windows.Forms.Button();
+            btnTip = new System.Windows.Forms.ToolTip(components);
+            foldLbl = new System.Windows.Forms.Label();
+            startInTrayBox = new System.Windows.Forms.CheckBox();
+            btn_open3rdP = new System.Windows.Forms.Button();
+            groupBox1 = new System.Windows.Forms.GroupBox();
+            settingsTable = new System.Windows.Forms.TableLayoutPanel();
+            rightPanel = new System.Windows.Forms.Panel();
+            settingsApply = new System.Windows.Forms.Button();
+            AutoCalibrate = new System.Windows.Forms.Button();
+            btn_reassign_open = new System.Windows.Forms.Button();
+            contextMenu.SuspendLayout();
+            conCntrls.SuspendLayout();
+            groupBox1.SuspendLayout();
+            rightPanel.SuspendLayout();
+            SuspendLayout();
             // 
             // console
             // 
-            this.console.Location = new System.Drawing.Point(12, 132);
-            this.console.Multiline = true;
-            this.console.Name = "console";
-            this.console.ReadOnly = true;
-            this.console.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.console.Size = new System.Drawing.Size(262, 100);
-            this.console.TabIndex = 2;
+            console.Location = new System.Drawing.Point(14, 152);
+            console.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            console.Multiline = true;
+            console.Name = "console";
+            console.ReadOnly = true;
+            console.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            console.Size = new System.Drawing.Size(305, 115);
+            console.TabIndex = 2;
             // 
             // notifyIcon
             // 
-            this.notifyIcon.BalloonTipText = "Double click the tray icon to maximise!";
-            this.notifyIcon.BalloonTipTitle = "BetterJoy";
-            this.notifyIcon.ContextMenuStrip = this.contextMenu;
-            this.notifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon.Icon")));
-            this.notifyIcon.Text = "BetterJoy";
-            this.notifyIcon.Visible = true;
-            this.notifyIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseDoubleClick);
+            notifyIcon.BalloonTipText = "Double click the tray icon to maximise!";
+            notifyIcon.BalloonTipTitle = "BetterJoy";
+            notifyIcon.ContextMenuStrip = contextMenu;
+            notifyIcon.Icon = (System.Drawing.Icon)resources.GetObject("notifyIcon.Icon");
+            notifyIcon.Text = "BetterJoy";
+            notifyIcon.Visible = true;
+            notifyIcon.MouseDoubleClick += notifyIcon_MouseDoubleClick;
             // 
             // contextMenu
             // 
-            this.contextMenu.ImageScalingSize = new System.Drawing.Size(24, 24);
-            this.contextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.exitToolStripMenuItem});
-            this.contextMenu.Name = "contextMenu";
-            this.contextMenu.Size = new System.Drawing.Size(94, 26);
+            contextMenu.ImageScalingSize = new System.Drawing.Size(24, 24);
+            contextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { exitToolStripMenuItem });
+            contextMenu.Name = "contextMenu";
+            contextMenu.Size = new System.Drawing.Size(94, 26);
             // 
             // exitToolStripMenuItem
             // 
-            this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(93, 22);
-            this.exitToolStripMenuItem.Text = "Exit";
-            this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
+            exitToolStripMenuItem.Name = "exitToolStripMenuItem";
+            exitToolStripMenuItem.Size = new System.Drawing.Size(93, 22);
+            exitToolStripMenuItem.Text = "Exit";
+            exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
             // version_lbl
             // 
-            this.version_lbl.AutoSize = true;
-            this.version_lbl.Location = new System.Drawing.Point(246, 239);
-            this.version_lbl.Name = "version_lbl";
-            this.version_lbl.Size = new System.Drawing.Size(28, 13);
-            this.version_lbl.TabIndex = 2;
-            this.version_lbl.Text = "v7.1";
-            // 
-            // passiveScanBox
-            // 
-            this.passiveScanBox.AutoSize = true;
-            this.passiveScanBox.Checked = true;
-            this.passiveScanBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.passiveScanBox.Location = new System.Drawing.Point(12, 238);
-            this.passiveScanBox.Name = "passiveScanBox";
-            this.passiveScanBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            this.passiveScanBox.Size = new System.Drawing.Size(91, 17);
-            this.passiveScanBox.TabIndex = 4;
-            this.passiveScanBox.Text = "Passive Scan";
-            this.passiveScanBox.UseVisualStyleBackColor = true;
-            this.passiveScanBox.CheckedChanged += new System.EventHandler(this.passiveScanBox_CheckedChanged);
+            version_lbl.AutoSize = true;
+            version_lbl.Location = new System.Drawing.Point(287, 276);
+            version_lbl.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            version_lbl.Name = "version_lbl";
+            version_lbl.Size = new System.Drawing.Size(28, 15);
+            version_lbl.TabIndex = 2;
+            version_lbl.Text = "v7.1";
             // 
             // donationLink
             // 
-            this.donationLink.AutoSize = true;
-            this.donationLink.Location = new System.Drawing.Point(196, 239);
-            this.donationLink.Name = "donationLink";
-            this.donationLink.Size = new System.Drawing.Size(42, 13);
-            this.donationLink.TabIndex = 5;
-            this.donationLink.TabStop = true;
-            this.donationLink.Text = "Donate";
-            this.donationLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel1_LinkClicked);
+            donationLink.AutoSize = true;
+            donationLink.Location = new System.Drawing.Point(229, 276);
+            donationLink.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            donationLink.Name = "donationLink";
+            donationLink.Size = new System.Drawing.Size(45, 15);
+            donationLink.TabIndex = 5;
+            donationLink.TabStop = true;
+            donationLink.Text = "Donate";
+            donationLink.LinkClicked += linkLabel1_LinkClicked;
             // 
             // conCntrls
             // 
-            this.conCntrls.Controls.Add(this.loc4);
-            this.conCntrls.Controls.Add(this.loc3);
-            this.conCntrls.Controls.Add(this.loc2);
-            this.conCntrls.Controls.Add(this.loc1);
-            this.conCntrls.Controls.Add(this.con4);
-            this.conCntrls.Controls.Add(this.con3);
-            this.conCntrls.Controls.Add(this.con2);
-            this.conCntrls.Controls.Add(this.con1);
-            this.conCntrls.Location = new System.Drawing.Point(12, 12);
-            this.conCntrls.Name = "conCntrls";
-            this.conCntrls.Size = new System.Drawing.Size(262, 100);
-            this.conCntrls.TabIndex = 0;
-            this.conCntrls.TabStop = false;
-            this.conCntrls.Text = "Connected Controllers";
+            conCntrls.Controls.Add(loc4);
+            conCntrls.Controls.Add(loc3);
+            conCntrls.Controls.Add(loc2);
+            conCntrls.Controls.Add(loc1);
+            conCntrls.Controls.Add(con4);
+            conCntrls.Controls.Add(con3);
+            conCntrls.Controls.Add(con2);
+            conCntrls.Controls.Add(con1);
+            conCntrls.Location = new System.Drawing.Point(14, 14);
+            conCntrls.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            conCntrls.Name = "conCntrls";
+            conCntrls.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            conCntrls.Size = new System.Drawing.Size(306, 115);
+            conCntrls.TabIndex = 0;
+            conCntrls.TabStop = false;
+            conCntrls.Text = "Connected Controllers";
             // 
             // loc4
             // 
-            this.loc4.Location = new System.Drawing.Point(198, 80);
-            this.loc4.Name = "loc4";
-            this.loc4.Size = new System.Drawing.Size(58, 20);
-            this.loc4.TabIndex = 7;
-            this.loc4.Text = "Locate";
-            this.loc4.UseVisualStyleBackColor = true;
+            loc4.Location = new System.Drawing.Point(231, 92);
+            loc4.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            loc4.Name = "loc4";
+            loc4.Size = new System.Drawing.Size(68, 23);
+            loc4.TabIndex = 7;
+            loc4.Text = "Locate";
+            loc4.UseVisualStyleBackColor = true;
             // 
             // loc3
             // 
-            this.loc3.Location = new System.Drawing.Point(134, 80);
-            this.loc3.Name = "loc3";
-            this.loc3.Size = new System.Drawing.Size(58, 20);
-            this.loc3.TabIndex = 6;
-            this.loc3.Text = "Locate";
-            this.loc3.UseVisualStyleBackColor = true;
+            loc3.Location = new System.Drawing.Point(156, 92);
+            loc3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            loc3.Name = "loc3";
+            loc3.Size = new System.Drawing.Size(68, 23);
+            loc3.TabIndex = 6;
+            loc3.Text = "Locate";
+            loc3.UseVisualStyleBackColor = true;
             // 
             // loc2
             // 
-            this.loc2.Location = new System.Drawing.Point(70, 80);
-            this.loc2.Name = "loc2";
-            this.loc2.Size = new System.Drawing.Size(58, 20);
-            this.loc2.TabIndex = 5;
-            this.loc2.Text = "Locate";
-            this.loc2.UseVisualStyleBackColor = true;
+            loc2.Location = new System.Drawing.Point(82, 92);
+            loc2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            loc2.Name = "loc2";
+            loc2.Size = new System.Drawing.Size(68, 23);
+            loc2.TabIndex = 5;
+            loc2.Text = "Locate";
+            loc2.UseVisualStyleBackColor = true;
             // 
             // loc1
             // 
-            this.loc1.Location = new System.Drawing.Point(6, 80);
-            this.loc1.Name = "loc1";
-            this.loc1.Size = new System.Drawing.Size(58, 20);
-            this.loc1.TabIndex = 4;
-            this.loc1.Text = "Locate";
-            this.loc1.UseVisualStyleBackColor = true;
+            loc1.Location = new System.Drawing.Point(7, 92);
+            loc1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            loc1.Name = "loc1";
+            loc1.Size = new System.Drawing.Size(68, 23);
+            loc1.TabIndex = 4;
+            loc1.Text = "Locate";
+            loc1.UseVisualStyleBackColor = true;
             // 
             // con4
             // 
-            this.con4.BackgroundImage = global::BetterJoyForCemu.Properties.Resources.cross;
-            this.con4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.con4.Enabled = false;
-            this.con4.Location = new System.Drawing.Point(198, 20);
-            this.con4.Name = "con4";
-            this.con4.Size = new System.Drawing.Size(58, 59);
-            this.con4.TabIndex = 3;
-            this.con4.TabStop = false;
-            this.con4.UseVisualStyleBackColor = true;
+            con4.BackgroundImage = Properties.Resources.cross;
+            con4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con4.Enabled = false;
+            con4.Location = new System.Drawing.Point(231, 23);
+            con4.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con4.Name = "con4";
+            con4.Size = new System.Drawing.Size(68, 68);
+            con4.TabIndex = 3;
+            con4.TabStop = false;
+            con4.UseVisualStyleBackColor = true;
             // 
             // con3
             // 
-            this.con3.BackgroundImage = global::BetterJoyForCemu.Properties.Resources.cross;
-            this.con3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.con3.Enabled = false;
-            this.con3.Location = new System.Drawing.Point(134, 20);
-            this.con3.Name = "con3";
-            this.con3.Size = new System.Drawing.Size(58, 59);
-            this.con3.TabIndex = 2;
-            this.con3.TabStop = false;
-            this.con3.UseVisualStyleBackColor = true;
+            con3.BackgroundImage = Properties.Resources.cross;
+            con3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con3.Enabled = false;
+            con3.Location = new System.Drawing.Point(156, 23);
+            con3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con3.Name = "con3";
+            con3.Size = new System.Drawing.Size(68, 68);
+            con3.TabIndex = 2;
+            con3.TabStop = false;
+            con3.UseVisualStyleBackColor = true;
             // 
             // con2
             // 
-            this.con2.BackgroundImage = global::BetterJoyForCemu.Properties.Resources.cross;
-            this.con2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.con2.Enabled = false;
-            this.con2.Location = new System.Drawing.Point(70, 20);
-            this.con2.Name = "con2";
-            this.con2.Size = new System.Drawing.Size(58, 59);
-            this.con2.TabIndex = 1;
-            this.con2.TabStop = false;
-            this.con2.UseVisualStyleBackColor = true;
+            con2.BackgroundImage = Properties.Resources.cross;
+            con2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con2.Enabled = false;
+            con2.Location = new System.Drawing.Point(82, 23);
+            con2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con2.Name = "con2";
+            con2.Size = new System.Drawing.Size(68, 68);
+            con2.TabIndex = 1;
+            con2.TabStop = false;
+            con2.UseVisualStyleBackColor = true;
             // 
             // con1
             // 
-            this.con1.BackgroundImage = global::BetterJoyForCemu.Properties.Resources.cross;
-            this.con1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.con1.Enabled = false;
-            this.con1.Location = new System.Drawing.Point(6, 20);
-            this.con1.Name = "con1";
-            this.con1.Size = new System.Drawing.Size(58, 59);
-            this.con1.TabIndex = 0;
-            this.con1.TabStop = false;
-            this.btnTip.SetToolTip(this.con1, "Click on Joycons to join/split them");
-            this.con1.UseVisualStyleBackColor = true;
+            con1.BackgroundImage = Properties.Resources.cross;
+            con1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con1.Enabled = false;
+            con1.Location = new System.Drawing.Point(7, 23);
+            con1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con1.Name = "con1";
+            con1.Size = new System.Drawing.Size(68, 68);
+            con1.TabIndex = 0;
+            con1.TabStop = false;
+            btnTip.SetToolTip(con1, "Click on Joycons to join/split them");
+            con1.UseVisualStyleBackColor = true;
             // 
             // foldLbl
             // 
-            this.foldLbl.Location = new System.Drawing.Point(274, 20);
-            this.foldLbl.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
-            this.foldLbl.Name = "foldLbl";
-            this.foldLbl.Size = new System.Drawing.Size(13, 231);
-            this.foldLbl.TabIndex = 12;
-            this.foldLbl.Text = ">";
-            this.foldLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.btnTip.SetToolTip(this.foldLbl, "Config");
-            this.foldLbl.Click += new System.EventHandler(this.foldLbl_Click);
+            foldLbl.Location = new System.Drawing.Point(320, 23);
+            foldLbl.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
+            foldLbl.Name = "foldLbl";
+            foldLbl.Size = new System.Drawing.Size(15, 267);
+            foldLbl.TabIndex = 12;
+            foldLbl.Text = ">";
+            foldLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            btnTip.SetToolTip(foldLbl, "Config");
+            foldLbl.Click += foldLbl_Click;
             // 
             // startInTrayBox
             // 
-            this.startInTrayBox.AutoSize = true;
-            this.startInTrayBox.Location = new System.Drawing.Point(107, 238);
-            this.startInTrayBox.Name = "startInTrayBox";
-            this.startInTrayBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            this.startInTrayBox.Size = new System.Drawing.Size(83, 17);
-            this.startInTrayBox.TabIndex = 6;
-            this.startInTrayBox.Text = "Start in Tray";
-            this.startInTrayBox.UseVisualStyleBackColor = true;
-            this.startInTrayBox.CheckedChanged += new System.EventHandler(this.startInTrayBox_CheckedChanged);
+            startInTrayBox.AutoSize = true;
+            startInTrayBox.Location = new System.Drawing.Point(14, 275);
+            startInTrayBox.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            startInTrayBox.Name = "startInTrayBox";
+            startInTrayBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            startInTrayBox.Size = new System.Drawing.Size(87, 19);
+            startInTrayBox.TabIndex = 6;
+            startInTrayBox.Text = "Start in Tray";
+            startInTrayBox.UseVisualStyleBackColor = true;
+            startInTrayBox.CheckedChanged += startInTrayBox_CheckedChanged;
             // 
             // btn_open3rdP
             // 
-            this.btn_open3rdP.Location = new System.Drawing.Point(93, 112);
-            this.btn_open3rdP.Name = "btn_open3rdP";
-            this.btn_open3rdP.Size = new System.Drawing.Size(86, 20);
-            this.btn_open3rdP.TabIndex = 7;
-            this.btn_open3rdP.Text = "Add Controllers";
-            this.btn_open3rdP.UseVisualStyleBackColor = true;
-            this.btn_open3rdP.Click += new System.EventHandler(this.btn_open3rdP_Click);
+            btn_open3rdP.Location = new System.Drawing.Point(108, 129);
+            btn_open3rdP.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            btn_open3rdP.Name = "btn_open3rdP";
+            btn_open3rdP.Size = new System.Drawing.Size(100, 23);
+            btn_open3rdP.TabIndex = 7;
+            btn_open3rdP.Text = "Add Controllers";
+            btn_open3rdP.UseVisualStyleBackColor = true;
+            btn_open3rdP.Click += btn_open3rdP_Click;
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.settingsTable);
-            this.groupBox1.Location = new System.Drawing.Point(3, 11);
-            this.groupBox1.Margin = new System.Windows.Forms.Padding(2);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Padding = new System.Windows.Forms.Padding(2);
-            this.groupBox1.Size = new System.Drawing.Size(304, 242);
-            this.groupBox1.TabIndex = 9;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Config";
+            groupBox1.Controls.Add(settingsTable);
+            groupBox1.Location = new System.Drawing.Point(4, 13);
+            groupBox1.Margin = new System.Windows.Forms.Padding(2);
+            groupBox1.Name = "groupBox1";
+            groupBox1.Padding = new System.Windows.Forms.Padding(2);
+            groupBox1.Size = new System.Drawing.Size(355, 279);
+            groupBox1.TabIndex = 9;
+            groupBox1.TabStop = false;
+            groupBox1.Text = "Config";
             // 
             // settingsTable
             // 
-            this.settingsTable.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.settingsTable.AutoScroll = true;
-            this.settingsTable.ColumnCount = 2;
-            this.settingsTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 58.90411F));
-            this.settingsTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 41.09589F));
-            this.settingsTable.Location = new System.Drawing.Point(4, 17);
-            this.settingsTable.Margin = new System.Windows.Forms.Padding(2);
-            this.settingsTable.Name = "settingsTable";
-            this.settingsTable.RowCount = 1;
-            this.settingsTable.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.settingsTable.Size = new System.Drawing.Size(300, 219);
-            this.settingsTable.TabIndex = 1;
+            settingsTable.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            settingsTable.AutoScroll = true;
+            settingsTable.ColumnCount = 2;
+            settingsTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 58.90411F));
+            settingsTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 41.09589F));
+            settingsTable.Location = new System.Drawing.Point(5, 20);
+            settingsTable.Margin = new System.Windows.Forms.Padding(2);
+            settingsTable.Name = "settingsTable";
+            settingsTable.RowCount = 1;
+            settingsTable.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            settingsTable.Size = new System.Drawing.Size(350, 253);
+            settingsTable.TabIndex = 1;
             // 
             // rightPanel
             // 
-            this.rightPanel.Controls.Add(this.settingsApply);
-            this.rightPanel.Controls.Add(this.groupBox1);
-            this.rightPanel.Location = new System.Drawing.Point(289, 1);
-            this.rightPanel.Margin = new System.Windows.Forms.Padding(2, 2, 12, 2);
-            this.rightPanel.Name = "rightPanel";
-            this.rightPanel.Size = new System.Drawing.Size(312, 273);
-            this.rightPanel.TabIndex = 11;
-            this.rightPanel.Visible = false;
+            rightPanel.Controls.Add(settingsApply);
+            rightPanel.Controls.Add(groupBox1);
+            rightPanel.Location = new System.Drawing.Point(337, 1);
+            rightPanel.Margin = new System.Windows.Forms.Padding(2, 2, 14, 2);
+            rightPanel.Name = "rightPanel";
+            rightPanel.Size = new System.Drawing.Size(364, 315);
+            rightPanel.TabIndex = 11;
+            rightPanel.Visible = false;
             // 
             // settingsApply
             // 
-            this.settingsApply.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.settingsApply.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.settingsApply.Location = new System.Drawing.Point(246, 252);
-            this.settingsApply.Margin = new System.Windows.Forms.Padding(2);
-            this.settingsApply.Name = "settingsApply";
-            this.settingsApply.Size = new System.Drawing.Size(61, 21);
-            this.settingsApply.TabIndex = 10;
-            this.settingsApply.Text = "Apply";
-            this.settingsApply.UseVisualStyleBackColor = true;
-            this.settingsApply.Click += new System.EventHandler(this.settingsApply_Click);
+            settingsApply.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
+            settingsApply.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            settingsApply.Location = new System.Drawing.Point(287, 291);
+            settingsApply.Margin = new System.Windows.Forms.Padding(2);
+            settingsApply.Name = "settingsApply";
+            settingsApply.Size = new System.Drawing.Size(71, 24);
+            settingsApply.TabIndex = 10;
+            settingsApply.Text = "Apply";
+            settingsApply.UseVisualStyleBackColor = true;
+            settingsApply.Click += settingsApply_Click;
             // 
             // AutoCalibrate
             // 
-            this.AutoCalibrate.Location = new System.Drawing.Point(203, 112);
-            this.AutoCalibrate.Name = "AutoCalibrate";
-            this.AutoCalibrate.Size = new System.Drawing.Size(71, 20);
-            this.AutoCalibrate.TabIndex = 8;
-            this.AutoCalibrate.Text = "Calibrate";
-            this.AutoCalibrate.UseVisualStyleBackColor = true;
-            this.AutoCalibrate.Click += new System.EventHandler(this.StartCalibrate);
+            AutoCalibrate.Location = new System.Drawing.Point(237, 129);
+            AutoCalibrate.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            AutoCalibrate.Name = "AutoCalibrate";
+            AutoCalibrate.Size = new System.Drawing.Size(83, 23);
+            AutoCalibrate.TabIndex = 8;
+            AutoCalibrate.Text = "Calibrate";
+            AutoCalibrate.UseVisualStyleBackColor = true;
+            AutoCalibrate.Click += StartCalibrate;
             // 
             // btn_reassign_open
             // 
-            this.btn_reassign_open.Location = new System.Drawing.Point(12, 112);
-            this.btn_reassign_open.Name = "btn_reassign_open";
-            this.btn_reassign_open.Size = new System.Drawing.Size(75, 20);
-            this.btn_reassign_open.TabIndex = 13;
-            this.btn_reassign_open.Text = "Map Buttons";
-            this.btn_reassign_open.UseVisualStyleBackColor = true;
-            this.btn_reassign_open.Click += new System.EventHandler(this.btn_reassign_open_Click);
+            btn_reassign_open.Location = new System.Drawing.Point(14, 129);
+            btn_reassign_open.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            btn_reassign_open.Name = "btn_reassign_open";
+            btn_reassign_open.Size = new System.Drawing.Size(88, 23);
+            btn_reassign_open.TabIndex = 13;
+            btn_reassign_open.Text = "Map Buttons";
+            btn_reassign_open.UseVisualStyleBackColor = true;
+            btn_reassign_open.Click += btn_reassign_open_Click;
             // 
             // MainForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.AutoSize = true;
-            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.ClientSize = new System.Drawing.Size(615, 308);
-            this.Controls.Add(this.btn_reassign_open);
-            this.Controls.Add(this.foldLbl);
-            this.Controls.Add(this.rightPanel);
-            this.Controls.Add(this.AutoCalibrate);
-            this.Controls.Add(this.btn_open3rdP);
-            this.Controls.Add(this.startInTrayBox);
-            this.Controls.Add(this.conCntrls);
-            this.Controls.Add(this.donationLink);
-            this.Controls.Add(this.passiveScanBox);
-            this.Controls.Add(this.version_lbl);
-            this.Controls.Add(this.console);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.MaximizeBox = false;
-            this.Name = "MainForm";
-            this.Text = "BetterJoy";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
-            this.Load += new System.EventHandler(this.MainForm_Load);
-            this.Resize += new System.EventHandler(this.MainForm_Resize);
-            this.contextMenu.ResumeLayout(false);
-            this.conCntrls.ResumeLayout(false);
-            this.groupBox1.ResumeLayout(false);
-            this.rightPanel.ResumeLayout(false);
-            this.ResumeLayout(false);
-            this.PerformLayout();
-
+            AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            AutoSize = true;
+            AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            ClientSize = new System.Drawing.Size(718, 355);
+            Controls.Add(btn_reassign_open);
+            Controls.Add(foldLbl);
+            Controls.Add(rightPanel);
+            Controls.Add(AutoCalibrate);
+            Controls.Add(btn_open3rdP);
+            Controls.Add(startInTrayBox);
+            Controls.Add(conCntrls);
+            Controls.Add(donationLink);
+            Controls.Add(version_lbl);
+            Controls.Add(console);
+            FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
+            Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            MaximizeBox = false;
+            Name = "MainForm";
+            Text = "BetterJoy";
+            FormClosing += MainForm_FormClosing;
+            Load += MainForm_Load;
+            Resize += MainForm_Resize;
+            contextMenu.ResumeLayout(false);
+            conCntrls.ResumeLayout(false);
+            groupBox1.ResumeLayout(false);
+            rightPanel.ResumeLayout(false);
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -376,7 +380,6 @@
         private System.Windows.Forms.Label version_lbl;
         private System.Windows.Forms.ContextMenuStrip contextMenu;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
-        private System.Windows.Forms.CheckBox passiveScanBox;
         private System.Windows.Forms.LinkLabel donationLink;
         private System.Windows.Forms.GroupBox conCntrls;
         private System.Windows.Forms.Button con1;

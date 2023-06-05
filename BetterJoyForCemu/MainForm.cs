@@ -187,7 +187,6 @@ namespace BetterJoyForCemu
         {
             Config.Init(CaliIMUData, CaliSticksData);
 
-            passiveScanBox.Checked = Config.IntValue("ProgressiveScan") == 1;
             startInTrayBox.Checked = Config.IntValue("StartInTray") == 1;
 
             if (Config.IntValue("StartInTray") == 1)
@@ -208,11 +207,11 @@ namespace BetterJoyForCemu
             Program.Start();
         }
 
-        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        private async void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.UserClosing)
             {
-                Program.Stop();
+                await Program.Stop();
                 SystemEvents.PowerModeChanged -= OnPowerChange;
                 Application.Exit();
             }
@@ -240,12 +239,6 @@ namespace BetterJoyForCemu
         {
             donationLink.LinkVisited = true;
             Process.Start("http://paypal.me/DavidKhachaturov/5");
-        }
-
-        private void passiveScanBox_CheckedChanged(object sender, EventArgs e)
-        {
-            Config.SetValue("ProgressiveScan", passiveScanBox.Checked ? "1" : "0");
-            Config.Save();
         }
 
         public void AppendTextBox(string value)
@@ -302,7 +295,7 @@ namespace BetterJoyForCemu
                     // needs connecting to other joycon (so messy omg)
                     var succ = false;
 
-                    if (Program.Mgr.J.Count == 1 || _doNotRejoin)
+                    if (Program.Mgr.Controllers.Count == 1 || _doNotRejoin)
                     {
                         // when want to have a single joycon in vertical mode
                         v.Other = v; // hacky; implement check in Joycon.cs to account for this
@@ -310,7 +303,7 @@ namespace BetterJoyForCemu
                     }
                     else
                     {
-                        foreach (var jc in Program.Mgr.J)
+                        foreach (var jc in Program.Mgr.Controllers)
                         {
                             if (!jc.IsPro && jc.IsLeft != v.IsLeft && jc != v && jc.Other == null)
                             {
@@ -379,7 +372,7 @@ namespace BetterJoyForCemu
             partyForm.ShowDialog();
         }
 
-        private void settingsApply_Click(object sender, EventArgs e)
+        private async void settingsApply_Click(object sender, EventArgs e)
         {
             var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var settings = configFile.AppSettings.Settings;
@@ -408,9 +401,10 @@ namespace BetterJoyForCemu
                 AppendTextBox("Error writing app settings.");
             }
 
-            ConfigurationManager.AppSettings["AutoPowerOff"] =
-                    "false"; // Prevent joycons poweroff when applying settings
-            Program.Stop();
+            // Prevent joycons poweroff when applying settings
+            ConfigurationManager.AppSettings["AutoPowerOff"] = "false";
+
+            await Program.Stop();
             SystemEvents.PowerModeChanged -= OnPowerChange;
             Program.AllowAnotherInstance();
             Restart();
@@ -484,7 +478,7 @@ namespace BetterJoyForCemu
                 if (keyCtl == "HomeLEDOn")
                 {
                     var on = settings[keyCtl].Value.ToLower() == "true";
-                    foreach (var j in Program.Mgr.J)
+                    foreach (var j in Program.Mgr.Controllers)
                     {
                         j.SetHomeLight(on);
                     }
@@ -502,7 +496,7 @@ namespace BetterJoyForCemu
 
         private void StartCalibrate(object sender, EventArgs e)
         {
-            var nbControllers = Program.Mgr.J.Count;
+            var nbControllers = Program.Mgr.Controllers.Count;
             if (nbControllers == 0)
             {
                 console.Text = "Please connect a single pro controller.\r\n";
@@ -569,7 +563,7 @@ namespace BetterJoyForCemu
                 _countDown.Stop();
                 CalibrateIMU = false;
 
-                var j = Program.Mgr.J.First();
+                var j = Program.Mgr.Controllers.First();
                 var serNum = j.SerialNumber;
                 var serIndex = FindSerIMU(serNum);
                 var arr = new float[6] { 0, 0, 0, 0, 0, 0 };
@@ -648,7 +642,7 @@ namespace BetterJoyForCemu
                 _countDown.Stop();
                 CalibrateSticks = false;
 
-                var j = Program.Mgr.J.First();
+                var j = Program.Mgr.Controllers.First();
                 var serNum = j.SerialNumber;
                 var serIndex = FindSerSticks(serNum);
                 const int stickCaliSize = 6;
@@ -724,7 +718,7 @@ namespace BetterJoyForCemu
                 _countDown.Stop();
                 CalibrateSticks = false;
 
-                var j = Program.Mgr.J.First();
+                var j = Program.Mgr.Controllers.First();
                 var serNum = j.SerialNumber;
                 var serIndex = FindSerSticks(serNum);
                 const int stickCaliSize = 6;

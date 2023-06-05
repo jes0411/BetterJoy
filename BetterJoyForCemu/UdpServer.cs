@@ -29,21 +29,24 @@ namespace BetterJoyForCemu
         private const int PacketSize = 1024;
         private const int ReportSize = 100;
         private const int ControllerTimeoutSeconds = 5;
-        private readonly Dictionary<IPEndPoint, ClientRequestTimes> _clients;
 
+        private readonly Dictionary<IPEndPoint, ClientRequestTimes> _clients = new();
         private readonly IList<Joycon> _controllers;
-        private Task _receiveTask;
-        private bool _running;
-        private uint _serverId;
 
+        private bool _running = false;
+        private readonly CancellationTokenSource _cancellationTokenSource = new();
+        private Task _receiveTask = null;
+        
+
+        private uint _serverId;
         private Socket _udpSock;
 
-        public MainForm Form;
+        private readonly MainForm _form;
 
-        public UdpServer(IList<Joycon> p)
+        public UdpServer(MainForm form, IList<Joycon> p)
         {
             _controllers = p;
-            _clients = new Dictionary<IPEndPoint, ClientRequestTimes>();
+            _form = form;
         }
 
         private int BeginPacket(Span<byte> packetBuffer, ushort reqProtocolVersion = MaxProtocolVersion)
@@ -283,13 +286,13 @@ namespace BetterJoyForCemu
             return replies;
         }
 
-        private async Task RunReceive()
+        private async Task RunReceive(CancellationToken token)
         {
             var buffer = GC.AllocateArray<byte>(PacketSize, true);
             var bufferMem = buffer.AsMemory();
 
             // Do processing, continually receiving from the socket
-            while (_running)
+            while (!token.IsCancellationRequested)
             {
                 try
                 {
@@ -323,7 +326,7 @@ namespace BetterJoyForCemu
 
             if (!bool.Parse(ConfigurationManager.AppSettings["MotionServer"]))
             {
-                Form.AppendTextBox("Motion server is OFF.");
+                _form.AppendTextBox("Motion server is OFF.");
                 return;
             }
 
@@ -337,7 +340,7 @@ namespace BetterJoyForCemu
             {
                 _udpSock.Close();
 
-                Form.AppendTextBox(
+                _form.AppendTextBox(
                     "Could not start server. Make sure that only one instance of the program is running at a time and no other CemuHook applications are running."
                 );
                 return;
@@ -354,12 +357,21 @@ namespace BetterJoyForCemu
             _serverId = BitConverter.ToUInt32(randomBuf, 0);
 
             _running = true;
-            Form.AppendTextBox($"Starting server on {ip}:{port}.");
+            _form.AppendTextBox($"Starting server on {ip}:{port}.");
 
-            _receiveTask = Task.Run(RunReceive);
+            _receiveTask = Task.Run(
+                async () =>
+                {
+                    try
+                    {
+                        await RunReceive(_cancellationTokenSource.Token);
+                    }
+                    catch (OperationCanceledException e) when (e.CancellationToken == _cancellationTokenSource.Token) { }
+                }
+            );
         }
 
-        public void Stop()
+        public async Task Stop()
         {
             if (!_running)
             {
@@ -369,7 +381,7 @@ namespace BetterJoyForCemu
             _running = false;
 
             _udpSock.Close();
-            _receiveTask.Wait(); // it rethrows exceptions
+            await _receiveTask;
         }
 
         private void ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx)
@@ -482,7 +494,8 @@ namespace BetterJoyForCemu
 
         public void NewReportIncoming(Joycon hidReport)
         {
-            if (!_running)
+            var token = _cancellationTokenSource.Token;
+            if (token.IsCancellationRequested)
             {
                 return;
             }
