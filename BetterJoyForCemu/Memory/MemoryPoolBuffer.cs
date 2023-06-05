@@ -6,7 +6,9 @@ namespace BetterJoyForCemu.Memory
 {
     public sealed partial class MemoryPool<T>
     {
+#pragma warning disable CS0693 // Type parameter has the same name as the type parameter from outer type
         private sealed class MemoryPoolBuffer<T> : IMemoryOwner<T>
+#pragma warning restore CS0693 // Type parameter has the same name as the type parameter from outer type
         {
             private readonly int _length;
             private T[] _array;
