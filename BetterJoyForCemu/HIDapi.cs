@@ -21,6 +21,9 @@ namespace BetterJoyForCemu
             I2C = 0x03,
             SPI = 0x04
         }
+        
+        // Added in the official hidapi callback branch
+        #region HIDAPI_CALLBACK
 
         public struct HIDDeviceInfo
         {
@@ -37,6 +40,43 @@ namespace BetterJoyForCemu
             public IntPtr Next;
             public BusType BusType; // >= 0.13.0
         }
+
+        [Flags]
+        public enum HotplugEvent
+        {
+            DeviceArrived = (1 << 0),
+            DeviceLeft = (1 << 1)
+        }
+
+        [Flags]
+        public enum HotplugFlag
+        {
+            None = 0,
+            Enumerate = (1 << 0)
+        }
+
+        public delegate int HotPlugCallbackFunction(
+            int callbackHandle,
+            [MarshalAs(UnmanagedType.Struct)] HIDDeviceInfo deviceInfo,
+            int events,
+            [MarshalAs(UnmanagedType.IUnknown)] object userData
+        );
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_hotplug_register_callback(
+            ushort vendorId,
+            ushort productId,
+            int events,
+            int flags,
+            [MarshalAs(UnmanagedType.FunctionPtr)] HotPlugCallbackFunction callback,
+            [MarshalAs(UnmanagedType.IUnknown)] object userData,
+            out int callbackHandle
+        );
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int hid_hotplug_deregister_callback(int callbackHandle);
+        
+        #endregion
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         public static extern int hid_init();
@@ -118,6 +158,8 @@ namespace BetterJoyForCemu
         public static extern int hid_winapi_get_container_id(IntPtr device, out Guid containerId);
 
         // Added in my fork of HIDapi at https://github.com/d3xMachina/hidapi (needed for HIDHide to work correctly)
+        #region HIDAPI_MYFORK
+
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         public static extern int hid_winapi_get_instance_string(
             IntPtr device,
@@ -131,7 +173,8 @@ namespace BetterJoyForCemu
             [MarshalAs(UnmanagedType.LPWStr)] StringBuilder @string,
             UIntPtr maxlen
         );
-        // END
+
+        #endregion
 
         public static string GetInstance(IntPtr device)
         {
