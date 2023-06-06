@@ -109,13 +109,13 @@
             // donationLink
             // 
             donationLink.AutoSize = true;
-            donationLink.Location = new System.Drawing.Point(237, 321);
+            donationLink.Location = new System.Drawing.Point(243, 321);
             donationLink.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             donationLink.Name = "donationLink";
-            donationLink.Size = new System.Drawing.Size(45, 15);
+            donationLink.Size = new System.Drawing.Size(43, 15);
             donationLink.TabIndex = 5;
             donationLink.TabStop = true;
-            donationLink.Text = "Donate";
+            donationLink.Text = "Github";
             donationLink.LinkClicked += linkLabel1_LinkClicked;
             // 
             // conCntrls

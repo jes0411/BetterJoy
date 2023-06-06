@@ -249,7 +249,11 @@ namespace BetterJoyForCemu
         private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             donationLink.LinkVisited = true;
-            Process.Start("http://paypal.me/DavidKhachaturov/5");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/d3xMachina/BetterJoy",
+                UseShellExecute = true
+            });
         }
 
         public void AppendTextBox(string value)
