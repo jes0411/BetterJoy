@@ -104,7 +104,7 @@
             version_lbl.Name = "version_lbl";
             version_lbl.Size = new System.Drawing.Size(28, 15);
             version_lbl.TabIndex = 2;
-            version_lbl.Text = "v7.1";
+            version_lbl.Text = "v8.0";
             // 
             // donationLink
             // 
@@ -362,7 +362,7 @@
             MaximizeBox = false;
             MinimumSize = new System.Drawing.Size(0, 376);
             Name = "MainForm";
-            Text = "BetterJoy";
+            Text = "BetterJoy LTS";
             FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             Resize += MainForm_Resize;
