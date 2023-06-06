@@ -4,14 +4,16 @@
 
 # BetterJoy v7.0 Edited
 #### Fork changes
- - fix some bugs, crashes, controller connection/disconnect issues.
- - hidapi updated
+ - fixed a good amount of bugs, crashes, controller connection/disconnection issues.
  - added the calibration of the controller with the calibrate button (have to be enabled in the config).
  - added a deadzone setting
- - Use HidHide instead of the outdated HIDGuardian
  - updated to .NET 7
+ - updated hidapi and packages
+ - use HidHide instead of the outdated HIDGuardian
+ - instantly connect and disconnect
+ - other minor improvements
 
-I only tested the changes with the pro controller.
+I only tested the changes with the pro controller as I don't have the other controllers to test.
 
 #### Description
 
@@ -19,9 +21,9 @@ Allows the Nintendo Switch Pro Controller, Joycons, and Switch SNES controller t
 
 It also allows using the gyro to control your mouse and remap the special buttons (SL, SR, Capture) to key bindings of your choice.
 
-If anyone would like to donate (for whatever reason), [you can do so here](https://www.paypal.me/DavidKhachaturov/5). 
+If anyone would like to donate to the original creator (for whatever reason), [you can do so here](https://www.paypal.me/DavidKhachaturov/5).
 
-#### Personal note
+#### Original creator note
 Thank you for using my software and all the constructive feedback I've been getting about it. I started writing this project a while back and have since then learnt a lot more about programming and software development in general. I don't have too much time to work on this project, but I will try to fix bugs when and if they arise. Thank you for your patience in that regard too!
 
 It's been quite a wild ride, with nearly **590k** (!!) official download on GitHub and probably many more through the nightlies. I think this project was responsible for both software jobs I landed so far, so I am quite proud of it.
@@ -35,7 +37,7 @@ Go to the [Releases tab](https://github.com/Davidobot/BetterJoy/releases/)!
 # How to use
 1. Install drivers
     1. Read the READMEs (they're there for a reason!)
-    1. Run *Drivers/ViGEmBus_Setup_1.16.116.exe*
+    1. Run *Drivers/ViGEmBus_1.21.442_x64_x86_arm64.exe*
     1. Restart your computer
 2. Run *BetterJoyForCemu.exe* 
     1. Run as Administrator if your keyboard/mouse button mappings don't work
