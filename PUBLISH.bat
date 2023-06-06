@@ -3,6 +3,6 @@ set "options=--nologo --configuration Release -p:PublishSingleFile=true -p:Debug
 set "runtime=win10-x64"
 set "framework=net7.0-windows"
 
-dotnet publish BetterJoyForCemu %options% --runtime %runtime% --framework %framework% -o build/%runtime%
+dotnet publish BetterJoy %options% --runtime %runtime% --framework %framework% -o build/%runtime%
 pause
 
