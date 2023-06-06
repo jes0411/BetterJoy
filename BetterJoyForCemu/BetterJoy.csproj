@@ -20,11 +20,11 @@
       <NoWarn>1701;1702,CA1416</NoWarn>
     </PropertyGroup>
     <ItemGroup>
-        <Compile Update="3rdPartyControllers.cs">
+        <Compile Update="ThirdpartyControllers.cs">
             <SubType>Form</SubType>
         </Compile>
-        <Compile Update="3rdPartyControllers.Designer.cs">
-            <DependentUpon>3rdPartyControllers.cs</DependentUpon>
+        <Compile Update="ThirdpartyControllers.Designer.cs">
+            <DependentUpon>ThirdpartyControllers.cs</DependentUpon>
         </Compile>
         <Compile Update="Collections\ConcurrentList.cs" />
         <Compile Update="Config.cs" />
@@ -89,8 +89,8 @@
         <Resource Include="Icons\pro.png" />
     </ItemGroup>
     <ItemGroup>
-        <EmbeddedResource Update="3rdPartyControllers.resx">
-            <DependentUpon>3rdPartyControllers.cs</DependentUpon>
+        <EmbeddedResource Update="ThirdpartyControllers.resx">
+            <DependentUpon>ThirdpartyControllers.cs</DependentUpon>
         </EmbeddedResource>
         <EmbeddedResource Update="MainForm.resx">
             <DependentUpon>MainForm.cs</DependentUpon>

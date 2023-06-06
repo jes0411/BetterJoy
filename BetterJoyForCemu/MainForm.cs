@@ -88,15 +88,18 @@ namespace BetterJoyForCemu
 
             //list all options
             var myConfigs = ConfigurationManager.AppSettings.AllKeys;
-            var childSize = new Size(150, 20);
+            var childSize = new Size(180, 20);
             for (var i = 0; i != myConfigs.Length; i++)
             {
                 settingsTable.RowCount++;
                 settingsTable.Controls.Add(
                     new Label
                     {
-                        Text = myConfigs[i], TextAlign = ContentAlignment.BottomLeft, AutoEllipsis = true,
-                        Size = childSize
+                        Text = myConfigs[i],
+                        TextAlign = ContentAlignment.BottomLeft,
+                        AutoEllipsis = true,
+                        Size = childSize,
+                        AutoSize = false
                     },
                     0,
                     i
@@ -116,6 +119,14 @@ namespace BetterJoyForCemu
                 childControl.MouseClick += cbBox_Changed;
                 settingsTable.Controls.Add(childControl, 1, i);
             }
+
+            // Trick to have bottom padding in the console control
+            console.Controls.Add(new Label()
+            {
+                Height = 6,
+                Dock = DockStyle.Bottom,
+                BackColor = console.BackColor,
+            });
 
             Shown += MainForm_Shown;
         }

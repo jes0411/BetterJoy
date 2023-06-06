@@ -23,6 +23,9 @@ namespace BetterJoyForCemu
             list_allControllers.HorizontalScrollbar = true;
             list_customControllers.HorizontalScrollbar = true;
 
+            list_allControllers.Sorted = true;
+            list_customControllers.Sorted = true;
+
             chooseType.Items.AddRange(new[] { "Pro Controller", "Left Joycon", "Right Joycon" });
 
             chooseType.FormattingEnabled = true;
@@ -123,9 +126,19 @@ namespace BetterJoyForCemu
                     continue;
                 }
 
-                // TODO: try checking against interface number instead
-                var name = enumerate.ProductString + '(' + enumerate.VendorId + '-' + enumerate.ProductId + '-' +
-                           enumerate.SerialNumber + ')';
+                var name = enumerate.ProductString;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    name = "Unknown";
+                }
+
+                name += $" (P{enumerate.VendorId:X2} V{enumerate.ProductId:X2}";
+                if (!string.IsNullOrWhiteSpace(enumerate.SerialNumber))
+                {
+                    name += $" S{enumerate.SerialNumber}";
+                }
+                name += ")";
+
                 if (!ContainsText(list_customControllers, name) && !ContainsText(list_allControllers, name))
                 {
                     list_allControllers.Items.Add(

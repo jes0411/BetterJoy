@@ -63,13 +63,13 @@
             // 
             // console
             // 
-            console.Location = new System.Drawing.Point(14, 152);
+            console.Location = new System.Drawing.Point(13, 166);
             console.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             console.Multiline = true;
             console.Name = "console";
             console.ReadOnly = true;
             console.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            console.Size = new System.Drawing.Size(305, 115);
+            console.Size = new System.Drawing.Size(307, 149);
             console.TabIndex = 2;
             // 
             // notifyIcon
@@ -99,7 +99,7 @@
             // version_lbl
             // 
             version_lbl.AutoSize = true;
-            version_lbl.Location = new System.Drawing.Point(287, 276);
+            version_lbl.Location = new System.Drawing.Point(290, 321);
             version_lbl.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             version_lbl.Name = "version_lbl";
             version_lbl.Size = new System.Drawing.Size(28, 15);
@@ -109,7 +109,7 @@
             // donationLink
             // 
             donationLink.AutoSize = true;
-            donationLink.Location = new System.Drawing.Point(229, 276);
+            donationLink.Location = new System.Drawing.Point(237, 321);
             donationLink.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             donationLink.Name = "donationLink";
             donationLink.Size = new System.Drawing.Size(45, 15);
@@ -132,7 +132,7 @@
             conCntrls.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             conCntrls.Name = "conCntrls";
             conCntrls.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            conCntrls.Size = new System.Drawing.Size(306, 115);
+            conCntrls.Size = new System.Drawing.Size(304, 120);
             conCntrls.TabIndex = 0;
             conCntrls.TabStop = false;
             conCntrls.Text = "Connected Controllers";
@@ -245,7 +245,7 @@
             // startInTrayBox
             // 
             startInTrayBox.AutoSize = true;
-            startInTrayBox.Location = new System.Drawing.Point(14, 275);
+            startInTrayBox.Location = new System.Drawing.Point(13, 321);
             startInTrayBox.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             startInTrayBox.Name = "startInTrayBox";
             startInTrayBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
@@ -257,10 +257,10 @@
             // 
             // btn_open3rdP
             // 
-            btn_open3rdP.Location = new System.Drawing.Point(108, 129);
+            btn_open3rdP.Location = new System.Drawing.Point(110, 135);
             btn_open3rdP.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             btn_open3rdP.Name = "btn_open3rdP";
-            btn_open3rdP.Size = new System.Drawing.Size(100, 23);
+            btn_open3rdP.Size = new System.Drawing.Size(100, 25);
             btn_open3rdP.TabIndex = 7;
             btn_open3rdP.Text = "Add Controllers";
             btn_open3rdP.UseVisualStyleBackColor = true;
@@ -273,7 +273,7 @@
             groupBox1.Margin = new System.Windows.Forms.Padding(2);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new System.Windows.Forms.Padding(2);
-            groupBox1.Size = new System.Drawing.Size(355, 279);
+            groupBox1.Size = new System.Drawing.Size(355, 298);
             groupBox1.TabIndex = 9;
             groupBox1.TabStop = false;
             groupBox1.Text = "Config";
@@ -290,7 +290,7 @@
             settingsTable.Name = "settingsTable";
             settingsTable.RowCount = 1;
             settingsTable.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            settingsTable.Size = new System.Drawing.Size(350, 253);
+            settingsTable.Size = new System.Drawing.Size(350, 274);
             settingsTable.TabIndex = 1;
             // 
             // rightPanel
@@ -300,7 +300,7 @@
             rightPanel.Location = new System.Drawing.Point(337, 1);
             rightPanel.Margin = new System.Windows.Forms.Padding(2, 2, 14, 2);
             rightPanel.Name = "rightPanel";
-            rightPanel.Size = new System.Drawing.Size(364, 315);
+            rightPanel.Size = new System.Drawing.Size(364, 343);
             rightPanel.TabIndex = 11;
             rightPanel.Visible = false;
             // 
@@ -308,7 +308,7 @@
             // 
             settingsApply.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
             settingsApply.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            settingsApply.Location = new System.Drawing.Point(287, 291);
+            settingsApply.Location = new System.Drawing.Point(288, 315);
             settingsApply.Margin = new System.Windows.Forms.Padding(2);
             settingsApply.Name = "settingsApply";
             settingsApply.Size = new System.Drawing.Size(71, 24);
@@ -319,10 +319,10 @@
             // 
             // AutoCalibrate
             // 
-            AutoCalibrate.Location = new System.Drawing.Point(237, 129);
+            AutoCalibrate.Location = new System.Drawing.Point(235, 135);
             AutoCalibrate.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             AutoCalibrate.Name = "AutoCalibrate";
-            AutoCalibrate.Size = new System.Drawing.Size(83, 23);
+            AutoCalibrate.Size = new System.Drawing.Size(83, 25);
             AutoCalibrate.TabIndex = 8;
             AutoCalibrate.Text = "Calibrate";
             AutoCalibrate.UseVisualStyleBackColor = true;
@@ -330,10 +330,10 @@
             // 
             // btn_reassign_open
             // 
-            btn_reassign_open.Location = new System.Drawing.Point(14, 129);
+            btn_reassign_open.Location = new System.Drawing.Point(14, 135);
             btn_reassign_open.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             btn_reassign_open.Name = "btn_reassign_open";
-            btn_reassign_open.Size = new System.Drawing.Size(88, 23);
+            btn_reassign_open.Size = new System.Drawing.Size(88, 25);
             btn_reassign_open.TabIndex = 13;
             btn_reassign_open.Text = "Map Buttons";
             btn_reassign_open.UseVisualStyleBackColor = true;
@@ -345,7 +345,7 @@
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             AutoSize = true;
             AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            ClientSize = new System.Drawing.Size(718, 355);
+            ClientSize = new System.Drawing.Size(718, 347);
             Controls.Add(btn_reassign_open);
             Controls.Add(foldLbl);
             Controls.Add(rightPanel);
@@ -360,6 +360,7 @@
             Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
             Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             MaximizeBox = false;
+            MinimumSize = new System.Drawing.Size(0, 376);
             Name = "MainForm";
             Text = "BetterJoy";
             FormClosing += MainForm_FormClosing;
