@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace BetterJoyForCemu.Properties {
+namespace BetterJoy.Properties {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace BetterJoyForCemu.Properties {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("BetterJoyForCemu.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("BetterJoy.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -63,9 +63,9 @@ namespace BetterJoyForCemu.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
-        internal static System.Drawing.Icon betterjoyforcemu_icon {
+        internal static System.Drawing.Icon betterjoy_icon {
             get {
-                object obj = ResourceManager.GetObject("betterjoyforcemu_icon", resourceCulture);
+                object obj = ResourceManager.GetObject("betterjoy_icon", resourceCulture);
                 return ((System.Drawing.Icon)(obj));
             }
         }

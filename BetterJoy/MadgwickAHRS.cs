@@ -2,7 +2,7 @@
 
 // source: https://github.com/xioTechnologies/Open-Source-AHRS-With-x-IMU/blob/master/x-IMU%20IMU%20and%20AHRS%20Algorithms/x-IMU%20IMU%20and%20AHRS%20Algorithms/AHRS/MadgwickAHRS.cs
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     /// <summary>
     ///     MadgwickAHRS class. Implementation of Madgwick's IMU and AHRS algorithms.

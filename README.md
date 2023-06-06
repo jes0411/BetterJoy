@@ -39,14 +39,15 @@ Go to the [Releases tab](https://github.com/d3xMachina/BetterJoy/releases/)!
     1. Read the READMEs (they're there for a reason!)
     1. Run *Drivers/ViGEmBus_1.21.442_x64_x86_arm64.exe*
     1. Restart your computer
-2. Run *BetterJoyForCemu.exe* 
+2. Run *BetterJoy.exe*
     1. Run as Administrator if your keyboard/mouse button mappings don't work
 3. Connect your controllers.
-4. Start Cemu and ensure CemuHook has the controller selected.
+4. Start your game or emulator and configure your controller.
+5. If you use Cemu, ensure CemuHook has the controller selected.
     1. If using Joycons, CemuHook will detect two controllers - each will give all buttons, but choosing one over the other just chooses preference for which hand to use for gyro controls.
-5. Go into *Input Settings*, choose XInput as a source and assign buttons normally.
-    1. If you don't want to do this for some reason, just have one input profile set up with *Wii U Gamepad* as the controller and enable "Also use for buttons/axes" under *GamePad motion source*. **This is no longer required as of version 3**
-    2. Turn rumble up to 70-80% if you want rumble.
+    2. Go into *Input Settings*, choose XInput as a source and assign buttons normally.
+        1. If you don't want to do this for some reason, just have one input profile set up with *Wii U Gamepad* as the controller and enable "Also use for buttons/axes" under *GamePad motion source*. **This is no longer required as of version 3**
+        2. Turn rumble up to 70-80% if you want rumble.
 
 * As of version 3, you can use the pro controller and Joycons as normal xbox controllers on your PC - try it with Steam!
 
@@ -102,7 +103,7 @@ Check out the [wiki](https://github.com/Davidobot/BetterJoy/wiki)! There, you'll
 ## Binaries location
 The built binaries are located under
 
-*BetterJoyForCemu\bin\PLATFORM\CONFIGURATION*
+*BetterJoy\bin\PLATFORM\CONFIGURATION*
 
 where `PLATFORM` and `CONFIGURATION` are the one provided at build time. 
 

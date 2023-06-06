@@ -1,4 +1,4 @@
-﻿namespace BetterJoyForCemu
+﻿namespace BetterJoy
 {
     partial class _3rdPartyControllers
     {

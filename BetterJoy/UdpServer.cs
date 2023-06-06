@@ -9,9 +9,9 @@ using System.Net.Sockets;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using BetterJoyForCemu.Memory;
+using BetterJoy.Memory;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     internal class UdpServer
     {
@@ -341,7 +341,7 @@ namespace BetterJoyForCemu
                 _udpSock.Close();
 
                 _form.AppendTextBox(
-                    "Could not start server. Make sure that only one instance of the program is running at a time and no other CemuHook applications are running."
+                    $"Could not start server. Make sure that no other applications using the port {port} are running."
                 );
                 return;
             }

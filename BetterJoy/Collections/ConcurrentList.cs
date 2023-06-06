@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace BetterJoyForCemu.Collections
+namespace BetterJoy.Collections
 {
     /// A thread-safe IEnumerator implementation.
     /// https://www.codeproject.com/Articles/56575/Thread-safe-enumeration-in-C

@@ -6,10 +6,10 @@
         <UseWindowsForms>true</UseWindowsForms>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
-        <RootNamespace>BetterJoyForCemu</RootNamespace>
-        <AssemblyName>BetterJoyForCemu</AssemblyName>
-        <ApplicationIcon>Icons\betterjoyforcemu_icon.ico</ApplicationIcon>
-        <StartupObject>BetterJoyForCemu.Program</StartupObject>
+        <RootNamespace>BetterJoy</RootNamespace>
+        <AssemblyName>BetterJoy</AssemblyName>
+        <ApplicationIcon>Icons\betterjoy_icon.ico</ApplicationIcon>
+        <StartupObject>BetterJoy.Program</StartupObject>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -74,7 +74,7 @@
         </Content>
         <Content Include="Icons\snes.png" />
         <None Include="Properties\app.manifest" />
-        <Content Include="Icons\betterjoyforcemu_icon.ico" />
+        <Content Include="Icons\betterjoy_icon.ico" />
         <Content Include="x86\hidapi.dll">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
@@ -104,7 +104,7 @@
         </EmbeddedResource>
     </ItemGroup>
     <ItemGroup>
-        <PublishFile Include="Icons\betterjoyforcemu_icon.ico">
+        <PublishFile Include="Icons\betterjoy_icon.ico">
             <Visible>False</Visible>
             <Group>
             </Group>

@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
-namespace BetterJoyForCemu {
+namespace BetterJoy {
 	// from https://stackoverflow.com/a/27173509
 	public class SplitButton : Button {
 		[DefaultValue(null), Browsable(true),
@@ -81,27 +81,27 @@ namespace BetterJoyForCemu {
 		private void InitializeComponent() {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Reassign));
-            this.btn_capture = new BetterJoyForCemu.SplitButton();
+            this.btn_capture = new BetterJoy.SplitButton();
             this.lbl_capture = new System.Windows.Forms.Label();
             this.lbl_home = new System.Windows.Forms.Label();
-            this.btn_home = new BetterJoyForCemu.SplitButton();
+            this.btn_home = new BetterJoy.SplitButton();
             this.lbl_sl_l = new System.Windows.Forms.Label();
-            this.btn_sl_l = new BetterJoyForCemu.SplitButton();
+            this.btn_sl_l = new BetterJoy.SplitButton();
             this.lbl_sr_l = new System.Windows.Forms.Label();
-            this.btn_sr_l = new BetterJoyForCemu.SplitButton();
+            this.btn_sr_l = new BetterJoy.SplitButton();
             this.lbl_sl_r = new System.Windows.Forms.Label();
-            this.btn_sl_r = new BetterJoyForCemu.SplitButton();
+            this.btn_sl_r = new BetterJoy.SplitButton();
             this.lbl_sr_r = new System.Windows.Forms.Label();
-            this.btn_sr_r = new BetterJoyForCemu.SplitButton();
+            this.btn_sr_r = new BetterJoy.SplitButton();
             this.btn_close = new System.Windows.Forms.Button();
             this.btn_apply = new System.Windows.Forms.Button();
             this.tip_reassign = new System.Windows.Forms.ToolTip(this.components);
             this.lbl_reset_mouse = new System.Windows.Forms.Label();
-            this.btn_reset_mouse = new BetterJoyForCemu.SplitButton();
+            this.btn_reset_mouse = new BetterJoy.SplitButton();
             this.lbl_activate_gyro = new System.Windows.Forms.Label();
-            this.btn_active_gyro = new BetterJoyForCemu.SplitButton();
+            this.btn_active_gyro = new BetterJoy.SplitButton();
             this.lbl_shake = new System.Windows.Forms.Label();
-            this.btn_shake = new BetterJoyForCemu.SplitButton();
+            this.btn_shake = new BetterJoy.SplitButton();
             this.SuspendLayout();
             // 
             // btn_capture

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers;
 
-namespace BetterJoyForCemu.Memory
+namespace BetterJoy.Memory
 {
     // For conveniance, Rented memory from System.Buffer.MemoryPool have a length attribute can be bigger than what we want
     public sealed partial class MemoryPool<T>

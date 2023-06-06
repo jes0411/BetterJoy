@@ -6,11 +6,11 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using BetterJoyForCemu.Controller;
-using BetterJoyForCemu.Properties;
+using BetterJoy.Controller;
+using BetterJoy.Properties;
 using Microsoft.Win32;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     public partial class MainForm : Form
     {
@@ -177,7 +177,7 @@ namespace BetterJoyForCemu
             WindowState = FormWindowState.Normal;
             ShowInTaskbar = true;
             FormBorderStyle = FormBorderStyle.FixedSingle;
-            Icon = Resources.betterjoyforcemu_icon;
+            Icon = Resources.betterjoy_icon;
             notifyIcon.Visible = false;
         }
 

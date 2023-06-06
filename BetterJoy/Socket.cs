@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 using Microsoft.Extensions.ObjectPool;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     // https://enclave.io/high-performance-udp-sockets-net5
     // https://github.com/enclave-networks/research.udp-perf

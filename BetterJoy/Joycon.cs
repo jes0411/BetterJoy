@@ -7,12 +7,12 @@ using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Threading;
 using System.Windows.Forms;
-using BetterJoyForCemu.Controller;
+using BetterJoy.Controller;
 using Nefarius.ViGEm.Client.Targets.DualShock4;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
 using WindowsInput.Events;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     public class Joycon
     {

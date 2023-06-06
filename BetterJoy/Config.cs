@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using WindowsInput.Events;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     public static class Config
     {

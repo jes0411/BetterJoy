@@ -8,16 +8,16 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using BetterJoyForCemu.Collections;
+using BetterJoy.Collections;
 using Nefarius.Drivers.HidHide;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Exceptions;
 using WindowsInput;
 using WindowsInput.Events.Sources;
-using static BetterJoyForCemu._3rdPartyControllers;
-using static BetterJoyForCemu.HIDApi;
+using static BetterJoy._3rdPartyControllers;
+using static BetterJoy.HIDApi;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     public class JoyconManager
     {

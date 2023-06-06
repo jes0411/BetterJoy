@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using WindowsInput.Events;
 using WindowsInput.Events.Sources;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     public partial class Reassign : Form
     {

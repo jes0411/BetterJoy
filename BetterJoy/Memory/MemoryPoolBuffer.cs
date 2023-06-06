@@ -2,7 +2,7 @@
 using System.Buffers;
 using System.Threading;
 
-namespace BetterJoyForCemu.Memory
+namespace BetterJoy.Memory
 {
     public sealed partial class MemoryPool<T>
     {

@@ -1,7 +1,7 @@
 ﻿using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
 
-namespace BetterJoyForCemu.Controller
+namespace BetterJoy.Controller
 {
     public struct OutputControllerXbox360InputState
     {

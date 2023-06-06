@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using static BetterJoyForCemu.HIDApi;
+using static BetterJoy.HIDApi;
 
-namespace BetterJoyForCemu
+namespace BetterJoy
 {
     public partial class _3rdPartyControllers : Form
     {

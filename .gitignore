@@ -259,8 +259,8 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
-/BetterJoyForCemu/FodyWeavers.xml
-/BetterJoyForCemu/FodyWeavers.xsd
+/BetterJoy/FodyWeavers.xml
+/BetterJoy/FodyWeavers.xsd
 /title.png
 /title.pdn
 /Drivers
