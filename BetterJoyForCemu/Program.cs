@@ -239,8 +239,24 @@ namespace BetterJoyForCemu
             OnDeviceConnected(info.Path, info.SerialNumber, type, isLeft, isUSB, thirdParty != null);
         }
 
-        private void OnDeviceConnected(string path, string serial, Joycon.ControllerType type, bool isLeft, bool isUSB, bool isThirdparty)
+        private void OnDeviceConnected(string path, string serial, Joycon.ControllerType type, bool isLeft, bool isUSB, bool isThirdparty, bool reconnect = false)
         {
+            var handle = hid_open_path(path);
+            if (handle == IntPtr.Zero)
+            {
+                // don't show an error message when the controller was dropped without hidapi callback notification (after standby by example)
+                if (!reconnect)
+                {
+                    _form.AppendTextBox(
+                        "Unable to open path to device - device disconnected or incorrect hidapi version (32 bits vs 64 bits)"
+                    );
+                }
+
+                return;
+            }
+
+            hid_set_nonblocking(handle, 1);
+
             switch (type)
             {
                 case Joycon.ControllerType.Joycon:
@@ -253,15 +269,6 @@ namespace BetterJoyForCemu
                     _form.AppendTextBox("SNES controller connected.");
                     break;
             }
-
-            var handle = hid_open_path(path);
-            if (handle == IntPtr.Zero)
-            {
-                _form.AppendTextBox("Unable to open path to device - device disconnected or incorrect hidapi version (32 bits vs 64 bits)");
-                return;
-            }
-
-            hid_set_nonblocking(handle, 1);
 
             // Add controller to block-list for HidHide
             Program.AddDeviceToBlocklist(handle);
@@ -398,7 +405,7 @@ namespace BetterJoyForCemu
                 return;
             }
             OnDeviceDisconnected(controller);
-            OnDeviceConnected(controller.Path, controller.SerialNumber, controller.Type, controller.IsLeft, controller.IsUSB, controller.IsThirdParty);
+            OnDeviceConnected(controller.Path, controller.SerialNumber, controller.Type, controller.IsLeft, controller.IsUSB, controller.IsThirdParty, true);
         }
 
         private void OnControllerStateChanged(object sender, Joycon.StateChangedEventArgs e)
