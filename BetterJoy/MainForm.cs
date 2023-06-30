@@ -179,6 +179,10 @@ namespace BetterJoy
             FormBorderStyle = FormBorderStyle.FixedSingle;
             Icon = Resources.betterjoy_icon;
             notifyIcon.Visible = false;
+
+            // Scroll to end
+            console.SelectionStart = console.Text.Length;
+            console.ScrollToCaret();
         }
 
         private void MainForm_Resize(object sender, EventArgs e)
