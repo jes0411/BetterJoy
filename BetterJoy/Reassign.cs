@@ -8,27 +8,25 @@ namespace BetterJoy
 {
     public partial class Reassign : Form
     {
-        private readonly ContextMenuStrip _menuJoyButtons = new();
         private Control _curAssignment;
         private IKeyboardEventSource _keyboard;
         private IMouseEventSource _mouse;
+
+        private enum ButtonAction
+        {
+            None,
+            Disabled
+        }
 
         public Reassign()
         {
             InitializeComponent();
 
-            var menuItem = new ToolStripMenuItem("None");
-            menuItem.Tag = -1;
-            _menuJoyButtons.Items.Add(menuItem);
+            var menuJoyButtons = createMenuJoyButtons();
 
-            foreach (int i in Enum.GetValues(typeof(Joycon.Button)))
-            {
-                var temp = new ToolStripMenuItem(Enum.GetName(typeof(Joycon.Button), i));
-                temp.Tag = i;
-                _menuJoyButtons.Items.Add(temp);
-            }
-
-            _menuJoyButtons.ItemClicked += Menu_joy_buttons_ItemClicked;
+            var menuJoyButtonsNoDisable = createMenuJoyButtons();
+            var key = Enum.GetName(typeof(ButtonAction), ButtonAction.Disabled);
+            menuJoyButtonsNoDisable.Items.RemoveByKey(key);
 
             foreach (var c in new[]
                      {
@@ -44,7 +42,18 @@ namespace BetterJoy
                     "Left-click to detect input.\r\nMiddle-click to clear to default.\r\nRight-click to see more options."
                 );
                 c.MouseDown += Remap;
-                c.Menu = _menuJoyButtons;
+                
+                if (c == btn_shake ||
+                    c == btn_reset_mouse ||
+                    c == btn_active_gyro)
+                {
+                    c.Menu = menuJoyButtonsNoDisable;
+                }
+                else
+                {
+                    c.Menu = menuJoyButtons;
+                }
+
                 c.TextAlign = ContentAlignment.MiddleLeft;
             }
         }
@@ -58,13 +67,20 @@ namespace BetterJoy
             var caller = (SplitButton)c.Tag;
 
             string value;
-            if ((int)clickedItem.Tag == -1)
+            if (clickedItem.Tag is ButtonAction action)
             {
-                value = "0";
+                if (action == ButtonAction.None)
+                {
+                    value = "0";
+                }
+                else
+                {
+                    value = "act_" + (int)clickedItem.Tag;
+                }
             }
             else
             {
-                value = "joy_" + clickedItem.Tag;
+                value = "joy_" + (int)clickedItem.Tag;
             }
 
             Config.SetValue((string)caller.Tag, value);
@@ -138,25 +154,20 @@ namespace BetterJoy
 
         private void GetPrettyName(Control c)
         {
-            string val;
-            switch (val = Config.Value((string)c.Tag))
-            {
-                case "0":
-                    if (c == btn_home)
-                    {
-                        c.Text = "Guide";
-                    }
-                    else
-                    {
-                        c.Text = "";
-                    }
+            string val = Config.Value((string)c.Tag);
 
-                    break;
-                default:
-                    var t = val.StartsWith("joy_") ? typeof(Joycon.Button) :
-                            val.StartsWith("key_") ? typeof(KeyCode) : typeof(ButtonCode);
-                    c.Text = Enum.GetName(t, int.Parse(val.AsSpan(4)));
-                    break;
+            if (val == "0")
+            {
+                c.Text = "";
+            }
+            else
+            {
+                var type =
+                        val.StartsWith("act_") ? typeof(ButtonAction) :
+                        val.StartsWith("joy_") ? typeof(Joycon.Button) :
+                        val.StartsWith("key_") ? typeof(KeyCode) : typeof(ButtonCode);
+
+                c.Text = Enum.GetName(type, int.Parse(val.AsSpan(4)));
             }
         }
 
@@ -169,6 +180,31 @@ namespace BetterJoy
         {
             btn_apply_Click(sender, e);
             Close();
+        }
+
+        private ContextMenuStrip createMenuJoyButtons()
+        {
+            var menuJoyButtons = new ContextMenuStrip();
+
+            foreach (int tag in Enum.GetValues(typeof(ButtonAction)))
+            {
+                var name = Enum.GetName(typeof(ButtonAction), tag);
+                var temp = new ToolStripMenuItem(name) { Name = name };
+                temp.Tag = (ButtonAction) tag;
+                menuJoyButtons.Items.Add(temp);
+            }
+
+            foreach (int tag in Enum.GetValues(typeof(Joycon.Button)))
+            {
+                var name = Enum.GetName(typeof(Joycon.Button), tag);
+                var temp = new ToolStripMenuItem(name) { Name = name };
+                temp.Tag = (Joycon.Button) tag;
+                menuJoyButtons.Items.Add(temp);
+            }
+
+            menuJoyButtons.ItemClicked += Menu_joy_buttons_ItemClicked;
+
+            return menuJoyButtons;
         }
     }
 }

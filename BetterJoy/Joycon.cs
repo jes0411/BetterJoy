@@ -110,13 +110,14 @@ namespace BetterJoy
         private readonly bool[] _buttonsDown = new bool[20];
         private readonly long[] _buttonsDownTimestamp = new long[20];
         private readonly bool[] _buttonsUp = new bool[20];
+        private readonly bool[] _buttonsPrev = new bool[20];
+        private readonly bool[] _buttonsRemapped = new bool[20];
 
         private readonly bool _changeOrientationDoubleClick = bool.Parse(ConfigurationManager.AppSettings["ChangeOrientationDoubleClick"]);
 
         private readonly float[] _curRotation = { 0, 0, 0, 0, 0, 0 }; // Filtered IMU data
 
         private readonly byte[] _defaultBuf = { 0x0, 0x1, 0x40, 0x40, 0x0, 0x1, 0x40, 0x40 };
-        private readonly bool[] _down = new bool[20];
 
         private readonly bool _dragToggle = bool.Parse(ConfigurationManager.AppSettings["DragToggle"]);
 
@@ -737,8 +738,8 @@ namespace BetterJoy
                 {
                     var lag = (byte)Math.Max(0, buf[1] - _tsEn - 3); // why -3 ?
                     Timestamp += (ulong)lag * 5000; // add lag once
-                    ProcessButtonsAndStick(buf);
 
+                    ProcessButtonsAndStick(buf);
                     DoThingsWithButtons();
 
                     var prevBattery = Battery;
@@ -887,62 +888,52 @@ namespace BetterJoy
             if (s.StartsWith("joy_"))
             {
                 var button = int.Parse(s.AsSpan(4));
-                lock (_buttons)
+                _buttonsRemapped[button] |= _buttons[origin];
+            }
+        }
+
+        private void ReleaseRemappedButtons()
+        {
+            // overwrite custom-mapped buttons
+            if (Config.Value("capture") != "0")
+            {
+                _buttonsRemapped[(int)Button.Capture] = false;
+            }
+
+            if (Config.Value("home") != "0")
+            {
+                _buttonsRemapped[(int)Button.Home] = false;
+            }
+
+            // single joycon mode
+            if (IsLeft)
+            {
+                if (Config.Value("sl_l") != "0")
                 {
-                    _buttons[button] |= _buttons[origin];
+                    _buttonsRemapped[(int)Button.SL] = false;
+                }
+
+                if (Config.Value("sr_l") != "0")
+                {
+                    _buttonsRemapped[(int)Button.SR] = false;
+                }
+            }
+            else
+            {
+                if (Config.Value("sl_r") != "0")
+                {
+                    _buttonsRemapped[(int)Button.SL] = false;
+                }
+
+                if (Config.Value("sr_r") != "0")
+                {
+                    _buttonsRemapped[(int)Button.SR] = false;
                 }
             }
         }
 
-        private void DoThingsWithButtons()
+        private void SimulateRemappedButtons()
         {
-            var powerOffButton = (int)(IsPro || !IsLeft || Other != null ? Button.Home : Button.Capture);
-
-            var timestampNow = Stopwatch.GetTimestamp();
-            if (_homeLongPowerOff && _buttons[powerOffButton])
-            {
-                var powerOffPressedDurationMs = (timestampNow - _buttonsDownTimestamp[powerOffButton]) / 10000;
-                if (powerOffPressedDurationMs > 2000)
-                {
-                    Other?.PowerOff();
-                    PowerOff();
-                    return;
-                }
-            }
-
-            if (!IsPro)
-            {
-                if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick] && _lastDoubleClick != -1)
-                {
-                    if (_buttonsDownTimestamp[(int)Button.Stick] - _lastDoubleClick < 3000000)
-                    {
-                        _form.ConBtnClick(PadId); // trigger connection button click
-
-                        _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
-                        return;
-                    }
-
-                    _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
-                }
-                else if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick])
-                {
-                    _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
-                }
-            }
-
-            if (_powerOffInactivityMins > 0)
-            {
-                var timeSinceActivityMs = (timestampNow - _timestampActivity) / 10000;
-                if (timeSinceActivityMs > _powerOffInactivityMins * 60 * 1000)
-                {
-                    Other?.PowerOff();
-                    PowerOff();
-                    return;
-                }
-            }
-
-            DetectShake();
-
             if (_buttonsDown[(int)Button.Capture])
             {
                 Simulate(Config.Value("capture"), false);
@@ -1016,6 +1007,72 @@ namespace BetterJoy
                 SimulateContinous((int)Button.SL, Config.Value("sl_r"));
                 SimulateContinous((int)Button.SR, Config.Value("sr_r"));
             }
+        }
+
+        private void RemapButtons()
+        {
+            lock (_buttonsRemapped)
+            {
+                lock (_buttons)
+                {
+                    Array.Copy(_buttons, _buttonsRemapped, _buttons.Length);
+
+                    ReleaseRemappedButtons();
+                    SimulateRemappedButtons();
+                }
+            }
+        }
+
+        private void DoThingsWithButtons()
+        {
+            var powerOffButton = (int)(IsPro || !IsLeft || Other != null ? Button.Home : Button.Capture);
+
+            var timestampNow = Stopwatch.GetTimestamp();
+            if (_homeLongPowerOff && _buttons[powerOffButton])
+            {
+                var powerOffPressedDurationMs = (timestampNow - _buttonsDownTimestamp[powerOffButton]) / 10000;
+                if (powerOffPressedDurationMs > 2000)
+                {
+                    Other?.PowerOff();
+                    PowerOff();
+                    return;
+                }
+            }
+
+            if (!IsPro)
+            {
+                if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick] && _lastDoubleClick != -1)
+                {
+                    if (_buttonsDownTimestamp[(int)Button.Stick] - _lastDoubleClick < 3000000)
+                    {
+                        _form.ConBtnClick(PadId); // trigger connection button click
+
+                        _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
+                        return;
+                    }
+
+                    _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
+                }
+                else if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick])
+                {
+                    _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
+                }
+            }
+
+            if (_powerOffInactivityMins > 0)
+            {
+                var timeSinceActivityMs = (timestampNow - _timestampActivity) / 10000;
+                if (timeSinceActivityMs > _powerOffInactivityMins * 60 * 1000)
+                {
+                    Other?.PowerOff();
+                    PowerOff();
+                    return;
+                }
+            }
+
+            DetectShake();
+
+            RemapButtons();
 
             // Filtered IMU data
             _AHRS.GetEulerAngles(_curRotation);
@@ -1287,9 +1344,9 @@ namespace BetterJoy
             // Set button states both for ViGEm
             lock (_buttons)
             {
-                lock (_down)
+                lock (_buttonsPrev)
                 {
-                    Array.Copy(_buttons, _down, _buttons.Length);
+                    Array.Copy(_buttons, _buttonsPrev, _buttons.Length);
                 }
 
                 Array.Clear(_buttons);
@@ -1356,9 +1413,9 @@ namespace BetterJoy
                         var changed = false;
                         for (var i = 0; i < _buttons.Length; ++i)
                         {
-                            _buttonsUp[i] = _down[i] & !_buttons[i];
-                            _buttonsDown[i] = !_down[i] & _buttons[i];
-                            if (_down[i] != _buttons[i])
+                            _buttonsUp[i] = _buttonsPrev[i] & !_buttons[i];
+                            _buttonsDown[i] = !_buttonsPrev[i] & _buttons[i];
+                            if (_buttonsPrev[i] != _buttons[i])
                             {
                                 _buttonsDownTimestamp[i] = _buttons[i] ? timestamp : -1;
                             }
@@ -1873,7 +1930,7 @@ namespace BetterJoy
             var other = input.Other;
             var gyroAnalogSliders = input._gyroAnalogSliders;
 
-            var buttons = input._buttons;
+            var buttons = input._buttonsRemapped;
             var stick = input._stick;
             var stick2 = input._stick2;
             var sliderVal = input._sliderVal;
@@ -1959,12 +2016,6 @@ namespace BetterJoy
                 }
             }
 
-            // overwrite guide button if it's custom-mapped
-            if (Config.Value("home") != "0")
-            {
-                output.Guide = false;
-            }
-
             if (!isSNES)
             {
                 if (other != null || isPro)
@@ -2013,7 +2064,7 @@ namespace BetterJoy
             var other = input.Other;
             var gyroAnalogSliders = input._gyroAnalogSliders;
 
-            var buttons = input._buttons;
+            var buttons = input._buttonsRemapped;
             var stick = input._stick;
             var stick2 = input._stick2;
             var sliderVal = input._sliderVal;
@@ -2164,12 +2215,6 @@ namespace BetterJoy
 
                     output.ThumbLeft = buttons[(int)Button.Stick];
                 }
-            }
-
-            // overwrite guide button if it's custom-mapped
-            if (Config.Value("home") != "0")
-            {
-                output.Ps = false;
             }
 
             if (!isSNES)
