@@ -1127,7 +1127,7 @@ namespace BetterJoy
                 }
             }
 
-            if (_extraGyroFeature.AsSpan(0, 3) == "joy")
+            if (_extraGyroFeature.StartsWith("joy"))
             {
                 if (Config.Value("active_gyro") == "0" || ActiveGyro)
                 {
