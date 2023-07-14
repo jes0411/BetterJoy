@@ -52,7 +52,7 @@ namespace BetterJoy
         }
 
         public static void Init(
-            List<KeyValuePair<string, float[]>> caliIMUData,
+            List<KeyValuePair<string, short[]>> caliIMUData,
             List<KeyValuePair<string, ushort[]>> caliSticksData
         )
         {
@@ -99,14 +99,14 @@ namespace BetterJoy
                                     for (var i = 0; i < vs.Length; i++)
                                     {
                                         var caliArr = vs[i].Split(',');
-                                        var newArr = new float[6];
+                                        var newArr = new short[6];
                                         for (var j = 1; j < caliArr.Length; j++)
                                         {
-                                            newArr[j - 1] = float.Parse(caliArr[j]);
+                                            newArr[j - 1] = short.Parse(caliArr[j]);
                                         }
 
                                         caliIMUData.Add(
-                                            new KeyValuePair<string, float[]>(
+                                            new KeyValuePair<string, short[]>(
                                                 caliArr[0],
                                                 newArr
                                             )
@@ -215,7 +215,7 @@ namespace BetterJoy
             return true;
         }
 
-        public static void SaveCaliIMUData(List<KeyValuePair<string, float[]>> caliData)
+        public static void SaveCaliIMUData(List<KeyValuePair<string, short[]>> caliData)
         {
             var txt = File.ReadAllLines(Path);
             if (txt.Length < SettingsNum + 1) // no custom IMU calibrations yet

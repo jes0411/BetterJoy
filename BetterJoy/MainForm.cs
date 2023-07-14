@@ -33,7 +33,7 @@ namespace BetterJoy
         public readonly bool AllowCalibration = bool.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
         public bool CalibrateIMU;
         public bool CalibrateSticks;
-        public readonly List<KeyValuePair<string, float[]>> CaliIMUData;
+        public readonly List<KeyValuePair<string, short[]>> CaliIMUData;
         public readonly List<KeyValuePair<string, ushort[]>> CaliSticksData;
         private int _count;
         private Timer _countDown;
@@ -42,12 +42,12 @@ namespace BetterJoy
         public readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
         public readonly float ShakeSesitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
         public bool UseControllerStickCalibration;
-        public readonly List<int> Xg;
-        public readonly List<int> Yg;
-        public readonly List<int> Zg;
-        public readonly List<int> Xa;
-        public readonly List<int> Ya;
-        public readonly List<int> Za;
+        public readonly List<short> Xg;
+        public readonly List<short> Yg;
+        public readonly List<short> Zg;
+        public readonly List<short> Xa;
+        public readonly List<short> Ya;
+        public readonly List<short> Za;
         public readonly List<ushort> Xs1;
         public readonly List<ushort> Ys1;
         public readonly List<ushort> Xs2;
@@ -55,15 +55,15 @@ namespace BetterJoy
 
         public MainForm()
         {
-            Xg = new List<int>();
-            Yg = new List<int>();
-            Zg = new List<int>();
-            Xa = new List<int>();
-            Ya = new List<int>();
-            Za = new List<int>();
-            CaliIMUData = new List<KeyValuePair<string, float[]>>
+            Xg = new List<short>();
+            Yg = new List<short>();
+            Zg = new List<short>();
+            Xa = new List<short>();
+            Ya = new List<short>();
+            Za = new List<short>();
+            CaliIMUData = new List<KeyValuePair<string, short[]>>
             {
-                new("0", new float[6] { 0, 0, 0, -710, 0, 0 })
+                new("0", new short[6] { 0, 0, 0, -710, 0, 0 })
             };
 
             Xs1 = new List<ushort>();
@@ -585,11 +585,11 @@ namespace BetterJoy
                 var j = Program.Mgr.Controllers.First();
                 var serNum = j.SerialNumber;
                 var serIndex = FindSerIMU(serNum);
-                var arr = new float[6] { 0, 0, 0, 0, 0, 0 };
+                var arr = new short[6] { 0, 0, 0, 0, 0, 0 };
                 if (serIndex == -1)
                 {
                     CaliIMUData.Add(
-                        new KeyValuePair<string, float[]>(
+                        new KeyValuePair<string, short[]>(
                             serNum,
                             arr
                         )
@@ -601,12 +601,13 @@ namespace BetterJoy
                 }
 
                 var rnd = new Random();
-                arr[0] = (float)quickselect_median(Xg, rnd.Next);
-                arr[1] = (float)quickselect_median(Yg, rnd.Next);
-                arr[2] = (float)quickselect_median(Zg, rnd.Next);
-                arr[3] = (float)quickselect_median(Xa, rnd.Next);
-                arr[4] = (float)quickselect_median(Ya, rnd.Next);
-                arr[5] = (float)quickselect_median(Za, rnd.Next) - 4010; //Joycon.cs acc_sen 16384
+                arr[0] = (short)quickselect_median(Xg.ConvertAll(x => (int)x), rnd.Next);
+                arr[1] = (short)quickselect_median(Yg.ConvertAll(x => (int)x), rnd.Next);
+                arr[2] = (short)quickselect_median(Zg.ConvertAll(x => (int)x), rnd.Next);
+                arr[3] = (short)quickselect_median(Xa.ConvertAll(x => (int)x), rnd.Next);
+                arr[4] = (short)quickselect_median(Ya.ConvertAll(x => (int)x), rnd.Next);
+                arr[5] = (short)quickselect_median(Za.ConvertAll(x => (int)x), rnd.Next);
+
                 console.Text += "IMU Calibration completed!!!\r\n";
                 Config.SaveCaliIMUData(CaliIMUData);
                 j.GetActiveIMUData();
@@ -810,7 +811,7 @@ namespace BetterJoy
             return Quickselect(highs, k - lows.Count - pivots.Count, pivotFn);
         }
 
-        public float[] ActiveCaliIMUData(string serNum)
+        public short[] ActiveCaliIMUData(string serNum)
         {
             for (var i = 0; i < CaliIMUData.Count; i++)
             {

@@ -180,7 +180,7 @@ namespace BetterJoy
         private Vector3 _accG = Vector3.Zero;
         public bool ActiveGyro;
 
-        private float[] _activeIMUData;
+        private short[] _activeIMUData;
         private ushort _activeStick1DeadZoneData;
         private ushort _activeStick2DeadZoneData;
 
@@ -270,7 +270,7 @@ namespace BetterJoy
         {
             _form = form;
             SerialNumber = serialNum;
-            _activeIMUData = new float[6];
+            _activeIMUData = new short[6];
             _activeStick1Data = new ushort[6];
             _activeStick2Data = new ushort[6];
             _noCalibrationSticksData = new ushort[6] { 2048, 2048, 2048, 2048, 2048, 2048 };
