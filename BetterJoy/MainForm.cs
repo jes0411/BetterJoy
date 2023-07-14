@@ -518,7 +518,7 @@ namespace BetterJoy
             var nbControllers = Program.Mgr.Controllers.Count;
             if (nbControllers == 0)
             {
-                console.Text = "Please connect a single pro controller.\r\n";
+                console.Text = "Please connect a single controller.\r\n";
                 return;
             }
 
