@@ -1688,127 +1688,110 @@ namespace BetterJoy
             }
 
             var ok = true;
-            var found = false;
 
             // get user calibration data if possible
-            var buf = ReadSPICheck(0x80, IsLeft ? (byte)0x12 : (byte)0x1d, 9, ref ok);
 
-            if (ok)
+            // Sticks axis
             {
-                for (var i = 0; i < 9; ++i)
+                var userStickData = ReadSPICheck(0x80, 0x10, 0x16, ref ok);
+                var factoryStickData = ReadSPICheck(0x60, 0x3D, 0x12, ref ok);
+
+                var stick1Data = new ReadOnlySpan<byte>(userStickData, IsLeft ? 2 : 13, 9);
+                var stick1Name = IsLeft ? "left" : "right";
+
+                if (userStickData[IsLeft ? 0 : 11] == 0xB2 && userStickData[IsLeft ? 1 : 12] == 0xA1)
                 {
-                    if (buf[i] != 0xff)
-                    {
-                        _form.AppendTextBox("Using user stick 1 calibration data.");
-                        found = true;
-                        break;
-                    }
+                    _form.AppendTextBox($"Using user {stick1Name} stick calibration data.");
+                }
+                else
+                {
+                    stick1Data = new ReadOnlySpan<byte>(factoryStickData, IsLeft ? 0 : 9, 9);
+
+                    _form.AppendTextBox($"Using factory {stick1Name} stick calibration data.");
                 }
 
-                if (!found)
+                _stickCal[IsLeft ? 0 : 2] = (ushort)(((stick1Data[1] << 8) & 0xF00) | stick1Data[0]); // X Axis Max above center
+                _stickCal[IsLeft ? 1 : 3] = (ushort)((stick1Data[2] << 4) | (stick1Data[1] >> 4)); // Y Axis Max above center
+                _stickCal[IsLeft ? 2 : 4] = (ushort)(((stick1Data[4] << 8) & 0xF00) | stick1Data[3]); // X Axis Center
+                _stickCal[IsLeft ? 3 : 5] = (ushort)((stick1Data[5] << 4) | (stick1Data[4] >> 4)); // Y Axis Center
+                _stickCal[IsLeft ? 4 : 0] = (ushort)(((stick1Data[7] << 8) & 0xF00) | stick1Data[6]); // X Axis Min below center
+                _stickCal[IsLeft ? 5 : 1] = (ushort)((stick1Data[8] << 4) | (stick1Data[7] >> 4)); // Y Axis Min below center
+
+                PrintArray(_stickCal, len: 6, start: 0, format: $"{stick1Name} stick 1 calibration data: {{0:S}}");
+
+                if (IsPro)
                 {
-                    _form.AppendTextBox("Using factory stick 1 calibration data.");
-                    buf = ReadSPICheck(0x60, IsLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
+                    var stick2Data = new ReadOnlySpan<byte>(userStickData, !IsLeft ? 2 : 13, 9);
+                    var stick2Name = !IsLeft ? "left" : "right";
+
+                    if (userStickData[!IsLeft ? 0 : 11] == 0xB2 && userStickData[!IsLeft ? 1 : 12] == 0xA1)
+                    {
+                        _form.AppendTextBox($"Using user {stick2Name} stick calibration data.");
+                    }
+                    else
+                    {
+                        stick2Data = new ReadOnlySpan<byte>(factoryStickData, !IsLeft ? 0 : 9, 9);
+
+                        _form.AppendTextBox($"Using factory {stick2Name} stick calibration data.");
+                    }
+
+                    _stick2Cal[!IsLeft ? 0 : 2] = (ushort)(((stick2Data[1] << 8) & 0xF00) | stick2Data[0]); // X Axis Max above center
+                    _stick2Cal[!IsLeft ? 1 : 3] = (ushort)((stick2Data[2] << 4) | (stick2Data[1] >> 4)); // Y Axis Max above center
+                    _stick2Cal[!IsLeft ? 2 : 4] = (ushort)(((stick2Data[4] << 8) & 0xF00) | stick2Data[3]); // X Axis Center
+                    _stick2Cal[!IsLeft ? 3 : 5] = (ushort)((stick2Data[5] << 4) | (stick2Data[4] >> 4)); // Y Axis Center
+                    _stick2Cal[!IsLeft ? 4 : 0] = (ushort)(((stick2Data[7] << 8) & 0xF00) | stick2Data[6]); // X Axis Min below center
+                    _stick2Cal[!IsLeft ? 5 : 1] = (ushort)((stick2Data[8] << 4) | (stick2Data[7] >> 4)); // Y Axis Min below center
+
+                    PrintArray(_stick2Cal, len: 6, start: 0, format: $"{stick2Name} stick calibration data: {{0:S}}");
                 }
             }
 
-            _stickCal[IsLeft ? 0 : 2] = (ushort)(((buf[1] << 8) & 0xF00) | buf[0]); // X Axis Max above center
-            _stickCal[IsLeft ? 1 : 3] = (ushort)((buf[2] << 4) | (buf[1] >> 4)); // Y Axis Max above center
-            _stickCal[IsLeft ? 2 : 4] = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]); // X Axis Center
-            _stickCal[IsLeft ? 3 : 5] = (ushort)((buf[5] << 4) | (buf[4] >> 4)); // Y Axis Center
-            _stickCal[IsLeft ? 4 : 0] = (ushort)(((buf[7] << 8) & 0xF00) | buf[6]); // X Axis Min below center
-            _stickCal[IsLeft ? 5 : 1] = (ushort)((buf[8] << 4) | (buf[7] >> 4)); // Y Axis Min below center
-
-            PrintArray(_stickCal, len: 6, start: 0, format: "Stick 1 calibration data: {0:S}");
-
-            if (IsPro)
+            // Sticks deadzones
             {
-                // get user calibration data if possible
-                buf = ReadSPICheck(0x80, !IsLeft ? (byte)0x12 : (byte)0x1d, 9, ref ok);
+                var factoryDeadzoneData = ReadSPICheck(0x60, IsLeft ? (byte)0x86 : (byte)0x98, 5, ref ok);
+                _deadzone = (ushort)(((factoryDeadzoneData[4] << 8) & 0xF00) | factoryDeadzoneData[3]);
 
-                found = false;
-                if (ok)
+                if (IsPro)
                 {
-                    for (var i = 0; i < 9; ++i)
-                    {
-                        if (buf[i] != 0xff)
-                        {
-                            _form.AppendTextBox("Using user stick 2 calibration data.");
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (!found)
-                    {
-                        _form.AppendTextBox("Using factory stick 2 calibration data.");
-                        buf = ReadSPICheck(0x60, !IsLeft ? (byte)0x3d : (byte)0x46, 9, ref ok);
-                    }
+                    var factoryDeadzone2Data = ReadSPICheck(0x60, !IsLeft ? (byte)0x86 : (byte)0x98, 5, ref ok);
+                    _deadzone2 = (ushort)(((factoryDeadzone2Data[4] << 8) & 0xF00) | factoryDeadzone2Data[3]);
                 }
-
-                _stick2Cal[!IsLeft ? 0 : 2] = (ushort)(((buf[1] << 8) & 0xF00) | buf[0]); // X Axis Max above center
-                _stick2Cal[!IsLeft ? 1 : 3] = (ushort)((buf[2] << 4) | (buf[1] >> 4)); // Y Axis Max above center
-                _stick2Cal[!IsLeft ? 2 : 4] = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]); // X Axis Center
-                _stick2Cal[!IsLeft ? 3 : 5] = (ushort)((buf[5] << 4) | (buf[4] >> 4)); // Y Axis Center
-                _stick2Cal[!IsLeft ? 4 : 0] = (ushort)(((buf[7] << 8) & 0xF00) | buf[6]); // X Axis Min below center
-                _stick2Cal[!IsLeft ? 5 : 1] = (ushort)((buf[8] << 4) | (buf[7] >> 4)); // Y Axis Min below center
-
-                PrintArray(_stick2Cal, len: 6, start: 0, format: "Stick 2 calibration data: {0:S}");
-
-                buf = ReadSPICheck(0x60, !IsLeft ? (byte)0x86 : (byte)0x98, 16, ref ok);
-                _deadzone2 = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]);
             }
 
-            buf = ReadSPICheck(0x60, IsLeft ? (byte)0x86 : (byte)0x98, 16, ref ok);
-            _deadzone = (ushort)(((buf[4] << 8) & 0xF00) | buf[3]);
-
-            buf = ReadSPICheck(0x80, 0x28, 10, ref ok);
-            _accNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-            _accNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-            _accNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
-
-            buf = ReadSPICheck(0x80, 0x2E, 10, ref ok);
-            _accSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-            _accSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-            _accSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
-
-            buf = ReadSPICheck(0x80, 0x34, 10, ref ok);
-            _gyrNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-            _gyrNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-            _gyrNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
-
-            buf = ReadSPICheck(0x80, 0x3A, 10, ref ok);
-            _gyrSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-            _gyrSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-            _gyrSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
-
-            PrintArray(_gyrNeutral, len: 3, d: DebugType.IMU, format: "User gyro neutral position: {0:S}");
-
-            // This is an extremely messy way of checking to see whether there is user stick calibration data present, but I've seen conflicting user calibration data on blank Joy-Cons. Worth another look eventually.
-            if (_gyrNeutral[0] + _gyrNeutral[1] + _gyrNeutral[2] == -3 || Math.Abs(_gyrNeutral[0]) > 100 ||
-                Math.Abs(_gyrNeutral[1]) > 100 || Math.Abs(_gyrNeutral[2]) > 100)
+            // Gyro and accelerometer
             {
-                buf = ReadSPICheck(0x60, 0x20, 10, ref ok);
-                _accNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-                _accNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-                _accNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
+                var userSensorData = ReadSPICheck(0x80, 0x26, 0x1A, ref ok);
+                ReadOnlySpan<byte> sensorData = new ReadOnlySpan<byte>(userSensorData, 2, 24);
 
-                buf = ReadSPICheck(0x60, 0x26, 10, ref ok);
-                _accSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-                _accSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-                _accSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
+                if (userSensorData[0] == 0xB2 && userSensorData[1] == 0xA1)
+                {
+                    _form.AppendTextBox($"Using user sensor calibration data.");
+                }
+                else
+                {
+                    var factorySensorData = ReadSPICheck(0x60, 0x20, 0x18, ref ok);
+                    sensorData = new ReadOnlySpan<byte>(factorySensorData, 0, 24);
 
-                buf = ReadSPICheck(0x60, 0x2C, 10, ref ok);
-                _gyrNeutral[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-                _gyrNeutral[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-                _gyrNeutral[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
+                    _form.AppendTextBox($"Using factory sensor calibration data.");
+                }
 
-                buf = ReadSPICheck(0x60, 0x32, 10, ref ok);
-                _gyrSensiti[0] = (short)(buf[0] | ((buf[1] << 8) & 0xff00));
-                _gyrSensiti[1] = (short)(buf[2] | ((buf[3] << 8) & 0xff00));
-                _gyrSensiti[2] = (short)(buf[4] | ((buf[5] << 8) & 0xff00));
+                _accNeutral[0] = (short)(sensorData[0] | (sensorData[1] << 8));
+                _accNeutral[1] = (short)(sensorData[2] | (sensorData[3] << 8));
+                _accNeutral[2] = (short)(sensorData[4] | (sensorData[5] << 8));
 
-                PrintArray(_gyrNeutral, len: 3, d: DebugType.IMU, format: "Factory gyro neutral position: {0:S}");
+                _accSensiti[0] = (short)(sensorData[6] | (sensorData[7] << 8));
+                _accSensiti[1] = (short)(sensorData[8] | (sensorData[9] << 8));
+                _accSensiti[2] = (short)(sensorData[10] | (sensorData[11] << 8));
+
+                _gyrNeutral[0] = (short)(sensorData[12] | (sensorData[13] << 8));
+                _gyrNeutral[1] = (short)(sensorData[14] | (sensorData[15] << 8));
+                _gyrNeutral[2] = (short)(sensorData[16] | (sensorData[17] << 8));
+
+                _gyrSensiti[0] = (short)(sensorData[18] | (sensorData[19] << 8));
+                _gyrSensiti[1] = (short)(sensorData[20] | (sensorData[21] << 8));
+                _gyrSensiti[2] = (short)(sensorData[22] | (sensorData[23] << 8));
+
+                PrintArray(_gyrNeutral, len: 3, d: DebugType.IMU, format: "Gyro neutral position: {0:S}");
             }
 
             if (!ok)
