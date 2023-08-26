@@ -443,6 +443,11 @@ namespace BetterJoy
                 return;
             }
 
+            if (_handle == IntPtr.Zero)
+            {
+                throw new Exception("reset hidapi");
+            }
+
             // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
             // do not always send a response so we don't check if there is one
             Subcommand(0x3, new byte[] { 0x3F }, 1);
@@ -624,7 +629,7 @@ namespace BetterJoy
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
                 //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
-                if (IsUSB)
+                if (IsUSB && _handle != IntPtr.Zero)
                 {
                     // Commented because you need to restart the controller to reconnect in usb again with the following
                     //var buf = new byte[report_len];
@@ -1608,7 +1613,11 @@ namespace BetterJoy
         private byte[] Subcommand(byte sc, byte[] bufParameters, uint len, bool print = true)
         {
             var buf = new byte[ReportLen];
-            Array.Clear(buf);
+
+            if (_handle == IntPtr.Zero)
+            {
+                return buf;
+            }
 
             Array.Copy(_defaultBuf, 0, buf, 2, 8);
             Array.Copy(bufParameters, 0, buf, 11, len);
