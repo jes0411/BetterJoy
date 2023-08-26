@@ -42,7 +42,7 @@ namespace BetterJoy.Collections
     }
 
     // https://codereview.stackexchange.com/a/125341
-    public class ConcurrentList<T> : IList<T>
+    public sealed class ConcurrentList<T> : IList<T>
     {
         public T this[int index]
         {
@@ -152,7 +152,7 @@ namespace BetterJoy.Collections
 
         #region Utilities
 
-        protected virtual void LockInternalListAndCommand(Action<IList<T>> action)
+        private void LockInternalListAndCommand(Action<IList<T>> action)
         {
             lock (_lock)
             {
@@ -160,7 +160,7 @@ namespace BetterJoy.Collections
             }
         }
 
-        protected virtual T LockInternalListAndGet(Func<IList<T>, T> func)
+        private T LockInternalListAndGet(Func<IList<T>, T> func)
         {
             lock (_lock)
             {
@@ -168,7 +168,7 @@ namespace BetterJoy.Collections
             }
         }
 
-        protected virtual TObject LockInternalListAndQuery<TObject>(Func<IList<T>, TObject> query)
+        private TObject LockInternalListAndQuery<TObject>(Func<IList<T>, TObject> query)
         {
             lock (_lock)
             {
@@ -176,7 +176,7 @@ namespace BetterJoy.Collections
             }
         }
 
-        protected virtual IEnumerator<T> LockInternalAndEnumerate()
+        private IEnumerator<T> LockInternalAndEnumerate()
         {
             return new SafeEnumerator<T>(_internalList, _lock);
         }

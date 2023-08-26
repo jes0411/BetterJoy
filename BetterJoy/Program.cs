@@ -116,7 +116,7 @@ namespace BetterJoy
                     {
                         await ProcessDevicesNotifications(_ctsDevicesNotifications.Token);
                     }
-                    catch (OperationCanceledException e) when (_ctsDevicesNotifications.IsCancellationRequested) { }
+                    catch (OperationCanceledException) when (_ctsDevicesNotifications.IsCancellationRequested) { }
                 }
             );
 

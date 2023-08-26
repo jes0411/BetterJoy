@@ -207,7 +207,7 @@ namespace BetterJoy
         public readonly int PadId;
 
         public PhysicalAddress PadMacAddress = new(new byte[] { 01, 02, 03, 04, 05, 06 });
-        public readonly string Path = string.Empty;
+        public readonly string Path;
 
         private Thread _pollThreadObj;
 
@@ -223,6 +223,11 @@ namespace BetterJoy
             get => _state;
             private set
             {
+                if (_state == value)
+                {
+                    return;
+                }
+
                 _state = value;
                 OnStateChange(new StateChangedEventArgs(value));
             }
@@ -633,13 +638,13 @@ namespace BetterJoy
                 if (IsUSB && _handle != IntPtr.Zero)
                 {
                     // Commented because you need to restart the controller to reconnect in usb again with the following
-                    //var buf = new byte[report_len];
+                    //var buf = new byte[ReportLen];
                     //buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
-                    //HIDapi.hid_write(handle, buf, new UIntPtr(2));
-                    //ReadUSBCheck(Buffer, 0x5);
+                    //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
+                    //ReadUSBCheck(buf, 0x5);
                     //buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
-                    //HIDapi.hid_write(handle, buf, new UIntPtr(2));
-                    //ReadUSBCheck(Buffer, 0x6);
+                    //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
+                    //ReadUSBCheck(buf, 0x6);
                 }
             }
 
@@ -1438,12 +1443,12 @@ namespace BetterJoy
                 return;
             }
 
-            _gyrR[0] = (short)(reportBuf[19 + n * 12] | ((reportBuf[20 + n * 12] << 8) & 0xff00));
-            _gyrR[1] = (short)(reportBuf[21 + n * 12] | ((reportBuf[22 + n * 12] << 8) & 0xff00));
-            _gyrR[2] = (short)(reportBuf[23 + n * 12] | ((reportBuf[24 + n * 12] << 8) & 0xff00));
-            _accR[0] = (short)(reportBuf[13 + n * 12] | ((reportBuf[14 + n * 12] << 8) & 0xff00));
-            _accR[1] = (short)(reportBuf[15 + n * 12] | ((reportBuf[16 + n * 12] << 8) & 0xff00));
-            _accR[2] = (short)(reportBuf[17 + n * 12] | ((reportBuf[18 + n * 12] << 8) & 0xff00));
+            _gyrR[0] = (short)(reportBuf[19 + n * 12] | (reportBuf[20 + n * 12] << 8));
+            _gyrR[1] = (short)(reportBuf[21 + n * 12] | (reportBuf[22 + n * 12] << 8));
+            _gyrR[2] = (short)(reportBuf[23 + n * 12] | (reportBuf[24 + n * 12] << 8));
+            _accR[0] = (short)(reportBuf[13 + n * 12] | (reportBuf[14 + n * 12] << 8));
+            _accR[1] = (short)(reportBuf[15 + n * 12] | (reportBuf[16 + n * 12] << 8));
+            _accR[2] = (short)(reportBuf[17 + n * 12] | (reportBuf[18 + n * 12] << 8));
 
             var direction = IsLeft ? 1 : -1;
 

@@ -100,10 +100,7 @@ namespace BetterJoy.Controller
 
         private void FeedbackReceivedRcv(object sender, Xbox360FeedbackReceivedEventArgs e)
         {
-            if (FeedbackReceived != null)
-            {
-                FeedbackReceived(e);
-            }
+            FeedbackReceived?.Invoke(e);
         }
 
         public bool UpdateInput(OutputControllerXbox360InputState newState)

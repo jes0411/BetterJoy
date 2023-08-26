@@ -108,10 +108,7 @@ namespace BetterJoy.Controller
 
         private void FeedbackReceivedRcv(object sender, DualShock4FeedbackReceivedEventArgs e)
         {
-            if (FeedbackReceived != null)
-            {
-                FeedbackReceived(e);
-            }
+            FeedbackReceived?.Invoke(e);
         }
 
         public void Connect()
@@ -172,7 +169,7 @@ namespace BetterJoy.Controller
             _currentState = newState;
         }
 
-        private DualShock4DPadDirection MapDPadDirection(DpadDirection dPad)
+        private static DualShock4DPadDirection MapDPadDirection(DpadDirection dPad)
         {
             switch (dPad)
             {
