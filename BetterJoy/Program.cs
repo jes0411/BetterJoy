@@ -218,30 +218,27 @@ namespace BetterJoy
             }
 
             bool isUSB = info.BusType == BusType.USB;
-            var isLeft = false;
-            var type = Joycon.ControllerType.Joycon;
+            var type = Joycon.ControllerType.JoyconLeft;
 
             switch (prodId)
             {
                 case ProductL:
-                    isLeft = true;
                     break;
                 case ProductR:
+                    type = Joycon.ControllerType.JoyconRight;
                     break;
                 case ProductPro:
-                    isLeft = true;
                     type = Joycon.ControllerType.Pro;
                     break;
                 case ProductSNES:
-                    isLeft = true;
                     type = Joycon.ControllerType.SNES;
                     break;
             }
 
-            OnDeviceConnected(info.Path, info.SerialNumber, type, isLeft, isUSB, thirdParty != null);
+            OnDeviceConnected(info.Path, info.SerialNumber, type, isUSB, thirdParty != null);
         }
 
-        private void OnDeviceConnected(string path, string serial, Joycon.ControllerType type, bool isLeft, bool isUSB, bool isThirdparty, bool reconnect = false)
+        private void OnDeviceConnected(string path, string serial, Joycon.ControllerType type, bool isUSB, bool isThirdparty, bool reconnect = false)
         {
             var handle = hid_open_path(path);
             if (handle == IntPtr.Zero)
@@ -259,18 +256,7 @@ namespace BetterJoy
 
             hid_set_nonblocking(handle, 1);
 
-            switch (type)
-            {
-                case Joycon.ControllerType.Joycon:
-                    _form.AppendTextBox(isLeft ? "Left joycon connected." : "Right joycon connected.");
-                    break;
-                case Joycon.ControllerType.Pro:
-                    _form.AppendTextBox("Pro controller connected.");
-                    break;
-                case Joycon.ControllerType.SNES:
-                    _form.AppendTextBox("SNES controller connected.");
-                    break;
-            }
+            _form.AppendTextBox(Joycon.GetControllerName(type) + " connected.");
 
             // Add controller to block-list for HidHide
             Program.AddDeviceToBlocklist(handle);
@@ -282,7 +268,6 @@ namespace BetterJoy
                 EnableIMU,
                 EnableLocalize && EnableIMU,
                 0.05f,
-                isLeft,
                 path,
                 serial,
                 isUSB,
@@ -406,8 +391,9 @@ namespace BetterJoy
                 // device not in error anymore (after a reset or a reconnection from the system)
                 return;
             }
+            
             OnDeviceDisconnected(controller);
-            OnDeviceConnected(controller.Path, controller.SerialNumber, controller.Type, controller.IsLeft, controller.IsUSB, controller.IsThirdParty, true);
+            OnDeviceConnected(controller.Path, controller.SerialNumber, controller.Type, controller.IsUSB, controller.IsThirdParty, true);
         }
 
         private void OnControllerStateChanged(object sender, Joycon.StateChangedEventArgs e)

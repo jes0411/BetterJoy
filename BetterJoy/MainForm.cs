@@ -931,16 +931,11 @@ namespace BetterJoy
                     Bitmap temp;
                     switch (j.Type)
                     {
-                        case Joycon.ControllerType.Joycon:
-                            if (j.IsLeft)
-                            {
-                                temp = Resources.jc_left_s;
-                            }
-                            else
-                            {
-                                temp = Resources.jc_right_s;
-                            }
-
+                        case Joycon.ControllerType.JoyconLeft:
+                            temp = Resources.jc_left_s;
+                            break;
+                        case Joycon.ControllerType.JoyconRight:
+                            temp = Resources.jc_right_s;
                             break;
                         case Joycon.ControllerType.Pro:
                             temp = Resources.pro;

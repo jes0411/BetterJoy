@@ -44,7 +44,8 @@ namespace BetterJoy
 
         public enum ControllerType
         {
-            Joycon,
+            JoyconLeft,
+            JoyconRight,
             Pro,
             SNES
         }
@@ -191,7 +192,8 @@ namespace BetterJoy
         private bool _hasShaked;
 
         //public DebugType debug_type = DebugType.NONE; //Keep this for manual debugging during development.
-        public readonly bool IsLeft;
+        public bool IsLeft => Type != ControllerType.JoyconRight;
+
         public readonly bool IsThirdParty;
         public readonly bool IsUSB;
         private long _lastDoubleClick = -1;
@@ -236,7 +238,7 @@ namespace BetterJoy
 
         private byte _tsEn;
 
-        public readonly ControllerType Type = ControllerType.Joycon;
+        public readonly ControllerType Type;
 
         public EventHandler<StateChangedEventArgs> StateChanged;
 
@@ -246,12 +248,11 @@ namespace BetterJoy
             bool imu,
             bool localize,
             float alpha,
-            bool left,
             string path,
             string serialNum,
             bool isUSB,
-            int id = 0,
-            ControllerType type = ControllerType.Joycon,
+            int id,
+            ControllerType type,
             bool isThirdParty = false
         )
         {
@@ -272,7 +273,6 @@ namespace BetterJoy
             }
 
             _filterweight = alpha;
-            IsLeft = left;
 
             PadId = id;
             LED = (byte)(0x1 << PadId);
@@ -305,6 +305,7 @@ namespace BetterJoy
 
         public bool IsPro => Type is ControllerType.Pro or ControllerType.SNES;
         public bool IsSNES => Type == ControllerType.SNES;
+        public bool IsJoycon => Type is ControllerType.JoyconRight or ControllerType.JoyconLeft;
 
         public Joycon Other
         {
@@ -1031,7 +1032,7 @@ namespace BetterJoy
                 }
             }
 
-            if (!IsPro)
+            if (IsJoycon)
             {
                 if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick] && _lastDoubleClick != -1)
                 {
@@ -1496,7 +1497,7 @@ namespace BetterJoy
                 _gyrG.Z = -direction * (_gyrR[2] - _gyrNeutral[2]) * (816.0f / (_gyrSensiti[2] - _gyrNeutral[2]));
             }
 
-            if (!IsPro && Other == null)
+            if (IsJoycon && Other == null)
             {
                 // single joycon mode; Z do not swap, rest do
                 if (IsLeft)
@@ -2282,9 +2283,21 @@ namespace BetterJoy
             return output;
         }
 
+        public static string GetControllerName(ControllerType type)
+        {
+            return type switch
+            {
+                ControllerType.JoyconLeft  => "Left joycon",
+                ControllerType.JoyconRight => "Right joycon",
+                ControllerType.Pro         => "Pro controller",
+                ControllerType.SNES        => "SNES controller",
+                _                          => "Controller"
+            };
+        }
+
         public string GetControllerName()
         {
-            return IsPro ? "Pro controller" : IsSNES ? "SNES controller" : IsLeft ? "Left joycon" : "Right joycon";
+            return GetControllerName(Type);
         }
 
         private struct Rumble
