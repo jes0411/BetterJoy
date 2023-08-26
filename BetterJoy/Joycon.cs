@@ -135,8 +135,6 @@ namespace BetterJoy
 
         private readonly bool _IMUEnabled;
         private readonly Dictionary<int, bool> _mouseToggleBtn = new();
-        private readonly ushort _noCalibrationDeadzone;
-        private readonly ushort[] _noCalibrationSticksData;
 
         private readonly float[] _otherStick = { 0, 0 };
 
@@ -266,8 +264,6 @@ namespace BetterJoy
             _activeIMUData = new short[6];
             _activeStick1Data = new ushort[6];
             _activeStick2Data = new ushort[6];
-            _noCalibrationSticksData = new ushort[6] { 2048, 2048, 2048, 2048, 2048, 2048 };
-            _noCalibrationDeadzone = CalculateDeadzone(_noCalibrationSticksData, DefaultDeadzone);
             _handle = handle;
             _IMUEnabled = imu;
             _doLocalize = localize;
@@ -1266,22 +1262,20 @@ namespace BetterJoy
 
                 _stickPrecal[0] = (ushort)(_stickRaw[0] | ((_stickRaw[1] & 0xf) << 8));
                 _stickPrecal[1] = (ushort)((_stickRaw[1] >> 4) | (_stickRaw[2] << 4));
+
                 var cal = _stickCal;
                 var dz = _deadzone;
+
                 if (_form.AllowCalibration)
                 {
                     cal = _activeStick1Data;
                     dz = _activeStick1DeadZoneData;
+
                     if (_form.CalibrateSticks)
                     {
                         _form.Xs1.Add(_stickPrecal[0]);
                         _form.Ys1.Add(_stickPrecal[1]);
                     }
-                }
-                else if (!_form.UseControllerStickCalibration)
-                {
-                    cal = _noCalibrationSticksData;
-                    dz = _noCalibrationDeadzone;
                 }
 
                 CalculateStickCenter(_stickPrecal, cal, dz, _stick);
@@ -1290,20 +1284,20 @@ namespace BetterJoy
                 {
                     _stick2Precal[0] = (ushort)(_stick2Raw[0] | ((_stick2Raw[1] & 0xf) << 8));
                     _stick2Precal[1] = (ushort)((_stick2Raw[1] >> 4) | (_stick2Raw[2] << 4));
+
+                    cal = _stick2Cal;
+                    dz = _deadzone2;
+
                     if (_form.AllowCalibration)
                     {
                         cal = _activeStick2Data;
                         dz = _activeStick2DeadZoneData;
+
                         if (_form.CalibrateSticks)
                         {
                             _form.Xs2.Add(_stick2Precal[0]);
                             _form.Ys2.Add(_stick2Precal[1]);
                         }
-                    }
-                    else if (_form.UseControllerStickCalibration)
-                    {
-                        cal = _stick2Cal;
-                        dz = _deadzone2;
                     }
 
                     CalculateStickCenter(_stick2Precal, cal, dz, _stick2);
@@ -1691,6 +1685,13 @@ namespace BetterJoy
                 Array.Fill(_accNeutral, (short)0);
                 Array.Fill(_gyrSensiti, (short)13371);
                 Array.Fill(_gyrNeutral, (short)0);
+
+                // Default stick calibration
+                Array.Fill(_stickCal, (ushort)2048);
+                Array.Fill(_stick2Cal, (ushort)2048);
+
+                _deadzone = CalculateDeadzone(_stickCal, DefaultDeadzone);
+                _deadzone2 = CalculateDeadzone(_stick2Cal, DefaultDeadzone);
 
                 return true;
             }

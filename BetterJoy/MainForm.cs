@@ -14,13 +14,6 @@ namespace BetterJoy
 {
     public partial class MainForm : Form
     {
-        public enum NonOriginalController
-        {
-            Disabled = 0,
-            DefaultCalibration = 1,
-            ControllerCalibration = 2
-        }
-
         private readonly List<Button> _con;
 
         private readonly bool _doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
@@ -35,13 +28,13 @@ namespace BetterJoy
         public bool CalibrateSticks;
         public readonly List<KeyValuePair<string, short[]>> CaliIMUData;
         public readonly List<KeyValuePair<string, ushort[]>> CaliSticksData;
+
         private int _count;
         private Timer _countDown;
-        public bool NonOriginal;
+
         public readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
         public readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
         public readonly float ShakeSesitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
-        public bool UseControllerStickCalibration;
         public readonly List<short> Xg;
         public readonly List<short> Yg;
         public readonly List<short> Zg;
@@ -74,7 +67,6 @@ namespace BetterJoy
             {
                 new("0", new ushort[12] { 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048 })
             };
-            SetNonOriginalControllerSettings();
 
             InitializeComponent();
 
@@ -129,36 +121,6 @@ namespace BetterJoy
             });
 
             Shown += MainForm_Shown;
-        }
-
-        private void SetNonOriginalControllerSettings()
-        {
-            Enum.TryParse(
-                ConfigurationManager.AppSettings["NonOriginalController"],
-                true,
-                out NonOriginalController nonOriginalController
-            );
-            switch (nonOriginalController)
-            {
-                case NonOriginalController.Disabled:
-                    NonOriginal = false;
-                    break;
-                case NonOriginalController.DefaultCalibration:
-                case NonOriginalController.ControllerCalibration:
-                    NonOriginal = true;
-                    break;
-            }
-
-            switch (nonOriginalController)
-            {
-                case NonOriginalController.Disabled:
-                case NonOriginalController.ControllerCalibration:
-                    UseControllerStickCalibration = true;
-                    break;
-                case NonOriginalController.DefaultCalibration:
-                    UseControllerStickCalibration = false;
-                    break;
-            }
         }
 
         private void HideToTray()
