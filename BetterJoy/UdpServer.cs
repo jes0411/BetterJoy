@@ -13,7 +13,7 @@ using BetterJoy.Memory;
 
 namespace BetterJoy
 {
-    internal class UdpServer
+    internal class UdpServer : IDisposable
     {
         private enum MessageType
         {
@@ -34,8 +34,8 @@ namespace BetterJoy
         private readonly IList<Joycon> _controllers;
 
         private bool _running = false;
-        private readonly CancellationTokenSource _cancellationTokenSource = new();
-        private Task _receiveTask = null;
+        private readonly CancellationTokenSource _ctsTransfers = new();
+        private Task _receiveTask;
         
 
         private uint _serverId;
@@ -292,10 +292,12 @@ namespace BetterJoy
             var bufferMem = buffer.AsMemory();
 
             // Do processing, continually receiving from the socket
-            while (!token.IsCancellationRequested)
+            while (true)
             {
                 try
                 {
+                    token.ThrowIfCancellationRequested();
+
                     var receiveResult = await _udpSock.ReceiveFromAsync(bufferMem);
                     var client = (IPEndPoint)receiveResult.RemoteEndPoint;
 
@@ -364,9 +366,9 @@ namespace BetterJoy
                 {
                     try
                     {
-                        await RunReceive(_cancellationTokenSource.Token);
+                        await RunReceive(_ctsTransfers.Token);
                     }
-                    catch (OperationCanceledException e) when (e.CancellationToken == _cancellationTokenSource.Token) { }
+                    catch (OperationCanceledException) when (_ctsTransfers.IsCancellationRequested) { }
                 }
             );
         }
@@ -379,9 +381,15 @@ namespace BetterJoy
             }
 
             _running = false;
-
+            _ctsTransfers.Cancel();
             _udpSock.Close();
+
             await _receiveTask;
+        }
+
+        public void Dispose()
+        {
+            _ctsTransfers.Dispose();
         }
 
         private void ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx)
@@ -494,7 +502,7 @@ namespace BetterJoy
 
         public void NewReportIncoming(Joycon hidReport)
         {
-            var token = _cancellationTokenSource.Token;
+            var token = _ctsTransfers.Token;
             if (token.IsCancellationRequested)
             {
                 return;

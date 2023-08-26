@@ -33,14 +33,14 @@ namespace BetterJoy
         private readonly MainForm _form;
 
         private bool _isRunning = false;
-        private readonly CancellationTokenSource _cancellationTokenSource = new();
+        private CancellationTokenSource _ctsDevicesNotifications;
 
         public ConcurrentList<Joycon> Controllers { get; } = new(); // connected controllers
 
         private readonly Channel<DeviceNotification> _channelDeviceNotifications;
 
         private int _hidCallbackHandle = 0;
-        private Task _devivesNotificationTask = null;
+        private Task _devicesNotificationTask;
 
         private class DeviceNotification
         {
@@ -107,14 +107,16 @@ namespace BetterJoy
                 return false;
             }
 
-            _devivesNotificationTask = Task.Run(
+            _ctsDevicesNotifications = new CancellationTokenSource();
+
+            _devicesNotificationTask = Task.Run(
                 async () =>
                 {
                     try
                     {
-                        await ProcessDevicesNotifications(_cancellationTokenSource.Token);
+                        await ProcessDevicesNotifications(_ctsDevicesNotifications.Token);
                     }
-                    catch (OperationCanceledException e) when (e.CancellationToken == _cancellationTokenSource.Token) { }
+                    catch (OperationCanceledException e) when (_ctsDevicesNotifications.IsCancellationRequested) { }
                 }
             );
 
@@ -463,15 +465,16 @@ namespace BetterJoy
             }
             _isRunning = false;
 
-            _cancellationTokenSource.Cancel();
+            _ctsDevicesNotifications.Cancel();
 
             if (_hidCallbackHandle != 0)
             {
                 hid_hotplug_deregister_callback(_hidCallbackHandle);
             }
             
-            await _devivesNotificationTask;
-            _cancellationTokenSource.Dispose();
+            await _devicesNotificationTask;
+
+            _ctsDevicesNotifications.Dispose();
 
             var powerOff = bool.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]);
             foreach (var controller in Controllers)
@@ -792,6 +795,7 @@ namespace BetterJoy
             if (Server != null)
             {
                 await Server.Stop();
+                Server.Dispose();
             }
         }
 
