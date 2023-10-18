@@ -161,12 +161,6 @@
         <PackageReference Include="Nefarius.ViGEm.Client">
             <Version>1.21.256</Version>
         </PackageReference>
-        <PackageReference Include="PInvoke.Kernel32">
-            <Version>0.7.124</Version>
-        </PackageReference>
-        <PackageReference Include="PInvoke.Windows.Core">
-            <Version>0.7.124</Version>
-        </PackageReference>
         <PackageReference Include="System.IO.Hashing" Version="7.0.0" />
         <PackageReference Include="WindowsInput">
             <Version>6.4.1</Version>
