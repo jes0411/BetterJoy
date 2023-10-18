@@ -156,8 +156,8 @@
         </PublishFile>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="7.0.5" />
-        <PackageReference Include="Nefarius.Drivers.HidHide" Version="1.8.60" />
+        <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="7.0.12" />
+        <PackageReference Include="Nefarius.Drivers.HidHide" Version="1.11.0" />
         <PackageReference Include="Nefarius.ViGEm.Client">
             <Version>1.21.256</Version>
         </PackageReference>
