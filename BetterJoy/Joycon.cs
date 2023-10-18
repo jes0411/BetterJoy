@@ -768,7 +768,7 @@ namespace BetterJoy
 
             if (_tsEn == buf[1] && !IsSNES)
             {
-                _form.AppendTextBox("Duplicate timestamp enqueued.");
+                //_form.AppendTextBox("Duplicate timestamp enqueued.");
                 DebugPrint($"Duplicate timestamp enqueued. TS: {_tsEn:X2}", DebugType.Threading);
             }
 
