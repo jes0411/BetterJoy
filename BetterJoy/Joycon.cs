@@ -1692,15 +1692,18 @@ namespace BetterJoy
                 var stick1Data = new ReadOnlySpan<byte>(userStickData, IsLeft ? 2 : 13, 9);
                 var stick1Name = IsLeft ? "left" : "right";
 
-                if (userStickData[IsLeft ? 0 : 11] == 0xB2 && userStickData[IsLeft ? 1 : 12] == 0xA1)
+                if (ok)
                 {
-                    _form.AppendTextBox($"Using user {stick1Name} stick calibration data.");
-                }
-                else
-                {
-                    stick1Data = new ReadOnlySpan<byte>(factoryStickData, IsLeft ? 0 : 9, 9);
+                    if (userStickData[IsLeft ? 0 : 11] == 0xB2 && userStickData[IsLeft ? 1 : 12] == 0xA1)
+                    {
+                        _form.AppendTextBox($"Using user {stick1Name} stick calibration data.");
+                    }
+                    else
+                    {
+                        stick1Data = new ReadOnlySpan<byte>(factoryStickData, IsLeft ? 0 : 9, 9);
 
-                    _form.AppendTextBox($"Using factory {stick1Name} stick calibration data.");
+                        _form.AppendTextBox($"Using factory {stick1Name} stick calibration data.");
+                    }
                 }
 
                 _stickCal[IsLeft ? 0 : 2] = (ushort)(((stick1Data[1] << 8) & 0xF00) | stick1Data[0]); // X Axis Max above center
@@ -1717,15 +1720,18 @@ namespace BetterJoy
                     var stick2Data = new ReadOnlySpan<byte>(userStickData, !IsLeft ? 2 : 13, 9);
                     var stick2Name = !IsLeft ? "left" : "right";
 
-                    if (userStickData[!IsLeft ? 0 : 11] == 0xB2 && userStickData[!IsLeft ? 1 : 12] == 0xA1)
+                    if (ok)
                     {
-                        _form.AppendTextBox($"Using user {stick2Name} stick calibration data.");
-                    }
-                    else
-                    {
-                        stick2Data = new ReadOnlySpan<byte>(factoryStickData, !IsLeft ? 0 : 9, 9);
+                        if (userStickData[!IsLeft ? 0 : 11] == 0xB2 && userStickData[!IsLeft ? 1 : 12] == 0xA1)
+                        {
+                            _form.AppendTextBox($"Using user {stick2Name} stick calibration data.");
+                        }
+                        else
+                        {
+                            stick2Data = new ReadOnlySpan<byte>(factoryStickData, !IsLeft ? 0 : 9, 9);
 
-                        _form.AppendTextBox($"Using factory {stick2Name} stick calibration data.");
+                            _form.AppendTextBox($"Using factory {stick2Name} stick calibration data.");
+                        }
                     }
 
                     _stick2Cal[!IsLeft ? 0 : 2] = (ushort)(((stick2Data[1] << 8) & 0xF00) | stick2Data[0]); // X Axis Max above center
@@ -1756,16 +1762,19 @@ namespace BetterJoy
                 var userSensorData = ReadSPICheck(0x80, 0x26, 0x1A, ref ok);
                 ReadOnlySpan<byte> sensorData = new ReadOnlySpan<byte>(userSensorData, 2, 24);
 
-                if (userSensorData[0] == 0xB2 && userSensorData[1] == 0xA1)
+                if (ok)
                 {
-                    _form.AppendTextBox($"Using user sensors calibration data.");
-                }
-                else
-                {
-                    var factorySensorData = ReadSPICheck(0x60, 0x20, 0x18, ref ok);
-                    sensorData = new ReadOnlySpan<byte>(factorySensorData, 0, 24);
+                    if (userSensorData[0] == 0xB2 && userSensorData[1] == 0xA1)
+                    {
+                        _form.AppendTextBox($"Using user sensors calibration data.");
+                    }
+                    else
+                    {
+                        var factorySensorData = ReadSPICheck(0x60, 0x20, 0x18, ref ok);
+                        sensorData = new ReadOnlySpan<byte>(factorySensorData, 0, 24);
 
-                    _form.AppendTextBox($"Using factory sensors calibration data.");
+                        _form.AppendTextBox($"Using factory sensors calibration data.");
+                    }
                 }
 
                 _accNeutral[0] = (short)(sensorData[0] | (sensorData[1] << 8));
