@@ -778,6 +778,11 @@ namespace BetterJoy
 
         private double quickselect_median(List<int> l, Func<int, int> pivotFn)
         {
+            if (l.Count == 0)
+            {
+                return 0;
+            }
+
             var ll = l.Count;
             if (ll % 2 == 1)
             {
