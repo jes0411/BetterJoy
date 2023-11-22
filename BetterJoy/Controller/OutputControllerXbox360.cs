@@ -80,12 +80,22 @@ namespace BetterJoy.Controller
 
         public OutputControllerXbox360()
         {
+            if (Program.EmClient == null)
+            {
+                return;
+            }
+
             _xboxController = Program.EmClient.CreateXbox360Controller();
             Init();
         }
 
         public OutputControllerXbox360(ushort vendorId, ushort productId)
         {
+            if (Program.EmClient == null)
+            {
+                return;
+            }
+
             _xboxController = Program.EmClient.CreateXbox360Controller(vendorId, productId);
             Init();
         }
@@ -94,6 +104,11 @@ namespace BetterJoy.Controller
 
         private void Init()
         {
+            if (_xboxController == null)
+            {
+                return;
+            }
+
             _xboxController.FeedbackReceived += FeedbackReceivedRcv;
             _xboxController.AutoSubmitReport = false;
         }
@@ -117,17 +132,32 @@ namespace BetterJoy.Controller
 
         public void Connect()
         {
+            if (_xboxController == null)
+            {
+                return;
+            }
+
             _xboxController.Connect();
             DoUpdateInput(new OutputControllerXbox360InputState());
         }
 
         public void Disconnect()
         {
+            if (_xboxController == null)
+            {
+                return;
+            }
+
             _xboxController.Disconnect();
         }
 
         private void DoUpdateInput(OutputControllerXbox360InputState newState)
         {
+            if (_xboxController == null)
+            {
+                return;
+            }
+
             _xboxController.SetButtonState(Xbox360Button.LeftThumb, newState.ThumbStickLeft);
             _xboxController.SetButtonState(Xbox360Button.RightThumb, newState.ThumbStickRight);
 

@@ -88,12 +88,22 @@ namespace BetterJoy.Controller
 
         public OutputControllerDualShock4()
         {
+            if (Program.EmClient == null)
+            {
+                return;
+            }
+
             _controller = Program.EmClient.CreateDualShock4Controller();
             Init();
         }
 
         public OutputControllerDualShock4(ushort vendorId, ushort productId)
         {
+            if (Program.EmClient == null)
+            {
+                return;
+            }
+
             _controller = Program.EmClient.CreateDualShock4Controller(vendorId, productId);
             Init();
         }
@@ -102,6 +112,11 @@ namespace BetterJoy.Controller
 
         private void Init()
         {
+            if (_controller == null)
+            {
+                return;
+            }
+
             _controller.AutoSubmitReport = false;
             _controller.FeedbackReceived += FeedbackReceivedRcv;
         }
@@ -113,11 +128,21 @@ namespace BetterJoy.Controller
 
         public void Connect()
         {
+            if (_controller == null)
+            {
+                return;
+            }
+
             _controller.Connect();
         }
 
         public void Disconnect()
         {
+            if (_controller == null)
+            {
+                return;
+            }
+
             _controller.Disconnect();
         }
 
@@ -135,6 +160,11 @@ namespace BetterJoy.Controller
 
         private void DoUpdateInput(OutputControllerDualShock4InputState newState)
         {
+            if (_controller == null)
+            {
+                return;
+            }
+
             _controller.SetButtonState(DualShock4Button.Triangle, newState.Triangle);
             _controller.SetButtonState(DualShock4Button.Circle, newState.Circle);
             _controller.SetButtonState(DualShock4Button.Cross, newState.Cross);
