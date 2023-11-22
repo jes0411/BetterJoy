@@ -306,33 +306,15 @@ namespace BetterJoy
                 return;
             }
 
-            if (!controller.IsPro)
-            {
-                // attempt to auto join-up joycons on connection
-                foreach (var otherController in Controllers)
-                {
-                    if (otherController.IsPro || // not a joycon
-                        otherController.Other != null || // already associated
-                        controller.IsLeft == otherController.IsLeft)
-                    {
-                        continue;
-                    }
-
-                    controller.Other = otherController;
-                    otherController.Other = controller;
-                    break;
-                }
-            }
-
             Controllers.Add(controller);
             if (indexController < 4)
             {
                 _form.AddController(controller);
             }
 
-            if (controller.Other != null)
+            // attempt to auto join-up joycons on connection
+            if (JoinJoycon(controller))
             {
-                controller.Other.DisconnectViGEm();
                 _form.JoinJoycon(controller, controller.Other);
             }
 
@@ -476,6 +458,68 @@ namespace BetterJoy
             }
 
             hid_exit();
+        }
+
+        public bool JoinJoycon(Joycon controller, bool joinSelf = false)
+        {
+            if (!controller.IsJoycon || controller.Other != null)
+            {
+                return false;
+            }
+
+            if (joinSelf)
+            {
+                // hacky; implement check in Joycon.cs to account for this
+                controller.Other = controller;
+
+                return true;
+            }
+
+            foreach (var otherController in Controllers)
+            {
+                if (!otherController.IsJoycon ||
+                    otherController.Other != null || // already associated
+                    controller.IsLeft == otherController.IsLeft ||
+                    controller == otherController)
+                {
+                    continue;
+                }
+
+                controller.Other = otherController;
+                otherController.Other = controller;
+                controller.DisconnectViGEm();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool SplitJoycon(Joycon controller, bool keep = true)
+        {
+            if (!controller.IsJoycon || controller.Other == null)
+            {
+                return false;
+            }
+
+            // Reenable vigem for the joined controller
+            try
+            {
+                if (keep)
+                {
+                    controller.ConnectViGEm();
+                }
+                controller.Other.ConnectViGEm();
+            }
+            catch (Exception)
+            {
+                _form.AppendTextBox("Could not connect the virtual controller for the split joycon.");
+            }
+
+            controller.Other.Other = null;
+            controller.Other = null;
+
+            return true;
         }
     }
 

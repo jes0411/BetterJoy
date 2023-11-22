@@ -14,6 +14,13 @@ namespace BetterJoy
 {
     public partial class MainForm : Form
     {
+        public enum ControllerAction
+        {
+            None,
+            Calibrate,
+            Remap // not implemented
+        }
+
         private readonly List<Button> _con;
 
         private readonly bool _doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
@@ -24,8 +31,7 @@ namespace BetterJoy
         private readonly bool _toRumble = bool.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
 
         public readonly bool AllowCalibration = bool.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
-        public bool CalibrateIMU;
-        public bool CalibrateSticks;
+
         public readonly List<KeyValuePair<string, short[]>> CaliIMUData;
         public readonly List<KeyValuePair<string, ushort[]>> CaliSticksData;
 
@@ -35,34 +41,17 @@ namespace BetterJoy
         public readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
         public readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
         public readonly float ShakeSesitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
-        public readonly List<short> Xg;
-        public readonly List<short> Yg;
-        public readonly List<short> Zg;
-        public readonly List<short> Xa;
-        public readonly List<short> Ya;
-        public readonly List<short> Za;
-        public readonly List<ushort> Xs1;
-        public readonly List<ushort> Ys1;
-        public readonly List<ushort> Xs2;
-        public readonly List<ushort> Ys2;
+
+        private ControllerAction _currentAction = ControllerAction.None;
+        private bool _selectController = false;
 
         public MainForm()
         {
-            Xg = new List<short>();
-            Yg = new List<short>();
-            Zg = new List<short>();
-            Xa = new List<short>();
-            Ya = new List<short>();
-            Za = new List<short>();
             CaliIMUData = new List<KeyValuePair<string, short[]>>
             {
                 new("0", new short[6] { 0, 0, 0, -710, 0, 0 })
             };
 
-            Xs1 = new List<ushort>();
-            Ys1 = new List<ushort>();
-            Xs2 = new List<ushort>();
-            Ys2 = new List<ushort>();
             CaliSticksData = new List<KeyValuePair<string, ushort[]>>
             {
                 new("0", new ushort[12] { 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048 })
@@ -72,7 +61,7 @@ namespace BetterJoy
 
             if (!AllowCalibration)
             {
-                AutoCalibrate.Hide();
+                btn_calibrate.Hide();
             }
 
             _con = new List<Button> { con1, con2, con3, con4 };
@@ -252,91 +241,61 @@ namespace BetterJoy
             }
         }
 
-        public void ConBtnClick(int padId)
-        {
-            if (InvokeRequired)
-            {
-                Invoke(new Action<int>(ConBtnClick), padId);
-            }
-
-            var button = _con[padId];
-            ConBtnClick(button, EventArgs.Empty);
-        }
-
         private void ConBtnClick(object sender, EventArgs e)
         {
             var button = sender as Button;
 
-            if (button.Tag.GetType() == typeof(Joycon))
+            if (button?.Tag is not Joycon controller)
             {
-                var v = (Joycon)button.Tag;
+                return;
+            }
 
-                if (v.Other == null && !v.IsPro)
+            if (_selectController)
+            {
+                switch (_currentAction)
                 {
-                    // needs connecting to other joycon (so messy omg)
-                    var succ = false;
-
-                    if (Program.Mgr.Controllers.Count == 1 || _doNotRejoin)
-                    {
-                        // when want to have a single joycon in vertical mode
-                        v.Other = v; // hacky; implement check in Joycon.cs to account for this
-                        succ = true;
-                    }
-                    else
-                    {
-                        foreach (var jc in Program.Mgr.Controllers)
-                        {
-                            if (!jc.IsPro && jc.IsLeft != v.IsLeft && jc != v && jc.Other == null)
-                            {
-                                v.Other = jc;
-                                jc.Other = v;
-
-                                v.DisconnectViGEm();
-
-                                // setting the other joycon's button image
-                                foreach (var b in _con)
-                                {
-                                    if (b.Tag == jc)
-                                    {
-                                        b.BackgroundImage = jc.IsLeft ? Resources.jc_left : Resources.jc_right;
-                                    }
-                                }
-
-                                succ = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (succ)
-                    {
-                        foreach (var b in _con)
-                        {
-                            if (b.Tag == v)
-                            {
-                                b.BackgroundImage = v.IsLeft ? Resources.jc_left : Resources.jc_right;
-                            }
-                        }
-                    }
+                    case ControllerAction.Remap:
+                        ShowReassignDialog(controller);
+                        break;
+                    case ControllerAction.Calibrate:
+                        StartCalibrate(controller);
+                        break;
                 }
-                else if (v.Other != null && !v.IsPro)
+
+                _selectController = false;
+                return;
+            }
+
+            if (_currentAction != ControllerAction.None)
+            {
+                return;
+            }
+
+            if (!controller.IsJoycon)
+            {
+                return;
+            }
+
+            // Join/Split joycons
+            if (controller.Other == null)
+            {
+                int nbJoycons = Program.Mgr.Controllers.Count(j => j.IsJoycon);
+
+                // when we want to have a single joycon in vertical mode
+                bool joinSelf = nbJoycons == 1 || _doNotRejoin;
+
+                if (Program.Mgr.JoinJoycon(controller, joinSelf))
                 {
-                    // needs disconnecting from other joycon
-                    ReenableViGEm(v);
-                    ReenableViGEm(v.Other);
+                    JoinJoycon(controller, controller.Other);
+                }
+            }
+            else
+            {
+                Joycon other = controller.Other;
 
-                    button.BackgroundImage = v.IsLeft ? Resources.jc_left_s : Resources.jc_right_s;
-
-                    foreach (var b in _con)
-                    {
-                        if (b.Tag == v.Other)
-                        {
-                            b.BackgroundImage = v.Other.IsLeft ? Resources.jc_left_s : Resources.jc_right_s;
-                        }
-                    }
-
-                    v.Other.Other = null;
-                    v.Other = null;
+                if (Program.Mgr.SplitJoycon(controller))
+                {
+                    SplitJoycon(controller, other);
                 }
             }
         }
@@ -475,44 +434,79 @@ namespace BetterJoy
             }
         }
 
-        private void StartCalibrate(object sender, EventArgs e)
+        private void SetCalibrateButtonText(bool ongoing = false)
         {
-            var nbControllers = Program.Mgr.Controllers.Count;
-            if (nbControllers == 0)
-            {
-                console.Text = "Please connect a single controller.\r\n";
-                return;
-            }
-
-            if (nbControllers > 1)
-            {
-                console.Text = "Please calibrate one controller at a time (disconnect others).\r\n";
-                return;
-            }
-
-            AutoCalibrate.Enabled = false;
-            _countDown = new Timer();
-            _count = 4;
-            CountDownIMU(null, null);
-            _countDown.Tick += CountDownIMU;
-            _countDown.Interval = 1000;
-            _countDown.Enabled = true;
+            btn_calibrate.Text = ongoing ? "Select..." : "Calibrate";
         }
 
-        private void StartGetIMUData()
+        private void SetCalibrate(bool calibrate = true)
         {
-            Xg.Clear();
-            Yg.Clear();
-            Zg.Clear();
-            Xa.Clear();
-            Ya.Clear();
-            Za.Clear();
+            if ((_currentAction == ControllerAction.Calibrate && calibrate) ||
+                (_currentAction != ControllerAction.Calibrate && !calibrate))
+            {
+                return;
+            }
+
+            _currentAction = calibrate ? ControllerAction.Calibrate : ControllerAction.None;
+            SetCalibrateButtonText(calibrate);
+            btn_reassign_open.Enabled = !calibrate;
+        }
+
+        private void StartCalibrate(object sender, EventArgs e)
+        {
+            if (_currentAction != ControllerAction.None)
+            {
+                SetCalibrate(false);
+                return;
+            }
+
+            SetCalibrate();
+
+            var controllers = GetActiveControllers();
+
+            switch (controllers.Count)
+            {
+                case 0:
+                    return;
+                case 1:
+                    StartCalibrate(controllers.First());
+                    break;
+                default:
+                    _selectController = true;
+                    AppendTextBox("Click on a controller to calibrate.");
+                    break;
+            }
+        }
+
+        private List<Joycon> GetActiveControllers()
+        {
+            var controllers = new List<Joycon>();
+
+            foreach (var button in _con)
+            {
+                if (!button.Enabled)
+                {
+                    continue;
+                }
+
+                controllers.Add((Joycon)button.Tag);
+            }
+
+            return controllers;
+        }
+
+        private void StartCalibrate(Joycon controller)
+        {
+            SetCalibrateButtonText();
+            btn_calibrate.Enabled = false;
+
             _countDown = new Timer();
-            _count = 3;
-            CalibrateIMU = true;
-            _countDown.Tick += CalcIMUData;
+            _count = 4;
+            _countDown.Tick += CountDownIMU;
             _countDown.Interval = 1000;
-            _countDown.Enabled = true;
+            _countDown.Tag = controller;
+            CountDownIMU(null, null);
+            _countDown.Start();
         }
 
         private void btn_reassign_open_Click(object sender, EventArgs e)
@@ -521,13 +515,33 @@ namespace BetterJoy
             mapForm.ShowDialog();
         }
 
+        private void ShowReassignDialog(Joycon controller)
+        {
+            // Not implemented
+        }
+
         private void CountDownIMU(object sender, EventArgs e)
         {
+            var controller = (Joycon)_countDown.Tag;
+
+            if (controller.State != Joycon.Status.IMUDataOk)
+            {
+                CancelCalibrate(controller, true);
+                return;
+            }
+
             if (_count == 0)
             {
                 console.Text = "Calibrating IMU...\r\n";
                 _countDown.Stop();
-                StartGetIMUData();
+
+                controller.StartIMUCalibration();
+                _count = 3;
+                _countDown = new Timer();
+                _countDown.Tick += CalcIMUData;
+                _countDown.Interval = 1000;
+                _countDown.Tag = controller;
+                _countDown.Start();
             }
             else
             {
@@ -539,47 +553,68 @@ namespace BetterJoy
 
         private void CalcIMUData(object sender, EventArgs e)
         {
+            var controller = (Joycon)_countDown.Tag;
+
+            if (controller.State != Joycon.Status.IMUDataOk)
+            {
+                CancelCalibrate(controller, true);
+                return;
+            }
+
             if (_count == 0)
             {
                 _countDown.Stop();
-                CalibrateIMU = false;
+                controller.StopIMUCalibration();
 
-                var j = Program.Mgr.Controllers.First();
-                var serNum = j.SerialNumber;
-                var serIndex = FindSerIMU(serNum);
-                var arr = new short[6] { 0, 0, 0, 0, 0, 0 };
-                if (serIndex == -1)
+                if (controller.CalibrationIMUDatas.Count == 0)
                 {
-                    CaliIMUData.Add(
-                        new KeyValuePair<string, short[]>(
-                            serNum,
-                            arr
-                        )
-                    );
+                    AppendTextBox("No IMU data received, proceed to stick calibration anyway. Is the controller working ?");
                 }
                 else
                 {
-                    arr = CaliIMUData[serIndex].Value;
+                    var imuData = ActiveCaliIMUData(controller.SerialNumber, true);
+
+                    var rnd = new Random();
+
+                    var xG = new List<int>();
+                    var yG = new List<int>();
+                    var zG = new List<int>();
+                    var xA = new List<int>();
+                    var yA = new List<int>();
+                    var zA = new List<int>();
+
+                    foreach (var calibrationData in controller.CalibrationIMUDatas)
+                    {
+                        xG.Add(calibrationData.Xg);
+                        yG.Add(calibrationData.Yg);
+                        zG.Add(calibrationData.Zg);
+                        xA.Add(calibrationData.Xa);
+                        yA.Add(calibrationData.Ya);
+                        zA.Add(calibrationData.Za);
+                    }
+
+                    imuData[0] = (short)quickselect_median(xG, rnd.Next);
+                    imuData[1] = (short)quickselect_median(yG, rnd.Next);
+                    imuData[2] = (short)quickselect_median(zG, rnd.Next);
+                    imuData[3] = (short)quickselect_median(xA, rnd.Next);
+                    imuData[4] = (short)quickselect_median(yA, rnd.Next);
+                    imuData[5] = (short)quickselect_median(zA, rnd.Next);
+
+                    console.Text += "IMU Calibration completed!!!\r\n";
+
+                    Config.SaveCaliIMUData(CaliIMUData);
+                    controller.GetActiveIMUData();
                 }
 
-                var rnd = new Random();
-                arr[0] = (short)quickselect_median(Xg.ConvertAll(x => (int)x), rnd.Next);
-                arr[1] = (short)quickselect_median(Yg.ConvertAll(x => (int)x), rnd.Next);
-                arr[2] = (short)quickselect_median(Zg.ConvertAll(x => (int)x), rnd.Next);
-                arr[3] = (short)quickselect_median(Xa.ConvertAll(x => (int)x), rnd.Next);
-                arr[4] = (short)quickselect_median(Ya.ConvertAll(x => (int)x), rnd.Next);
-                arr[5] = (short)quickselect_median(Za.ConvertAll(x => (int)x), rnd.Next);
-
-                console.Text += "IMU Calibration completed!!!\r\n";
-                Config.SaveCaliIMUData(CaliIMUData);
-                j.GetActiveIMUData();
+                ClearCalibrateDatas(controller);
 
                 _countDown = new Timer();
                 _count = 5;
-                CountDownSticksCenter(null, null);
                 _countDown.Tick += CountDownSticksCenter;
                 _countDown.Interval = 1000;
-                _countDown.Enabled = true;
+                _countDown.Tag = controller;
+                CountDownSticksCenter(null, null);
+                _countDown.Start();
             }
             else
             {
@@ -589,11 +624,27 @@ namespace BetterJoy
 
         private void CountDownSticksCenter(object sender, EventArgs e)
         {
+            var controller = (Joycon)_countDown.Tag;
+
+            if (controller.State != Joycon.Status.IMUDataOk)
+            {
+                CancelCalibrate(controller, true);
+                return;
+            }
+
             if (_count == 0)
             {
-                console.Text = "Calibrating Sticks center position...\r\n";
                 _countDown.Stop();
-                StartGetSticksCenterData();
+                controller.StartSticksCalibration();
+
+                console.Text = "Calibrating Sticks center position...\r\n";
+
+                _count = 3;
+                _countDown = new Timer();
+                _countDown.Tick += CalcSticksCenterData;
+                _countDown.Interval = 1000;
+                _countDown.Tag = controller;
+                _countDown.Start();
             }
             else
             {
@@ -603,59 +654,64 @@ namespace BetterJoy
             }
         }
 
-        private void StartGetSticksCenterData()
-        {
-            Xs1.Clear();
-            Ys1.Clear();
-            Xs2.Clear();
-            Ys2.Clear();
-            _countDown = new Timer();
-            _count = 3;
-            CalibrateSticks = true;
-            _countDown.Tick += CalcSticksCenterData;
-            _countDown.Interval = 1000;
-            _countDown.Enabled = true;
-        }
-
         private void CalcSticksCenterData(object sender, EventArgs e)
         {
+            var controller = (Joycon)_countDown.Tag;
+
+            if (controller.State != Joycon.Status.IMUDataOk)
+            {
+                CancelCalibrate(controller, true);
+                return;
+            }
+
             if (_count == 0)
             {
                 _countDown.Stop();
-                CalibrateSticks = false;
+                controller.StopSticksCalibration();
 
-                var j = Program.Mgr.Controllers.First();
-                var serNum = j.SerialNumber;
-                var serIndex = FindSerSticks(serNum);
-                const int stickCaliSize = 6;
-                var arr = new ushort[stickCaliSize * 2] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-                if (serIndex == -1)
+                if (controller.CalibrationStickDatas.Count == 0)
                 {
-                    CaliSticksData.Add(
-                        new KeyValuePair<string, ushort[]>(
-                            serNum,
-                            arr
-                        )
-                    );
+                    AppendTextBox("No stick positions received, calibration canceled. Is the controller working ?");
+                    CancelCalibrate(controller);
+                    return;
                 }
-                else
-                {
-                    arr = CaliSticksData[serIndex].Value;
-                }
+
+                var stickData = ActiveCaliSticksData(controller.SerialNumber, true);
+                var leftStickData = stickData.AsSpan(0, 6);
+                var rightStickData = stickData.AsSpan(6, 6);
 
                 var rnd = new Random();
-                arr[2] = (ushort)Math.Round(quickselect_median(Xs1.ConvertAll(x => (int)x), rnd.Next));
-                arr[3] = (ushort)Math.Round(quickselect_median(Ys1.ConvertAll(x => (int)x), rnd.Next));
-                arr[2 + stickCaliSize] = (ushort)Math.Round(quickselect_median(Xs2.ConvertAll(x => (int)x), rnd.Next));
-                arr[3 + stickCaliSize] = (ushort)Math.Round(quickselect_median(Ys2.ConvertAll(x => (int)x), rnd.Next));
-                console.Text += "Sticks center position Calibration completed!!!\r\n";
 
+                var xS1 = new List<int>();
+                var yS1 = new List<int>();
+                var xS2 = new List<int>();
+                var yS2 = new List<int>();
+
+                foreach (var calibrationData in controller.CalibrationStickDatas)
+                {
+                    xS1.Add(calibrationData.Xs1);
+                    yS1.Add(calibrationData.Ys1);
+                    xS2.Add(calibrationData.Xs2);
+                    yS2.Add(calibrationData.Ys2);
+                }
+
+                leftStickData[2] = (ushort)Math.Round(quickselect_median(xS1, rnd.Next));
+                leftStickData[3] = (ushort)Math.Round(quickselect_median(yS1, rnd.Next));
+
+                rightStickData[2] = (ushort)Math.Round(quickselect_median(xS2, rnd.Next));
+                rightStickData[3] = (ushort)Math.Round(quickselect_median(yS2, rnd.Next));
+
+                ClearCalibrateDatas(controller);
+
+                console.Text += "Sticks center position calibration completed!!!\r\n";
+
+                _count = 5;
                 _countDown = new Timer();
-                _count = 8;
-                CountDownSticksMinMax(null, null);
                 _countDown.Tick += CountDownSticksMinMax;
                 _countDown.Interval = 1000;
-                _countDown.Enabled = true;
+                _countDown.Tag = controller;
+                CountDownSticksMinMax(null, null);
+                _countDown.Start();
             }
             else
             {
@@ -665,11 +721,27 @@ namespace BetterJoy
 
         private void CountDownSticksMinMax(object sender, EventArgs e)
         {
+            var controller = (Joycon)_countDown.Tag;
+
+            if (controller.State != Joycon.Status.IMUDataOk)
+            {
+                CancelCalibrate(controller, true);
+                return;
+            }
+
             if (_count == 0)
             {
-                console.Text = "Calibrating Sticks min and max position...\r\n";
                 _countDown.Stop();
-                StartGetSticksMinMaxData();
+                controller.StartSticksCalibration();
+
+                console.Text = "Calibrating Sticks min and max position...\r\n";
+
+                _count = 5;
+                _countDown = new Timer();
+                _countDown.Tick += CalcSticksMinMaxData;
+                _countDown.Interval = 1000;
+                _countDown.Tag = controller;
+                _countDown.Start();
             }
             else
             {
@@ -679,63 +751,87 @@ namespace BetterJoy
             }
         }
 
-        private void StartGetSticksMinMaxData()
-        {
-            Xs1.Clear();
-            Ys1.Clear();
-            Xs2.Clear();
-            Ys2.Clear();
-            _countDown = new Timer();
-            _count = 5;
-            CalibrateSticks = true;
-            _countDown.Tick += CalcSticksMinMaxData;
-            _countDown.Interval = 1000;
-            _countDown.Enabled = true;
-        }
-
         private void CalcSticksMinMaxData(object sender, EventArgs e)
         {
+            var controller = (Joycon)_countDown.Tag;
+
+            if (controller.State != Joycon.Status.IMUDataOk)
+            {
+                CancelCalibrate(controller, true);
+                return;
+            }
+
             if (_count == 0)
             {
                 _countDown.Stop();
-                CalibrateSticks = false;
+                controller.StopSticksCalibration();
 
-                var j = Program.Mgr.Controllers.First();
-                var serNum = j.SerialNumber;
-                var serIndex = FindSerSticks(serNum);
-                const int stickCaliSize = 6;
-                var arr = new ushort[stickCaliSize * 2] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-                if (serIndex == -1)
+                if (controller.CalibrationStickDatas.Count == 0)
                 {
-                    CaliSticksData.Add(
-                        new KeyValuePair<string, ushort[]>(
-                            serNum,
-                            arr
-                        )
-                    );
-                }
-                else
-                {
-                    arr = CaliSticksData[serIndex].Value;
+                    AppendTextBox("No stick positions received, calibration canceled. Is the controller working ?");
+                    CancelCalibrate(controller);
+                    return;
                 }
 
-                arr[0] = (ushort)Math.Abs(Xs1.Max() - arr[2]);
-                arr[1] = (ushort)Math.Abs(Ys1.Max() - arr[3]);
-                arr[4] = (ushort)Math.Abs(arr[2] - Xs1.Min());
-                arr[5] = (ushort)Math.Abs(arr[3] - Ys1.Min());
-                arr[0 + stickCaliSize] = (ushort)Math.Abs(Xs2.Max() - arr[2 + stickCaliSize]);
-                arr[1 + stickCaliSize] = (ushort)Math.Abs(Ys2.Max() - arr[3 + stickCaliSize]);
-                arr[4 + stickCaliSize] = (ushort)Math.Abs(arr[2 + stickCaliSize] - Xs2.Min());
-                arr[5 + stickCaliSize] = (ushort)Math.Abs(arr[3 + stickCaliSize] - Ys2.Min());
+                var stickData = ActiveCaliSticksData(controller.SerialNumber, true);
+                var leftStickData = stickData.AsSpan(0, 6);
+                var rightStickData = stickData.AsSpan(6, 6);
+
+                var xS1 = new List<ushort>();
+                var yS1 = new List<ushort>();
+                var xS2 = new List<ushort>();
+                var yS2 = new List<ushort>();
+
+                foreach (var calibrationData in controller.CalibrationStickDatas)
+                {
+                    xS1.Add(calibrationData.Xs1);
+                    yS1.Add(calibrationData.Ys1);
+                    xS2.Add(calibrationData.Xs2);
+                    yS2.Add(calibrationData.Ys2);
+                }
+
+                leftStickData[0] = (ushort)Math.Abs(xS1.Max() - leftStickData[2]);
+                leftStickData[1] = (ushort)Math.Abs(yS1.Max() - leftStickData[3]);
+                leftStickData[4] = (ushort)Math.Abs(leftStickData[2] - xS1.Min());
+                leftStickData[5] = (ushort)Math.Abs(leftStickData[3] - yS1.Min());
+
+                rightStickData[0] = (ushort)Math.Abs(xS2.Max() - rightStickData[2]);
+                rightStickData[1] = (ushort)Math.Abs(yS2.Max() - rightStickData[3]);
+                rightStickData[4] = (ushort)Math.Abs(rightStickData[2] - xS2.Min());
+                rightStickData[5] = (ushort)Math.Abs(rightStickData[3] - yS2.Min());
+
+                ClearCalibrateDatas(controller);
+
                 console.Text += "Sticks min and max position Calibration completed!!!\r\n";
+
                 Config.SaveCaliSticksData(CaliSticksData);
-                j.GetActiveSticksData();
-                AutoCalibrate.Enabled = true;
+                controller.GetActiveSticksData();
+
+                CancelCalibrate(controller);
             }
             else
             {
                 _count--;
             }
+        }
+
+        private void ClearCalibrateDatas(Joycon controller)
+        {
+            controller.StopIMUCalibration(true);
+            controller.StopSticksCalibration(true);
+        }
+
+        private void CancelCalibrate(Joycon controller, bool disconnected = false)
+        {
+            if (disconnected)
+            {
+                AppendTextBox("Controller disconnected, calibration canceled.");
+            }
+
+            SetCalibrate(false);
+            btn_calibrate.Enabled = true;
+
+            ClearCalibrateDatas(controller);
         }
 
         private double quickselect_median(List<int> l, Func<int, int> pivotFn)
@@ -778,7 +874,7 @@ namespace BetterJoy
             return Quickselect(highs, k - lows.Count - pivots.Count, pivotFn);
         }
 
-        public short[] ActiveCaliIMUData(string serNum)
+        public short[] ActiveCaliIMUData(string serNum, bool init = false)
         {
             for (var i = 0; i < CaliIMUData.Count; i++)
             {
@@ -788,10 +884,22 @@ namespace BetterJoy
                 }
             }
 
+            if (init)
+            {
+                var arr = new short[6];
+                CaliIMUData.Add(
+                    new KeyValuePair<string, short[]>(
+                        serNum,
+                        arr
+                    )
+                );
+                return arr;
+            }
+
             return CaliIMUData[0].Value;
         }
 
-        public ushort[] ActiveCaliSticksData(string serNum)
+        public ushort[] ActiveCaliSticksData(string serNum, bool init = false)
         {
             for (var i = 0; i < CaliSticksData.Count; i++)
             {
@@ -799,6 +907,19 @@ namespace BetterJoy
                 {
                     return CaliSticksData[i].Value;
                 }
+            }
+
+            if (init)
+            {
+                const int stickCaliSize = 6;
+                var arr = new ushort[stickCaliSize * 2];
+                CaliSticksData.Add(
+                    new KeyValuePair<string, ushort[]>(
+                        serNum,
+                        arr
+                    )
+                );
+                return arr;
             }
 
             return CaliSticksData[0].Value;
@@ -885,6 +1006,16 @@ namespace BetterJoy
                 return;
             }
 
+            int nbControllers = GetActiveControllers().Count;
+            if (nbControllers == 0)
+            {
+                btn_calibrate.Enabled = true;
+            }
+            else if (nbControllers == _con.Count)
+            {
+                return;
+            }
+
             var i = 0;
             foreach (var b in _con)
             {
@@ -933,6 +1064,13 @@ namespace BetterJoy
                 return;
             }
 
+            int nbControllers = GetActiveControllers().Count;
+            if (nbControllers == 0)
+            {
+                return;
+            }
+
+            bool removed = false;
             foreach (var b in _con)
             {
                 if (b.Enabled & (b.Tag == j))
@@ -940,8 +1078,14 @@ namespace BetterJoy
                     b.BackColor = Color.FromArgb(0x00, SystemColors.Control);
                     b.Enabled = false;
                     b.BackgroundImage = Resources.cross;
+                    removed = true;
                     break;
                 }
+            }
+
+            if (removed && nbControllers == 1)
+            {
+                btn_calibrate.Enabled = false;
             }
         }
 
@@ -953,13 +1097,35 @@ namespace BetterJoy
                 return;
             }
 
-            foreach (var b in _con)
+            foreach (var button in _con)
             {
-                if (b.Tag == j || b.Tag == other)
+                if (button.Tag != j && button.Tag != other)
                 {
-                    var currentJoycon = b.Tag == j ? j : other;
-                    b.BackgroundImage = currentJoycon.IsLeft ? Resources.jc_left : Resources.jc_right;
+                    continue;
                 }
+
+                var currentJoycon = button.Tag == j ? j : other;
+                button.BackgroundImage = currentJoycon.IsLeft ? Resources.jc_left : Resources.jc_right;
+            }
+        }
+
+        public void SplitJoycon(Joycon j, Joycon other)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action<Joycon, Joycon>(SplitJoycon), j, other);
+                return;
+            }
+
+            foreach (var button in _con)
+            {
+                if (button.Tag != j && button.Tag != other)
+                {
+                    continue;
+                }
+
+                var currentJoycon = button.Tag == j ? j : other;
+                button.BackgroundImage = currentJoycon.IsLeft ? Resources.jc_left_s : Resources.jc_right_s;
             }
         }
     }

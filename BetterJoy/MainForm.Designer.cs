@@ -53,7 +53,7 @@
             settingsTable = new System.Windows.Forms.TableLayoutPanel();
             rightPanel = new System.Windows.Forms.Panel();
             settingsApply = new System.Windows.Forms.Button();
-            AutoCalibrate = new System.Windows.Forms.Button();
+            btn_calibrate = new System.Windows.Forms.Button();
             btn_reassign_open = new System.Windows.Forms.Button();
             contextMenu.SuspendLayout();
             conCntrls.SuspendLayout();
@@ -317,16 +317,17 @@
             settingsApply.UseVisualStyleBackColor = true;
             settingsApply.Click += settingsApply_Click;
             // 
-            // AutoCalibrate
+            // btn_calibrate
             // 
-            AutoCalibrate.Location = new System.Drawing.Point(235, 135);
-            AutoCalibrate.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            AutoCalibrate.Name = "AutoCalibrate";
-            AutoCalibrate.Size = new System.Drawing.Size(83, 25);
-            AutoCalibrate.TabIndex = 8;
-            AutoCalibrate.Text = "Calibrate";
-            AutoCalibrate.UseVisualStyleBackColor = true;
-            AutoCalibrate.Click += StartCalibrate;
+            btn_calibrate.Enabled = false;
+            btn_calibrate.Location = new System.Drawing.Point(235, 135);
+            btn_calibrate.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            btn_calibrate.Name = "btn_calibrate";
+            btn_calibrate.Size = new System.Drawing.Size(83, 25);
+            btn_calibrate.TabIndex = 8;
+            btn_calibrate.Text = "Calibrate";
+            btn_calibrate.UseVisualStyleBackColor = true;
+            btn_calibrate.Click += StartCalibrate;
             // 
             // btn_reassign_open
             // 
@@ -349,7 +350,7 @@
             Controls.Add(btn_reassign_open);
             Controls.Add(foldLbl);
             Controls.Add(rightPanel);
-            Controls.Add(AutoCalibrate);
+            Controls.Add(btn_calibrate);
             Controls.Add(btn_open3rdP);
             Controls.Add(startInTrayBox);
             Controls.Add(conCntrls);
@@ -399,7 +400,7 @@
         private System.Windows.Forms.Panel rightPanel;
         private System.Windows.Forms.Button settingsApply;
         private System.Windows.Forms.Label foldLbl;
-        private System.Windows.Forms.Button AutoCalibrate;
+        private System.Windows.Forms.Button btn_calibrate;
         private System.Windows.Forms.Button btn_reassign_open;
     }
 }

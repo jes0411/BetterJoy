@@ -7,6 +7,7 @@ using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Threading;
 using System.Windows.Forms;
+using BetterJoy.Collections;
 using BetterJoy.Controller;
 using Nefarius.ViGEm.Client.Targets.DualShock4;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
@@ -244,6 +245,11 @@ namespace BetterJoy
         public readonly ControllerType Type;
 
         public EventHandler<StateChangedEventArgs> StateChanged;
+
+        public readonly ConcurrentList<IMUData> CalibrationIMUDatas = new();
+        public readonly ConcurrentList<SticksData> CalibrationStickDatas = new();
+        private bool _calibrateSticks = false;
+        private bool _calibrateIMU = false;
 
         public Joycon(
             MainForm form,
@@ -1033,13 +1039,28 @@ namespace BetterJoy
                 }
             }
 
-            if (IsJoycon)
+            if (IsJoycon && !_calibrateSticks && !_calibrateIMU)
             {
                 if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick] && _lastDoubleClick != -1)
                 {
                     if (_buttonsDownTimestamp[(int)Button.Stick] - _lastDoubleClick < 3000000)
                     {
-                        _form.ConBtnClick(PadId); // trigger connection button click
+                        if (Other == null)
+                        {
+                            if (Program.Mgr.JoinJoycon(this))
+                            {
+                                _form.JoinJoycon(this, Other);
+                            }
+                        }
+                        else
+                        {
+                            Joycon other = Other;
+
+                            if (Program.Mgr.SplitJoycon(this))
+                            {
+                                _form.SplitJoycon(this, other);
+                            }
+                        }
 
                         _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                         return;
@@ -1270,12 +1291,6 @@ namespace BetterJoy
                 {
                     cal = _activeStick1Data;
                     dz = _activeStick1DeadZoneData;
-
-                    if (_form.CalibrateSticks)
-                    {
-                        _form.Xs1.Add(_stickPrecal[0]);
-                        _form.Ys1.Add(_stickPrecal[1]);
-                    }
                 }
 
                 CalculateStickCenter(_stickPrecal, cal, dz, _stick);
@@ -1292,18 +1307,22 @@ namespace BetterJoy
                     {
                         cal = _activeStick2Data;
                         dz = _activeStick2DeadZoneData;
-
-                        if (_form.CalibrateSticks)
-                        {
-                            _form.Xs2.Add(_stick2Precal[0]);
-                            _form.Ys2.Add(_stick2Precal[1]);
-                        }
                     }
 
                     CalculateStickCenter(_stick2Precal, cal, dz, _stick2);
                 }
 
-                if (!_form.CalibrateSticks)
+                if (_calibrateSticks)
+                {
+                    var sticks = new SticksData(
+                        _stickPrecal[0],
+                        _stickPrecal[1],
+                        _stick2Precal[0],
+                        _stick2Precal[1]
+                    );
+                    CalibrationStickDatas.Add(sticks);
+                }
+                else
                 {
                     //DebugPrint($"Stick1: X={stick[0]} Y={stick[1]}. Stick2: X={stick2[0]} Y={stick2[1]}", DebugType.THREADING);
                 }
@@ -1457,7 +1476,7 @@ namespace BetterJoy
                 _accG.Z = direction * (_accR[2] - _activeIMUData[5]) * (1.0f / (_accSensiti[2] - _accNeutral[2])) * 4.0f;
                 _gyrG.Z = -direction * (_gyrR[2] - _activeIMUData[2]) * (816.0f / (_gyrSensiti[2] - _activeIMUData[2]));
 
-                if (_form.CalibrateIMU)
+                if (_calibrateIMU)
                 {
                     // We need to add the accelerometer offset from the origin position when it's on a flat surface
                     short[] accOffset;
@@ -1474,14 +1493,15 @@ namespace BetterJoy
                         accOffset = _accRightHorOffset;
                     }
 
-                    _form.Xa.Add((short)(_accR[0] - accOffset[0]));
-                    _form.Xg.Add(_gyrR[0]);
-
-                    _form.Ya.Add((short)(_accR[1] - accOffset[1]));
-                    _form.Yg.Add(_gyrR[1]);
-
-                    _form.Za.Add((short)(_accR[2] - accOffset[2]));
-                    _form.Zg.Add(_gyrR[2]);
+                    var imuData = new IMUData(
+                        _gyrR[0],
+                        _gyrR[1],
+                        _gyrR[2],
+                        (short)(_accR[0] - accOffset[0]),
+                        (short)(_accR[1] - accOffset[1]),
+                        (short)(_accR[2] - accOffset[2])
+                    );
+                    CalibrationIMUDatas.Add(imuData);
                 }
             }
             else
@@ -2306,6 +2326,38 @@ namespace BetterJoy
             return GetControllerName(Type);
         }
 
+        public void StartSticksCalibration()
+        {
+            CalibrationStickDatas.Clear();
+            _calibrateSticks = true;
+        }
+
+        public void StopSticksCalibration(bool clean = false)
+        {
+            _calibrateSticks = false;
+
+            if (clean)
+            {
+                CalibrationStickDatas.Clear();
+            }
+        }
+
+        public void StartIMUCalibration()
+        {
+            CalibrationIMUDatas.Clear();
+            _calibrateIMU = true;
+        }
+
+        public void StopIMUCalibration(bool clean = false)
+        {
+            _calibrateIMU = false;
+
+            if (clean)
+            {
+                CalibrationIMUDatas.Clear();
+            }
+        }
+
         private struct Rumble
         {
             private readonly Queue<float[]> _queue;
@@ -2453,6 +2505,42 @@ namespace BetterJoy
                 }
 
                 return rumbleData;
+            }
+        }
+
+        public struct IMUData
+        {
+            public short Xg;
+            public short Yg;
+            public short Zg;
+            public short Xa;
+            public short Ya;
+            public short Za;
+
+            public IMUData(short xg, short yg, short zg, short xa, short ya, short za)
+            {
+                Xg = xg;
+                Yg = yg;
+                Zg = zg;
+                Xa = xa;
+                Ya = ya;
+                Za = za;
+            }
+        }
+
+        public struct SticksData
+        {
+            public ushort Xs1;
+            public ushort Ys1;
+            public ushort Xs2;
+            public ushort Ys2;
+
+            public SticksData(ushort x1, ushort y1, ushort x2, ushort y2)
+            {
+                Xs1 = x1;
+                Ys1 = y1;
+                Xs2 = x2;
+                Ys2 = y2;
             }
         }
     }
