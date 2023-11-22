@@ -203,7 +203,7 @@ namespace BetterJoy
 
         private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            donationLink.LinkVisited = true;
+            lb_github.LinkVisited = true;
             Process.Start(new ProcessStartInfo
             {
                 FileName = "https://github.com/d3xMachina/BetterJoy",

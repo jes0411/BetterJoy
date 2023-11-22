@@ -35,7 +35,7 @@
             contextMenu = new System.Windows.Forms.ContextMenuStrip(components);
             exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             version_lbl = new System.Windows.Forms.Label();
-            donationLink = new System.Windows.Forms.LinkLabel();
+            lb_github = new System.Windows.Forms.LinkLabel();
             conCntrls = new System.Windows.Forms.GroupBox();
             loc4 = new System.Windows.Forms.Button();
             loc3 = new System.Windows.Forms.Button();
@@ -106,17 +106,17 @@
             version_lbl.TabIndex = 2;
             version_lbl.Text = "v8.0";
             // 
-            // donationLink
+            // lb_github
             // 
-            donationLink.AutoSize = true;
-            donationLink.Location = new System.Drawing.Point(243, 321);
-            donationLink.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            donationLink.Name = "donationLink";
-            donationLink.Size = new System.Drawing.Size(43, 15);
-            donationLink.TabIndex = 5;
-            donationLink.TabStop = true;
-            donationLink.Text = "Github";
-            donationLink.LinkClicked += linkLabel1_LinkClicked;
+            lb_github.AutoSize = true;
+            lb_github.Location = new System.Drawing.Point(243, 321);
+            lb_github.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            lb_github.Name = "lb_github";
+            lb_github.Size = new System.Drawing.Size(43, 15);
+            lb_github.TabIndex = 5;
+            lb_github.TabStop = true;
+            lb_github.Text = "Github";
+            lb_github.LinkClicked += linkLabel1_LinkClicked;
             // 
             // conCntrls
             // 
@@ -354,7 +354,7 @@
             Controls.Add(btn_open3rdP);
             Controls.Add(startInTrayBox);
             Controls.Add(conCntrls);
-            Controls.Add(donationLink);
+            Controls.Add(lb_github);
             Controls.Add(version_lbl);
             Controls.Add(console);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -382,7 +382,7 @@
         private System.Windows.Forms.Label version_lbl;
         private System.Windows.Forms.ContextMenuStrip contextMenu;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
-        private System.Windows.Forms.LinkLabel donationLink;
+        private System.Windows.Forms.LinkLabel lb_github;
         private System.Windows.Forms.GroupBox conCntrls;
         private System.Windows.Forms.Button con1;
         private System.Windows.Forms.Button con4;
