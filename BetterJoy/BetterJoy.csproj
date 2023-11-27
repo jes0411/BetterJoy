@@ -61,10 +61,10 @@
         <None Include="App.config">
             <SubType>Designer</SubType>
         </None>
-        <Content Include="Drivers\ViGEmBus_1.21.442_x64_x86_arm64.exe">
+        <Content Include="Drivers\ViGEmBus_1.22.0_x64_x86_arm64.exe">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Drivers\HidHide_1.2.98_x64.exe">
+        <Content Include="Drivers\HidHide_1.4.192_x64.exe">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
