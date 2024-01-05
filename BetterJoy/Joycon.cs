@@ -999,7 +999,7 @@ namespace BetterJoy
 
         private void DoThingsWithButtons()
         {
-            var powerOffButton = (int)(IsPro || !IsLeft || Other != null ? Button.Home : Button.Capture);
+            var powerOffButton = (int)(IsPro || !IsLeft || (Other != null && Other != this) ? Button.Home : Button.Capture);
 
             var timestampNow = Stopwatch.GetTimestamp();
             if (_homeLongPowerOff && _buttons[powerOffButton])
