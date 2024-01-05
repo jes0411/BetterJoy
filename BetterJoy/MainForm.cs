@@ -224,20 +224,17 @@ namespace BetterJoy
 
         private async void LocBtnClickAsync(object sender, EventArgs e)
         {
-            var bb = sender as Button;
+            var buttonLoc = sender as Button;
 
-            if (bb.Tag.GetType() == typeof(Button))
+            if (buttonLoc?.Tag is not Button button ||
+                button?.Tag is not Joycon controller)
             {
-                var button = bb.Tag as Button;
-
-                if (button.Tag.GetType() == typeof(Joycon))
-                {
-                    var v = (Joycon)button.Tag;
-                    v.SetRumble(160.0f, 320.0f, 1.0f);
-                    await Task.Delay(300);
-                    v.SetRumble(160.0f, 320.0f, 0);
-                }
+                return;
             }
+
+            controller.SetRumble(160.0f, 320.0f, 1.0f);
+            await Task.Delay(300);
+            controller.SetRumble(160.0f, 320.0f, 0);
         }
 
         private void ConBtnClick(object sender, EventArgs e)
@@ -1049,16 +1046,25 @@ namespace BetterJoy
             }
 
             bool removed = false;
+            int i = 0;
             foreach (var b in _con)
             {
-                if (b.Enabled & (b.Tag == j))
+                if (b.Enabled && (b.Tag == j))
                 {
                     b.BackColor = Color.FromArgb(0x00, SystemColors.Control);
+                    b.Tag = null;
                     b.Enabled = false;
+                    b.Click -= ConBtnClick;
                     b.BackgroundImage = Resources.cross;
+
+                    _loc[i].Tag = null;
+                    _loc[i].Click -= LocBtnClickAsync;
+
                     removed = true;
                     break;
                 }
+
+                i++;
             }
 
             if (removed && nbControllers == 1)
