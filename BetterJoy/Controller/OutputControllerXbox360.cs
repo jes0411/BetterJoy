@@ -78,6 +78,8 @@ namespace BetterJoy.Controller
 
         private OutputControllerXbox360InputState _currentState;
 
+        private bool _connected = false;
+
         public OutputControllerXbox360()
         {
             if (Program.EmClient == null)
@@ -120,7 +122,7 @@ namespace BetterJoy.Controller
 
         public bool UpdateInput(OutputControllerXbox360InputState newState)
         {
-            if (_currentState.IsEqual(newState))
+            if (!_connected || _currentState.IsEqual(newState))
             {
                 return false;
             }
@@ -138,11 +140,13 @@ namespace BetterJoy.Controller
             }
 
             _xboxController.Connect();
+            _connected = true;
             DoUpdateInput(new OutputControllerXbox360InputState());
         }
 
         public void Disconnect()
         {
+            _connected = false;
             _xboxController?.Disconnect();
         }
 

@@ -86,6 +86,8 @@ namespace BetterJoy.Controller
 
         private OutputControllerDualShock4InputState _currentState;
 
+        private bool _connected = false;
+
         public OutputControllerDualShock4()
         {
             if (Program.EmClient == null)
@@ -128,17 +130,24 @@ namespace BetterJoy.Controller
 
         public void Connect()
         {
-            _controller?.Connect();
+            if (_controller == null)
+            {
+                return;
+            }
+
+            _controller.Connect();
+            _connected = true;
         }
 
         public void Disconnect()
         {
+            _connected = false;
             _controller?.Disconnect();
         }
 
         public bool UpdateInput(OutputControllerDualShock4InputState newState)
         {
-            if (_currentState.IsEqual(newState))
+            if (!_connected || _currentState.IsEqual(newState))
             {
                 return false;
             }

@@ -675,27 +675,12 @@ namespace BetterJoy
 
         public void DisconnectViGEm()
         {
-            if (OutXbox != null)
+            try
             {
-                try
-                {
-                    OutXbox.Disconnect();
-                }
-                catch { } // nothing we can do, might not be connected in the first place
-
-                OutXbox = null;
+                OutXbox?.Disconnect();
+                OutDs4?.Disconnect();
             }
-
-            if (OutDs4 != null)
-            {
-                try
-                {
-                    OutDs4.Disconnect();
-                }
-                catch { } // nothing we can do, might not be connected in the first place
-
-                OutDs4 = null;
-            }
+            catch { } // nothing we can do, might not be connected in the first place
         }
 
         // Run from poll thread
