@@ -128,22 +128,12 @@ namespace BetterJoy.Controller
 
         public void Connect()
         {
-            if (_controller == null)
-            {
-                return;
-            }
-
-            _controller.Connect();
+            _controller?.Connect();
         }
 
         public void Disconnect()
         {
-            if (_controller == null)
-            {
-                return;
-            }
-
-            _controller.Disconnect();
+            _controller?.Disconnect();
         }
 
         public bool UpdateInput(OutputControllerDualShock4InputState newState)
