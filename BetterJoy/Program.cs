@@ -348,7 +348,7 @@ namespace BetterJoy
             controller.StateChanged -= OnControllerStateChanged;
             controller.Detach();
 
-            if (controller.Other != null)
+            if (controller.Other != null && controller.Other != controller)
             {
                 controller.Other.Other = null; // The other of the other is the joycon itself
                 try
