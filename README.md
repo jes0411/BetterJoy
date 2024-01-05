@@ -13,7 +13,7 @@
  - instantly connect and disconnect
  - other minor improvements
 
-I only tested the changes with the pro controller as I don't have the other controllers to test.
+I only tested the changes with the official pro controller and joycons as I don't have the other controllers to test.
 
 #### Description
 
