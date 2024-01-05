@@ -741,23 +741,12 @@ namespace BetterJoy
                 Program.Server?.NewReportIncoming(this);
             }
 
-            if (OutDs4 != null)
+            try
             {
-                try
-                {
-                    OutDs4.UpdateInput(MapToDualShock4Input(this));
-                }
-                catch { } // ignore
+                OutDs4?.UpdateInput(MapToDualShock4Input(this));
+                OutXbox?.UpdateInput(MapToXbox360Input(this));
             }
-
-            if (OutXbox != null)
-            {
-                try
-                {
-                    OutXbox.UpdateInput(MapToXbox360Input(this));
-                }
-                catch { } // ignore
-            }
+            catch { } // ignore
 
             if (_tsEn == buf[1] && !IsSNES)
             {

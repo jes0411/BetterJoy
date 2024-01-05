@@ -337,33 +337,6 @@ namespace BetterJoy
             Application.Exit();
         }
 
-        private void ReenableViGEm(Joycon v)
-        {
-            if (_showAsXInput && v.OutXbox == null)
-            {
-                v.OutXbox = new OutputControllerXbox360();
-
-                if (_toRumble)
-                {
-                    v.OutXbox.FeedbackReceived += v.ReceiveRumble;
-                }
-
-                v.OutXbox.Connect();
-            }
-
-            if (_showAsDs4 && v.OutDs4 == null)
-            {
-                v.OutDs4 = new OutputControllerDualShock4();
-
-                if (_toRumble)
-                {
-                    v.OutDs4.FeedbackReceived += v.Ds4_FeedbackReceived;
-                }
-
-                v.OutDs4.Connect();
-            }
-        }
-
         private void foldLbl_Click(object sender, EventArgs e)
         {
             rightPanel.Visible = !rightPanel.Visible;
