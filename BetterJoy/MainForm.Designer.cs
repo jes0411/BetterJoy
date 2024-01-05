@@ -104,7 +104,7 @@
             version_lbl.Name = "version_lbl";
             version_lbl.Size = new System.Drawing.Size(28, 15);
             version_lbl.TabIndex = 2;
-            version_lbl.Text = "v8.1";
+            version_lbl.Text = "v8.2";
             // 
             // lb_github
             // 
