@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
@@ -520,6 +521,38 @@ namespace BetterJoy
             controller.Other = null;
 
             return true;
+        }
+
+        public bool JoinOrSplitJoycon(Joycon controller)
+        {
+            bool change = false;
+
+            if (controller.Other == null)
+            {
+                int nbJoycons = Controllers.Count(j => j.IsJoycon);
+
+                // when we want to have a single joycon in vertical mode
+                bool doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
+                bool joinSelf = nbJoycons == 1 || doNotRejoin;
+
+                if (JoinJoycon(controller, joinSelf))
+                {
+                    _form.JoinJoycon(controller, controller.Other);
+                    change = true;
+                }
+            }
+            else 
+            {
+                Joycon other = controller.Other;
+
+                if (SplitJoycon(controller))
+                {
+                    _form.SplitJoycon(controller, other);
+                    change = true;
+                }
+            }
+
+            return change;
         }
     }
 

@@ -1045,22 +1045,7 @@ namespace BetterJoy
                 {
                     if (_buttonsDownTimestamp[(int)Button.Stick] - _lastDoubleClick < 3000000)
                     {
-                        if (Other == null)
-                        {
-                            if (Program.Mgr.JoinJoycon(this))
-                            {
-                                _form.JoinJoycon(this, Other);
-                            }
-                        }
-                        else
-                        {
-                            Joycon other = Other;
-
-                            if (Program.Mgr.SplitJoycon(this))
-                            {
-                                _form.SplitJoycon(this, other);
-                            }
-                        }
+                        Program.Mgr.JoinOrSplitJoycon(this);
 
                         _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                         return;

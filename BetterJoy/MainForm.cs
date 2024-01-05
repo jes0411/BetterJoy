@@ -22,9 +22,8 @@ namespace BetterJoy
         }
 
         private readonly List<Button> _con;
-
-        private readonly bool _doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
         private readonly List<Button> _loc;
+
         private readonly bool _showAsDs4 = bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
         private readonly bool _showAsXInput = bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
 
@@ -276,28 +275,7 @@ namespace BetterJoy
                 return;
             }
 
-            // Join/Split joycons
-            if (controller.Other == null)
-            {
-                int nbJoycons = Program.Mgr.Controllers.Count(j => j.IsJoycon);
-
-                // when we want to have a single joycon in vertical mode
-                bool joinSelf = nbJoycons == 1 || _doNotRejoin;
-
-                if (Program.Mgr.JoinJoycon(controller, joinSelf))
-                {
-                    JoinJoycon(controller, controller.Other);
-                }
-            }
-            else
-            {
-                Joycon other = controller.Other;
-
-                if (Program.Mgr.SplitJoycon(controller))
-                {
-                    SplitJoycon(controller, other);
-                }
-            }
+            Program.Mgr.JoinOrSplitJoycon(controller);
         }
 
         private void startInTrayBox_CheckedChanged(object sender, EventArgs e)
