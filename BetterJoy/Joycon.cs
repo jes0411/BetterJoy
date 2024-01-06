@@ -1007,7 +1007,7 @@ namespace BetterJoy
             var powerOffButton = (int)(IsPro || !IsLeft || (Other != null && Other != this) ? Button.Home : Button.Capture);
 
             var timestampNow = Stopwatch.GetTimestamp();
-            if (_homeLongPowerOff && _buttons[powerOffButton])
+            if (_homeLongPowerOff && _buttons[powerOffButton] && !IsUSB)
             {
                 var powerOffPressedDurationMs = (timestampNow - _buttonsDownTimestamp[powerOffButton]) / 10000;
                 if (powerOffPressedDurationMs > 2000)
@@ -1038,7 +1038,7 @@ namespace BetterJoy
                 }
             }
 
-            if (_powerOffInactivityMins > 0)
+            if (_powerOffInactivityMins > 0 && !IsUSB)
             {
                 var timeSinceActivityMs = (timestampNow - _timestampActivity) / 10000;
                 if (timeSinceActivityMs > _powerOffInactivityMins * 60 * 1000)

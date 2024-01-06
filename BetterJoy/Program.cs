@@ -450,7 +450,7 @@ namespace BetterJoy
             {
                 controller.StateChanged -= OnControllerStateChanged;
 
-                if (powerOff)
+                if (powerOff && !controller.IsUSB)
                 {
                     controller.PowerOff();
                 }
