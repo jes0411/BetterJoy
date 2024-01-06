@@ -67,7 +67,6 @@ namespace BetterJoy
             NotAttached,
             Errored,
             Dropped,
-            NoJoycons,
             Attached,
             IMUDataOk
         }
@@ -632,7 +631,7 @@ namespace BetterJoy
 
             DisconnectViGEm();
 
-            if (State > Status.NoJoycons)
+            if (State > Status.Dropped)
             {
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
                 //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
@@ -1186,7 +1185,7 @@ namespace BetterJoy
             var buf = new byte[ReportLen];
             _stopPolling = false;
             var attempts = 0;
-            while (!_stopPolling && State > Status.NoJoycons)
+            while (!_stopPolling && State > Status.Dropped)
             {
                 {
                     var data = _rumbleObj.GetData();
@@ -1206,7 +1205,7 @@ namespace BetterJoy
                 {
                     State = Status.Errored;
                     _form.AppendTextBox("Dropped.");
-                    DebugPrint("Connection lost. Is the Joy-Con connected?", DebugType.All);
+                    DebugPrint("Connection lost. Is the controller connected?", DebugType.All);
                 }
                 else if (error == ReceiveError.InvalidHandle)
                 {
