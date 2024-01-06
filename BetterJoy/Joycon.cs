@@ -637,16 +637,21 @@ namespace BetterJoy
                 // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
                 //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
-                if (IsUSB && _handle != IntPtr.Zero)
+                if (_handle != IntPtr.Zero)
                 {
+                    Subcommand(0x3, new byte[] { 0x3F }, 1); // set report mode to simple HID mode
+
                     // Commented because you need to restart the controller to reconnect in usb again with the following
-                    //var buf = new byte[ReportLen];
-                    //buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
-                    //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                    //ReadUSBCheck(buf, 0x5);
-                    //buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
-                    //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                    //ReadUSBCheck(buf, 0x6);
+                    //if (IsUSB)
+                    //{
+                        //var buf = new byte[ReportLen];
+                        //buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
+                        //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
+                        //ReadUSBCheck(buf, 0x5);
+                        //buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
+                        //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
+                        //ReadUSBCheck(buf, 0x6);
+                    //}
                 }
             }
 
