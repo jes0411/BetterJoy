@@ -90,6 +90,9 @@ namespace BetterJoy
         private static readonly bool UseIncrementalLights = bool.Parse(ConfigurationManager.AppSettings["UseIncrementalLights"]);
         private static readonly float DefaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
         private static readonly float AHRSBeta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
+        private static readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
+        private static readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
+        private static readonly float ShakeSensitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
 
         private readonly short[] _accNeutral = { 0, 0, 0 };
         private readonly short[] _accR = { 0, 0, 0 };
@@ -145,8 +148,7 @@ namespace BetterJoy
         private readonly short[] _accLeftHorOffset = { 350, 0, 4081 };
         private readonly short[] _accRightHorOffset = { 350, 0, -4081 };
 
-        private readonly Stopwatch
-                _shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
+        private readonly Stopwatch _shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
 
         private readonly byte[] _sliderVal = { 0, 0 };
         private readonly ushort[] _stickCal = { 0, 0, 0, 0, 0, 0 };
@@ -631,13 +633,13 @@ namespace BetterJoy
 
             DisconnectViGEm();
 
-            if (State > Status.Dropped)
+            if (_handle != IntPtr.Zero)
             {
-                // Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
-                //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
-
-                if (_handle != IntPtr.Zero)
+                if (State > Status.Dropped)
                 {
+                    //Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
+                    //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
+
                     Subcommand(0x3, new byte[] { 0x3F }, 1); // set report mode to simple HID mode
 
                     // Commented because you need to restart the controller to reconnect in usb again with the following
@@ -652,12 +654,12 @@ namespace BetterJoy
                         //ReadUSBCheck(buf, 0x6);
                     //}
                 }
-            }
 
-            if (close && _handle != IntPtr.Zero)
-            {
-                HIDApi.hid_close(_handle);
-                _handle = IntPtr.Zero;
+                if (close)
+                {
+                    HIDApi.hid_close(_handle);
+                    _handle = IntPtr.Zero;
+                }
             }
 
             State = Status.NotAttached;
@@ -766,13 +768,13 @@ namespace BetterJoy
 
         private void DetectShake()
         {
-            if (_form.ShakeInputEnabled)
+            if (ShakeInputEnabled)
             {
                 var currentShakeTime = _shakeTimer.ElapsedMilliseconds;
 
                 // Shake detection logic
-                var isShaking = GetAccel().LengthSquared() >= _form.ShakeSesitivity;
-                if ((isShaking && currentShakeTime >= _shakedTime + _form.ShakeDelay) || (isShaking && _shakedTime == 0))
+                var isShaking = GetAccel().LengthSquared() >= ShakeSensitivity;
+                if ((isShaking && currentShakeTime >= _shakedTime + ShakeDelay) || (isShaking && _shakedTime == 0))
                 {
                     _shakedTime = currentShakeTime;
                     _hasShaked = true;
@@ -1595,12 +1597,12 @@ namespace BetterJoy
 
         private byte[] Subcommand(byte sc, byte[] bufParameters, uint len, bool print = true)
         {
-            var buf = new byte[ReportLen];
-
             if (_handle == IntPtr.Zero)
             {
-                return buf;
+                return null;
             }
+
+            var buf = new byte[ReportLen];
 
             Array.Copy(_defaultBuf, 0, buf, 2, 8);
             Array.Copy(bufParameters, 0, buf, 11, len);

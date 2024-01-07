@@ -6,7 +6,6 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using BetterJoy.Controller;
 using BetterJoy.Properties;
 using Microsoft.Win32;
 
@@ -24,11 +23,6 @@ namespace BetterJoy
         private readonly List<Button> _con;
         private readonly List<Button> _loc;
 
-        private readonly bool _showAsDs4 = bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
-        private readonly bool _showAsXInput = bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
-
-        private readonly bool _toRumble = bool.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
-
         public readonly bool AllowCalibration = bool.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
 
         public readonly List<KeyValuePair<string, short[]>> CaliIMUData;
@@ -36,10 +30,6 @@ namespace BetterJoy
 
         private int _count;
         private Timer _countDown;
-
-        public readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
-        public readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
-        public readonly float ShakeSesitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
 
         private ControllerAction _currentAction = ControllerAction.None;
         private bool _selectController = false;
