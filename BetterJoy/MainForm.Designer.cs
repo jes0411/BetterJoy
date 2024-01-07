@@ -139,6 +139,7 @@
             // 
             // loc4
             // 
+            loc4.Enabled = false;
             loc4.Location = new System.Drawing.Point(231, 92);
             loc4.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             loc4.Name = "loc4";
@@ -149,6 +150,7 @@
             // 
             // loc3
             // 
+            loc3.Enabled = false;
             loc3.Location = new System.Drawing.Point(156, 92);
             loc3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             loc3.Name = "loc3";
@@ -159,6 +161,7 @@
             // 
             // loc2
             // 
+            loc2.Enabled = false;
             loc2.Location = new System.Drawing.Point(82, 92);
             loc2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             loc2.Name = "loc2";
@@ -169,6 +172,7 @@
             // 
             // loc1
             // 
+            loc1.Enabled = false;
             loc1.Location = new System.Drawing.Point(7, 92);
             loc1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             loc1.Name = "loc1";

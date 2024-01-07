@@ -986,6 +986,7 @@ namespace BetterJoy
 
                     _loc[i].Tag = b;
                     _loc[i].Click += LocBtnClickAsync;
+                    _loc[i].Enabled = true;
 
                     break;
                 }
@@ -1022,6 +1023,7 @@ namespace BetterJoy
 
                     _loc[i].Tag = null;
                     _loc[i].Click -= LocBtnClickAsync;
+                    _loc[i].Enabled = false;
 
                     removed = true;
                     break;
