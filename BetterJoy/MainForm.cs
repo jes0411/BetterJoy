@@ -356,9 +356,9 @@ namespace BetterJoy
                 if (keyCtl == "HomeLEDOn")
                 {
                     var on = settings[keyCtl].Value.ToLower() == "true";
-                    foreach (var j in Program.Mgr.Controllers)
+                    foreach (var controller in Program.Mgr.Controllers)
                     {
-                        j.SetHomeLight(on);
+                        Program.Mgr.SetHomeLight(controller, on);
                     }
                 }
 

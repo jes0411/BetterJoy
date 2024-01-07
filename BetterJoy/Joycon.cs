@@ -164,7 +164,6 @@ namespace BetterJoy
         private readonly bool _swapXY = bool.Parse(ConfigurationManager.AppSettings["SwapXY"]);
         private readonly bool _useFilteredIMU = bool.Parse(ConfigurationManager.AppSettings["UseFilteredIMU"]);
 
-        private Joycon _other;
         private Vector3 _accG = Vector3.Zero;
         public bool ActiveGyro;
 
@@ -252,6 +251,8 @@ namespace BetterJoy
         private bool _calibrateSticks = false;
         private bool _calibrateIMU = false;
 
+        public readonly ReaderWriterLockSlim HidapiLock = new ReaderWriterLockSlim();
+
         public Joycon(
             MainForm form,
             IntPtr handle,
@@ -315,27 +316,7 @@ namespace BetterJoy
         public bool IsSNES => Type == ControllerType.SNES;
         public bool IsJoycon => Type is ControllerType.JoyconRight or ControllerType.JoyconLeft;
 
-        public Joycon Other
-        {
-            get => _other;
-            set
-            {
-                _other = value;
-
-                // If the other Joycon is itself, the Joycon is sideways
-                if (_other == null || _other == this)
-                {
-                    // Set LED to current Pad ID
-                    SetLEDByPlayerNum(PadId);
-                }
-                else
-                {
-                    // Set LED to current Joycon Pair
-                    var lowestPadId = Math.Min(_other.PadId, PadId);
-                    SetLEDByPlayerNum(lowestPadId);
-                }
-            }
-        }
+        public Joycon Other;
 
         public byte LED { get; private set; }
 
@@ -363,6 +344,22 @@ namespace BetterJoy
             }
 
             SetPlayerLED(LED);
+        }
+
+        public void SetLEDByPadID()
+        {
+            // If the other Joycon is itself, the Joycon is sideways
+            if (Other == null || Other == this)
+            {
+                // Set LED to current Pad ID
+                SetLEDByPlayerNum(PadId);
+            }
+            else
+            {
+                // Set LED to current Joycon Pair
+                var lowestPadId = Math.Min(Other.PadId, PadId);
+                SetLEDByPlayerNum(lowestPadId);
+            }
         }
 
         public void GetActiveIMUData()
@@ -657,8 +654,16 @@ namespace BetterJoy
 
                 if (close)
                 {
-                    HIDApi.hid_close(_handle);
-                    _handle = IntPtr.Zero;
+                    HidapiLock.EnterWriteLock();
+                    try
+                    {
+                        HIDApi.hid_close(_handle);
+                        _handle = IntPtr.Zero;
+                    }
+                    finally
+                    {
+                        HidapiLock.ExitWriteLock();
+                    }
                 }
             }
 

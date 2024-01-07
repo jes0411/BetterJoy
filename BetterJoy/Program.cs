@@ -348,9 +348,13 @@ namespace BetterJoy
             controller.StateChanged -= OnControllerStateChanged;
             controller.Detach();
 
-            if (controller.Other != null && controller.Other != controller)
+            var otherController = controller.Other;
+
+            if (otherController != null && otherController != controller)
             {
-                controller.Other.Other = null; // The other of the other is the joycon itself
+                otherController.Other = null; // The other of the other is the joycon itself
+                SetLEDByPadID(otherController);
+
                 try
                 {
                     controller.Other.ConnectViGEm();
@@ -488,6 +492,10 @@ namespace BetterJoy
 
                 controller.Other = otherController;
                 otherController.Other = controller;
+
+                SetLEDByPadID(controller);
+                SetLEDByPadID(otherController);
+
                 controller.DisconnectViGEm();
 
                 return true;
@@ -517,8 +525,13 @@ namespace BetterJoy
                 _form.AppendTextBox("Could not connect the virtual controller for the split joycon.");
             }
 
-            controller.Other.Other = null;
+            var otherController =  controller.Other;
+
             controller.Other = null;
+            otherController.Other = null;
+
+            SetLEDByPadID(controller);
+            SetLEDByPadID(otherController);
 
             return true;
         }
@@ -553,6 +566,32 @@ namespace BetterJoy
             }
 
             return change;
+        }
+
+        public void SetLEDByPadID(Joycon controller)
+        {
+            controller.HidapiLock.EnterReadLock();
+            try
+            {
+                controller.SetLEDByPadID();
+            }
+            finally
+            {
+                controller.HidapiLock.ExitReadLock();
+            }
+        }
+
+        public void SetHomeLight(Joycon controller, bool on)
+        {
+            controller.HidapiLock.EnterReadLock();
+            try
+            {
+                controller.SetHomeLight(on);
+            }
+            finally
+            {
+                controller.HidapiLock.ExitReadLock();
+            }
         }
     }
 
