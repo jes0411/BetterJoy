@@ -703,7 +703,9 @@ namespace BetterJoy
                 return ReceiveError.InvalidHandle;
             }
 
-            var length = HIDApi.hid_read_timeout(_handle, buf, new UIntPtr(ReportLen), 5);
+            // The controller should report back at 60hz or between 60-120hz for the Pro Controller in USB
+            var length = HIDApi.hid_read_timeout(_handle, buf, new UIntPtr(ReportLen), 100);
+
             if (length < 0)
             {
                 return ReceiveError.ReadError;
@@ -1195,7 +1197,8 @@ namespace BetterJoy
         {
             var buf = new byte[ReportLen];
             _stopPolling = false;
-            var attempts = 0;
+            Stopwatch timeSinceError = new();
+            int dropAfterMs = IsUSB ? 1500 : 3000;
 
             // For IMU timestamp calculation
             _avgReceiveDeltaMs.Clear();
@@ -1217,9 +1220,9 @@ namespace BetterJoy
                 if (error == ReceiveError.None && State > Status.Dropped)
                 {
                     State = Status.IMUDataOk;
-                    attempts = 0;
+                    timeSinceError.Reset();
                 }
-                else if (attempts > 240)
+                else if (timeSinceError.ElapsedMilliseconds > dropAfterMs)
                 {
                     State = Status.Errored;
                     _form.AppendTextBox("Dropped.");
@@ -1233,13 +1236,13 @@ namespace BetterJoy
                 }
                 else
                 {
+                    timeSinceError.Start();
+
                     // No data read, read error or invalid packet
                     if (error == ReceiveError.ReadError)
                     {
-                        Thread.Sleep(5);
+                        Thread.Sleep(5); // to avoid spin
                     }
-
-                    ++attempts;
                 }
             }
         }
