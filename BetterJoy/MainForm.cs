@@ -940,6 +940,13 @@ namespace BetterJoy
             }
         }
 
+        public static void SetBackgroundImage(Button button, Bitmap bitmap)
+        {
+            var oldImage = button.BackgroundImage;
+            button.BackgroundImage = bitmap;
+            oldImage?.Dispose();
+        }
+
         public void AddController(Joycon j)
         {
             if (InvokeRequired)
@@ -986,7 +993,8 @@ namespace BetterJoy
                     b.Tag = j; // assign controller to button
                     b.Enabled = true;
                     b.Click += ConBtnClick;
-                    b.BackgroundImage = temp;
+                    SetBackgroundImage(b, temp);
+                    
 
                     _loc[i].Tag = b;
                     _loc[i].Click += LocBtnClickAsync;
@@ -1023,7 +1031,7 @@ namespace BetterJoy
                     b.Tag = null;
                     b.Enabled = false;
                     b.Click -= ConBtnClick;
-                    b.BackgroundImage = Resources.cross;
+                    SetBackgroundImage(b, Resources.cross);
 
                     _loc[i].Tag = null;
                     _loc[i].Click -= LocBtnClickAsync;
@@ -1058,7 +1066,7 @@ namespace BetterJoy
                 }
 
                 var currentJoycon = button.Tag == j ? j : other;
-                button.BackgroundImage = currentJoycon.IsLeft ? Resources.jc_left : Resources.jc_right;
+                SetBackgroundImage(button, currentJoycon.IsLeft ? Resources.jc_left : Resources.jc_right);
             }
         }
 
@@ -1078,7 +1086,7 @@ namespace BetterJoy
                 }
 
                 var currentJoycon = button.Tag == j ? j : other;
-                button.BackgroundImage = currentJoycon.IsLeft ? Resources.jc_left_s : Resources.jc_right_s;
+                SetBackgroundImage(button, currentJoycon.IsLeft ? Resources.jc_left_s : Resources.jc_right_s);
             }
         }
     }
