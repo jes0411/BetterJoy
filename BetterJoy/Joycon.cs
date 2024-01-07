@@ -240,8 +240,6 @@ namespace BetterJoy
 
         private long _timestampActivity = Stopwatch.GetTimestamp();
 
-        private byte _tsEn;
-
         public readonly ControllerType Type;
 
         public EventHandler<StateChangedEventArgs> StateChanged;
@@ -252,6 +250,9 @@ namespace BetterJoy
         private bool _calibrateIMU = false;
 
         public readonly ReaderWriterLockSlim HidapiLock = new ReaderWriterLockSlim();
+
+        private Stopwatch _timeSinceReceive = new();
+        private RollingAverage _avgReceiveDeltaMs = new(100); // delta is around 10-16ms, so rolling average over 1000-1600ms 
 
         public Joycon(
             MainForm form,
@@ -719,6 +720,16 @@ namespace BetterJoy
                 return ReceiveError.InvalidPacket;
             }
 
+            // Determine the IMU timestamp with a rolling average instead of relying on the unreliable packet's timestamp
+            // more detailed explanations on why : https://github.com/torvalds/linux/blob/52b1853b080a082ec3749c3a9577f6c71b1d4a90/drivers/hid/hid-nintendo.c#L1115
+            long deltaReceiveMs = 0;
+            if (_timeSinceReceive.IsRunning)
+            {
+                deltaReceiveMs = _timeSinceReceive.ElapsedMilliseconds;
+                _avgReceiveDeltaMs.AddValue((int)deltaReceiveMs);
+            }
+            _timeSinceReceive.Restart();
+
             // clear remaining of buffer just to be safe
             if (length < ReportLen)
             {
@@ -726,15 +737,15 @@ namespace BetterJoy
             }
 
             // Process packets as soon as they come
-            for (var n = 0; n < 3; n++)
+            const int nbPackets = 3;
+            var deltaPacketsMicroseconds = (ulong)(_avgReceiveDeltaMs.GetAverage() / nbPackets * 1000);
+
+            for (var n = 0; n < nbPackets; n++)
             {
                 ExtractIMUValues(buf, n);
 
                 if (n == 0)
                 {
-                    var lag = (byte)Math.Max(0, buf[1] - _tsEn - 3); // why -3 ?
-                    Timestamp += (ulong)lag * 5000; // add lag once
-
                     ProcessButtonsAndStick(buf);
                     DoThingsWithButtons();
 
@@ -746,7 +757,7 @@ namespace BetterJoy
                     }
                 }
 
-                Timestamp += 5000; // 5ms difference
+                Timestamp += deltaPacketsMicroseconds;
 
                 PacketCounter++;
                 Program.Server?.NewReportIncoming(this);
@@ -759,14 +770,7 @@ namespace BetterJoy
             }
             catch { } // ignore
 
-            if (_tsEn == buf[1] && !IsSNES)
-            {
-                //_form.AppendTextBox("Duplicate timestamp enqueued.");
-                DebugPrint($"Duplicate timestamp enqueued. TS: {_tsEn:X2}", DebugType.Threading);
-            }
-
-            _tsEn = buf[1];
-            //DebugPrint($"Enqueue. Bytes read: {length:D}. Type: {buf[0]:X2} Timestamp: {buf[1]:X2}", DebugType.THREADING);
+            //DebugPrint($"Bytes read: {length:D}. Elapsed: {deltaReceiveMs}ms AVG: {_avgReceiveDeltaMs.GetAverage()}ms", DebugType.Threading);
 
             return ReceiveError.None;
         }
@@ -1192,6 +1196,13 @@ namespace BetterJoy
             var buf = new byte[ReportLen];
             _stopPolling = false;
             var attempts = 0;
+
+            // For IMU timestamp calculation
+            _avgReceiveDeltaMs.Clear();
+            _avgReceiveDeltaMs.AddValue(15); // default value of 15ms between packets
+            _timeSinceReceive.Reset();
+            Timestamp = 0;
+
             while (!_stopPolling && State > Status.Dropped)
             {
                 {
@@ -1223,7 +1234,6 @@ namespace BetterJoy
                 else
                 {
                     // No data read, read error or invalid packet
-                    // The controller should report back at 60hz or 120hz for the pro controller
                     if (error == ReceiveError.ReadError)
                     {
                         Thread.Sleep(5);
@@ -2511,6 +2521,48 @@ namespace BetterJoy
                 Ys1 = y1;
                 Xs2 = x2;
                 Ys2 = y2;
+            }
+        }
+
+        class RollingAverage
+        {
+            private Queue<int> _samples;
+            private int _size;
+            private long _sum;
+
+            public RollingAverage(int size)
+            {
+                _size = size;
+                _samples = new Queue<int>(size);
+                _sum = 0;
+            }
+
+            public void AddValue(int value)
+            {
+                if (_samples.Count >= _size)
+                {
+                    int sample = _samples.Dequeue();
+                    _sum -= sample;
+                }
+
+                _samples.Enqueue(value);
+                _sum += value;
+            }
+
+            public void Clear()
+            {
+                _samples.Clear();
+                _sum = 0;
+            }
+
+            public bool Empty()
+            {
+                return _samples.Count == 0;
+            }
+
+            public float GetAverage()
+            {
+                return Empty() ? 0 : _sum / _samples.Count;
             }
         }
     }
