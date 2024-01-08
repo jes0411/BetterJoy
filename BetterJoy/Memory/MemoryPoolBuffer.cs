@@ -6,20 +6,18 @@ namespace BetterJoy.Memory
 {
     public sealed partial class MemoryPool<T>
     {
-#pragma warning disable CS0693 // Type parameter has the same name as the type parameter from outer type
-        private sealed class MemoryPoolBuffer<T> : IMemoryOwner<T>
-#pragma warning restore CS0693 // Type parameter has the same name as the type parameter from outer type
+        private sealed class MemoryPoolBuffer<U> : IMemoryOwner<U>
         {
             private readonly int _length;
-            private T[] _array;
+            private U[] _array;
 
             public MemoryPoolBuffer(int length)
             {
-                _array = ArrayPool<T>.Shared.Rent(length);
+                _array = ArrayPool<U>.Shared.Rent(length);
                 _length = length;
             }
 
-            public Memory<T> Memory
+            public Memory<U> Memory
             {
                 get
                 {
@@ -27,7 +25,7 @@ namespace BetterJoy.Memory
 
                     ObjectDisposedException.ThrowIf(array is null, this);
 
-                    return new Memory<T>(array, 0, _length);
+                    return new Memory<U>(array, 0, _length);
                 }
             }
 
@@ -37,7 +35,7 @@ namespace BetterJoy.Memory
 
                 if (array != null)
                 {
-                    ArrayPool<T>.Shared.Return(array);
+                    ArrayPool<U>.Shared.Return(array);
                 }
             }
         }
