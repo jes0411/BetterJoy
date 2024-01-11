@@ -593,6 +593,19 @@ namespace BetterJoy
                 controller.HidapiLock.ExitReadLock();
             }
         }
+
+        public void PowerOff(Joycon controller)
+        {
+            controller.HidapiLock.EnterReadLock();
+            try
+            {
+                controller.PowerOff();
+            }
+            finally
+            {
+                controller.HidapiLock.ExitReadLock();
+            }
+        }
     }
 
     internal class Program

@@ -1024,7 +1024,10 @@ namespace BetterJoy
                 var powerOffPressedDurationMs = (timestampNow - _buttonsDownTimestamp[powerOffButton]) / 10000;
                 if (powerOffPressedDurationMs > 2000)
                 {
-                    Other?.PowerOff();
+                    if (Other != null)
+                    {
+                        Program.Mgr.PowerOff(Other);
+                    }
                     PowerOff();
                     return;
                 }
@@ -1055,7 +1058,10 @@ namespace BetterJoy
                 var timeSinceActivityMs = (timestampNow - _timestampActivity) / 10000;
                 if (timeSinceActivityMs > _powerOffInactivityMins * 60 * 1000)
                 {
-                    Other?.PowerOff();
+                    if (Other != null)
+                    {
+                        Program.Mgr.PowerOff(Other);
+                    }
                     PowerOff();
                     return;
                 }
