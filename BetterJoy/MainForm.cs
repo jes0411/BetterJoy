@@ -906,38 +906,99 @@ namespace BetterJoy
             notifyIcon.ShowBalloonTip(0);
         }
 
-        public void SetBatteryColor(Joycon j, int batteryLevel)
+        public void SetBatteryColor(Joycon controller, int batteryLevel)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action<Joycon, int>(SetBatteryColor), j, batteryLevel);
+                BeginInvoke(new Action<Joycon, int>(SetBatteryColor), controller, batteryLevel);
                 return;
             }
 
-            foreach (var b in _con)
+            foreach (var button in _con)
             {
-                if (b.Tag == j)
+                if (button.Tag != controller)
                 {
-                    switch (batteryLevel)
-                    {
-                        case 4:
-                            b.BackColor = Color.FromArgb(0xAA, Color.Green);
-                            break;
-                        case 3:
-                            b.BackColor = Color.FromArgb(0xAA, Color.Green);
-                            break;
-                        case 2:
-                            b.BackColor = Color.FromArgb(0xAA, Color.GreenYellow);
-                            break;
-                        case 1:
-                            b.BackColor = Color.FromArgb(0xAA, Color.Orange);
-                            break;
-                        default:
-                            b.BackColor = Color.FromArgb(0xAA, Color.Red);
-                            break;
-                    }
+                    continue;
+                }
+
+                switch (batteryLevel)
+                {
+                    case 4:
+                        button.BackColor = Color.FromArgb(0xAA, Color.Green);
+                        break;
+                    case 3:
+                        button.BackColor = Color.FromArgb(0xAA, Color.Green);
+                        break;
+                    case 2:
+                        button.BackColor = Color.FromArgb(0xAA, Color.GreenYellow);
+                        break;
+                    case 1:
+                        button.BackColor = Color.FromArgb(0xAA, Color.Orange);
+                        break;
+                    default:
+                        button.BackColor = Color.FromArgb(0xAA, Color.Red);
+                        break;
                 }
             }
+        }
+
+        public void SetCharging(Joycon controller, bool charging)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action<Joycon, bool>(SetCharging), controller, charging);
+                return;
+            }
+
+            foreach (var button in _con)
+            {
+                if (button.Tag != controller)
+                {
+                    continue;
+                }
+
+                bool joined = controller.Other != null;
+                SetControllerImage(button, controller.Type, joined, charging);
+            }
+        }
+
+        private void SetControllerImage(Button button, Joycon.ControllerType controllerType, bool joined = false, bool charging = false)
+        {
+            Bitmap temp;
+            switch (controllerType)
+            {
+                case Joycon.ControllerType.JoyconLeft:
+                    if (joined)
+                    {
+                        temp = charging ? Resources.jc_left_charging : Resources.jc_left;
+                    }
+                    else
+                    {
+                        temp = charging ? Resources.jc_left_s_charging : Resources.jc_left_s;
+                    }
+                    break;
+                case Joycon.ControllerType.JoyconRight:
+                    if (joined)
+                    {
+                        temp = charging ? Resources.jc_right_charging : Resources.jc_right;
+                    }
+                    else
+                    {
+                        temp = charging ? Resources.jc_right_s_charging : Resources.jc_right_s;
+                    }
+                    break;
+                case Joycon.ControllerType.Pro:
+                    temp = charging ? Resources.pro_charging : Resources.pro;
+                    break;
+                case Joycon.ControllerType.SNES:
+                    temp = charging ? Resources.snes_charging : Resources.snes;
+                    break;
+                default:
+                    temp = Resources.cross;
+                    break;
+            }
+
+            SetBackgroundImage(button, temp);
         }
 
         public static void SetBackgroundImage(Button button, Bitmap bitmap)
@@ -970,31 +1031,10 @@ namespace BetterJoy
             {
                 if (!b.Enabled)
                 {
-                    Bitmap temp;
-                    switch (j.Type)
-                    {
-                        case Joycon.ControllerType.JoyconLeft:
-                            temp = Resources.jc_left_s;
-                            break;
-                        case Joycon.ControllerType.JoyconRight:
-                            temp = Resources.jc_right_s;
-                            break;
-                        case Joycon.ControllerType.Pro:
-                            temp = Resources.pro;
-                            break;
-                        case Joycon.ControllerType.SNES:
-                            temp = Resources.snes;
-                            break;
-                        default:
-                            temp = Resources.cross;
-                            break;
-                    }
-
                     b.Tag = j; // assign controller to button
                     b.Enabled = true;
                     b.Click += ConBtnClick;
-                    SetBackgroundImage(b, temp);
-                    
+                    SetControllerImage(b, j.Type);
 
                     _loc[i].Tag = b;
                     _loc[i].Click += LocBtnClickAsync;
@@ -1066,7 +1106,7 @@ namespace BetterJoy
                 }
 
                 var currentJoycon = button.Tag == j ? j : other;
-                SetBackgroundImage(button, currentJoycon.IsLeft ? Resources.jc_left : Resources.jc_right);
+                SetControllerImage(button, currentJoycon.Type, true, currentJoycon.Charging);
             }
         }
 
@@ -1086,7 +1126,7 @@ namespace BetterJoy
                 }
 
                 var currentJoycon = button.Tag == j ? j : other;
-                SetBackgroundImage(button, currentJoycon.IsLeft ? Resources.jc_left_s : Resources.jc_right_s);
+                SetControllerImage(button, currentJoycon.Type, false, currentJoycon.Charging);
             }
         }
     }

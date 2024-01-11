@@ -184,7 +184,7 @@
             // con4
             // 
             con4.BackgroundImage = Properties.Resources.cross;
-            con4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con4.Enabled = false;
             con4.Location = new System.Drawing.Point(231, 23);
             con4.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -197,7 +197,7 @@
             // con3
             // 
             con3.BackgroundImage = Properties.Resources.cross;
-            con3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con3.Enabled = false;
             con3.Location = new System.Drawing.Point(156, 23);
             con3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -210,7 +210,7 @@
             // con2
             // 
             con2.BackgroundImage = Properties.Resources.cross;
-            con2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con2.Enabled = false;
             con2.Location = new System.Drawing.Point(82, 23);
             con2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -223,7 +223,7 @@
             // con1
             // 
             con1.BackgroundImage = Properties.Resources.cross;
-            con1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            con1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con1.Enabled = false;
             con1.Location = new System.Drawing.Point(7, 23);
             con1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);

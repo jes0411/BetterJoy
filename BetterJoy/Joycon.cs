@@ -172,6 +172,7 @@ namespace BetterJoy
         private ushort _activeStick2DeadZoneData;
 
         public int Battery = -1;
+        public bool Charging = false;
 
         public readonly int Connection = 3;
         public readonly int Constate = 2;
@@ -607,11 +608,16 @@ namespace BetterJoy
             // battery changed level
             _form.SetBatteryColor(this, Battery);
 
-            if (!IsUSB && Battery <= 1)
+            if (!IsUSB && !Charging && Battery <= 1)
             {
                 var msg = $"Controller {PadId} ({GetControllerName()}) - low battery notification!";
                 _form.Tooltip(msg);
             }
+        }
+
+        private void ChargingChanged()
+        {
+            _form.SetCharging(this, Charging);
         }
 
         public void SetFilterCoeff(float a)
@@ -750,13 +756,7 @@ namespace BetterJoy
                 {
                     ProcessButtonsAndStick(buf);
                     DoThingsWithButtons();
-
-                    var prevBattery = Battery;
-                    Battery = (buf[2] >> 4) / 2;
-                    if (prevBattery != Battery)
-                    {
-                        BatteryChanged();
-                    }
+                    GetBatteryInfos(buf);
                 }
 
                 Timestamp += deltaPacketsMicroseconds;
@@ -1190,6 +1190,26 @@ namespace BetterJoy
                                     .Invoke();
                     }
                 }
+            }
+        }
+
+        private void GetBatteryInfos(byte[] reportBuf)
+        {
+            var prevBattery = Battery;
+            var prevCharging = Charging;
+
+            byte highNibble = (byte)(reportBuf[2] >> 4);
+            Battery = highNibble / 2;
+            Charging = (highNibble & 0x1) == 1;
+
+            if (prevBattery != Battery)
+            {
+                BatteryChanged();
+            }
+
+            if (prevCharging != Charging)
+            {
+                ChargingChanged();
             }
         }
 
