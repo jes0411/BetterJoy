@@ -387,8 +387,8 @@ namespace BetterJoy
 
         public ushort CalculateDeadzone(ushort[] stickDatas, float deadzone)
         {
-            var deadzone1 = (ushort)Math.Round(Math.Abs(stickDatas[0] + stickDatas[4]) * deadzone);
-            var deadzone2 = (ushort)Math.Round(Math.Abs(stickDatas[1] + stickDatas[5]) * deadzone);
+            var deadzone1 = (ushort)Math.Round(Math.Abs(stickDatas[0] + stickDatas[4]) * deadzone / 2);
+            var deadzone2 = (ushort)Math.Round(Math.Abs(stickDatas[1] + stickDatas[5]) * deadzone / 2);
 
             return Math.Max(deadzone1, deadzone2);
         }
