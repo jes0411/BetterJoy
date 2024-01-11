@@ -867,32 +867,6 @@ namespace BetterJoy
             return CaliSticksData[0].Value;
         }
 
-        private int FindSerIMU(string serNum)
-        {
-            for (var i = 0; i < CaliIMUData.Count; i++)
-            {
-                if (CaliIMUData[i].Key == serNum)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
-        private int FindSerSticks(string serNum)
-        {
-            for (var i = 0; i < CaliSticksData.Count; i++)
-            {
-                if (CaliSticksData[i].Key == serNum)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
         public void Tooltip(string msg)
         {
             if (InvokeRequired)
@@ -1008,11 +982,11 @@ namespace BetterJoy
             oldImage?.Dispose();
         }
 
-        public void AddController(Joycon j)
+        public void AddController(Joycon controller)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action<Joycon>(AddController), j);
+                BeginInvoke(new Action<Joycon>(AddController), controller);
                 return;
             }
 
@@ -1027,16 +1001,16 @@ namespace BetterJoy
             }
 
             var i = 0;
-            foreach (var b in _con)
+            foreach (var button in _con)
             {
-                if (!b.Enabled)
+                if (!button.Enabled)
                 {
-                    b.Tag = j; // assign controller to button
-                    b.Enabled = true;
-                    b.Click += ConBtnClick;
-                    SetControllerImage(b, j.Type);
+                    button.Tag = controller; // assign controller to button
+                    button.Enabled = true;
+                    button.Click += ConBtnClick;
+                    SetControllerImage(button, controller.Type);
 
-                    _loc[i].Tag = b;
+                    _loc[i].Tag = button;
                     _loc[i].Click += LocBtnClickAsync;
                     _loc[i].Enabled = true;
 
@@ -1047,11 +1021,11 @@ namespace BetterJoy
             }
         }
 
-        public void RemoveController(Joycon j)
+        public void RemoveController(Joycon controller)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action<Joycon>(RemoveController), j);
+                BeginInvoke(new Action<Joycon>(RemoveController), controller);
                 return;
             }
 
@@ -1063,15 +1037,15 @@ namespace BetterJoy
 
             bool removed = false;
             int i = 0;
-            foreach (var b in _con)
+            foreach (var button in _con)
             {
-                if (b.Enabled && (b.Tag == j))
+                if (button.Enabled && button.Tag == controller)
                 {
-                    b.BackColor = Color.FromArgb(0x00, SystemColors.Control);
-                    b.Tag = null;
-                    b.Enabled = false;
-                    b.Click -= ConBtnClick;
-                    SetBackgroundImage(b, Resources.cross);
+                    button.BackColor = Color.FromArgb(0x00, SystemColors.Control);
+                    button.Tag = null;
+                    button.Enabled = false;
+                    button.Click -= ConBtnClick;
+                    SetBackgroundImage(button, Resources.cross);
 
                     _loc[i].Tag = null;
                     _loc[i].Click -= LocBtnClickAsync;
@@ -1090,42 +1064,42 @@ namespace BetterJoy
             }
         }
 
-        public void JoinJoycon(Joycon j, Joycon other)
+        public void JoinJoycon(Joycon controller, Joycon other)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action<Joycon, Joycon>(JoinJoycon), j, other);
+                BeginInvoke(new Action<Joycon, Joycon>(JoinJoycon), controller, other);
                 return;
             }
 
             foreach (var button in _con)
             {
-                if (button.Tag != j && button.Tag != other)
+                if (button.Tag != controller && button.Tag != other)
                 {
                     continue;
                 }
 
-                var currentJoycon = button.Tag == j ? j : other;
+                var currentJoycon = button.Tag == controller ? controller : other;
                 SetControllerImage(button, currentJoycon.Type, true, currentJoycon.Charging);
             }
         }
 
-        public void SplitJoycon(Joycon j, Joycon other)
+        public void SplitJoycon(Joycon controller, Joycon other)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action<Joycon, Joycon>(SplitJoycon), j, other);
+                BeginInvoke(new Action<Joycon, Joycon>(SplitJoycon), controller, other);
                 return;
             }
 
             foreach (var button in _con)
             {
-                if (button.Tag != j && button.Tag != other)
+                if (button.Tag != controller && button.Tag != other)
                 {
                     continue;
                 }
 
-                var currentJoycon = button.Tag == j ? j : other;
+                var currentJoycon = button.Tag == controller ? controller : other;
                 SetControllerImage(button, currentJoycon.Type, false, currentJoycon.Charging);
             }
         }
