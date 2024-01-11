@@ -514,7 +514,7 @@ namespace BetterJoy
                 }
                 else
                 {
-                    var imuData = ActiveCaliIMUData(controller.SerialNumber, true);
+                    var imuData = ActiveCaliIMUData(controller.SerialOrMac, true);
 
                     var rnd = new Random();
 
@@ -618,7 +618,7 @@ namespace BetterJoy
                     return;
                 }
 
-                var stickData = ActiveCaliSticksData(controller.SerialNumber, true);
+                var stickData = ActiveCaliSticksData(controller.SerialOrMac, true);
                 var leftStickData = stickData.AsSpan(0, 6);
                 var rightStickData = stickData.AsSpan(6, 6);
 
@@ -715,7 +715,7 @@ namespace BetterJoy
                     return;
                 }
 
-                var stickData = ActiveCaliSticksData(controller.SerialNumber, true);
+                var stickData = ActiveCaliSticksData(controller.SerialOrMac, true);
                 var leftStickData = stickData.AsSpan(0, 6);
                 var rightStickData = stickData.AsSpan(6, 6);
 

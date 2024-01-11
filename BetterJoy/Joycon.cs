@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Numerics;
@@ -214,6 +215,9 @@ namespace BetterJoy
         private Rumble _rumbleObj;
 
         public readonly string SerialNumber;
+
+        public string SerialOrMac;
+
         private long _shakedTime;
 
         private Status _state;
@@ -271,6 +275,7 @@ namespace BetterJoy
         {
             _form = form;
             SerialNumber = serialNum;
+            SerialOrMac = serialNum;
             _activeIMUData = new short[6];
             _activeStick1Data = new ushort[6];
             _activeStick2Data = new ushort[6];
@@ -366,13 +371,13 @@ namespace BetterJoy
 
         public void GetActiveIMUData()
         {
-            _activeIMUData = _form.ActiveCaliIMUData(SerialNumber);
+            _activeIMUData = _form.ActiveCaliIMUData(SerialOrMac);
         }
 
         public void GetActiveSticksData()
         {
             {
-                var activeSticksData = _form.ActiveCaliSticksData(SerialNumber);
+                var activeSticksData = _form.ActiveCaliSticksData(SerialOrMac);
                 Array.Copy(activeSticksData, _activeStick1Data, 6);
                 Array.Copy(activeSticksData, 6, _activeStick2Data, 0, 6);
             }
@@ -478,10 +483,8 @@ namespace BetterJoy
                     throw new Exception("reset mac");
                 }
 
-                if (buf[3] == 0x3)
-                {
-                    PadMacAddress = new PhysicalAddress(new[] { buf[9], buf[8], buf[7], buf[6], buf[5], buf[4] });
-                }
+                PadMacAddress = new PhysicalAddress(new[] { buf[9], buf[8], buf[7], buf[6], buf[5], buf[4] });
+                SerialOrMac = PadMacAddress.ToString().ToLower();
 
                 // USB Pairing
                 buf[0] = 0x80;
@@ -519,6 +522,22 @@ namespace BetterJoy
             else
             {
                 _form.AppendTextBox("Using Bluetooth.");
+
+                // Serial = MAC address of the controller in bluetooth
+                var mac = new byte[6];
+                try
+                {
+                    for (var n = 0; n < 6 && n < SerialNumber.Length; n++)
+                    {
+                        mac[n] = byte.Parse(SerialNumber.AsSpan(n * 2, 2), NumberStyles.HexNumber);
+                    }
+                }
+                catch (Exception)
+                {
+                    // could not parse mac address
+                }
+
+                PadMacAddress = new PhysicalAddress(mac);
             }
 
             var ok = DumpCalibrationData();

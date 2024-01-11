@@ -278,21 +278,6 @@ namespace BetterJoy
             );
             controller.StateChanged += OnControllerStateChanged;
 
-            var mac = new byte[6];
-            try
-            {
-                for (var n = 0; n < 6 && n < serial.Length; n++)
-                {
-                    mac[n] = byte.Parse(serial.AsSpan(n * 2, 2), NumberStyles.HexNumber);
-                }
-            }
-            catch (Exception)
-            {
-                // could not parse mac address
-            }
-
-            controller.PadMacAddress = new PhysicalAddress(mac);
-
             // Connect device straight away
             try
             {
