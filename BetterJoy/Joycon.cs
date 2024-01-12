@@ -766,7 +766,10 @@ namespace BetterJoy
 
             // Process packets as soon as they come
             const int nbPackets = 3;
-            var deltaPacketsMicroseconds = (ulong)(_avgReceiveDeltaMs.GetAverage() / nbPackets * 1000);
+
+            var deltaPacketsMs = _avgReceiveDeltaMs.GetAverage() / nbPackets;
+            var deltaPacketsMicroseconds = (ulong)(deltaPacketsMs * 1000);
+             _AHRS.SamplePeriod = deltaPacketsMs / 1000;
 
             for (var n = 0; n < nbPackets; n++)
             {
@@ -1093,7 +1096,7 @@ namespace BetterJoy
 
             // Filtered IMU data
             _AHRS.GetEulerAngles(_curRotation);
-            const float dt = 0.015f; // 15ms
+            float dt = _avgReceiveDeltaMs.GetAverage() / 1000;
 
             if (_gyroAnalogSliders && (Other != null || IsPro))
             {
