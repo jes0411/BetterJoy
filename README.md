@@ -2,7 +2,7 @@
   <img src="title.png">
 </p>
 
-# BetterJoy v8.2 LTS
+# BetterJoy v8.3 LTS
 #### Fork changes
  - fixed a good amount of bugs, crashes, controller connection/disconnection issues.
  - added the calibration of the controller with the calibrate button (have to be enabled in the config).
