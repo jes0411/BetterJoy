@@ -1623,22 +1623,19 @@ namespace BetterJoy
                 float normalizedMagnitude = Math.Min(1.0f, (magnitude - deadzone) / (range - deadzone));
                 float scale = normalizedMagnitude / magnitude;
                 
-                stick[0] = normalizedX * scale;
-                stick[1] = normalizedY * scale;
+                stick[0] = Math.Clamp(normalizedX * scale, -1.0f, 1.0f);
+                stick[1] = Math.Clamp(normalizedY * scale, -1.0f, 1.0f);
             }
         }
 
         private static short CastStickValue(float stickValue)
         {
-            return (short)Math.Max(
-                short.MinValue,
-                Math.Min(short.MaxValue, stickValue * (stickValue > 0 ? short.MaxValue : -short.MinValue))
-            );
+            return (short)Math.Round(stickValue * (stickValue > 0 ? short.MaxValue : -short.MinValue));
         }
 
         private static byte CastStickValueByte(float stickValue)
         {
-            return (byte)Math.Max(byte.MinValue, Math.Min(byte.MaxValue, 127 - stickValue * byte.MaxValue));
+            return (byte)Math.Round((stickValue + 1.0f) / 2 * byte.MaxValue);
         }
 
         public void SetRumble(float lowFreq, float highFreq, float amp)
@@ -2343,16 +2340,19 @@ namespace BetterJoy
                 if (other != null || isPro)
                 {
                     // no need for && other != this
-                    output.ThumbLeftX = CastStickValueByte(other == input && !isLeft ? -stick2[0] : -stick[0]);
-                    output.ThumbLeftY = CastStickValueByte(other == input && !isLeft ? stick2[1] : stick[1]);
-                    output.ThumbRightX = CastStickValueByte(other == input && !isLeft ? -stick[0] : -stick2[0]);
-                    output.ThumbRightY = CastStickValueByte(other == input && !isLeft ? stick[1] : stick2[1]);
+                    output.ThumbLeftX = CastStickValueByte(other == input && !isLeft ? stick2[0] : stick[0]);
+                    output.ThumbLeftY = CastStickValueByte(other == input && !isLeft ? -stick2[1] : -stick[1]);
+                    output.ThumbRightX = CastStickValueByte(other == input && !isLeft ? stick[0] : stick2[0]);
+                    output.ThumbRightY = CastStickValueByte(other == input && !isLeft ? -stick[1] : -stick2[1]);
+
+                    //input.DebugPrint($"X:{-stick[0]:0.00} Y:{stick[1]:0.00}", DebugType.Threading);
+                    //input.DebugPrint($"X:{output.ThumbLeftX} Y:{output.ThumbLeftY}", DebugType.Threading);
                 }
                 else
                 {
                     // single joycon mode
-                    output.ThumbLeftY = CastStickValueByte((isLeft ? 1 : -1) * stick[0]);
-                    output.ThumbLeftX = CastStickValueByte((isLeft ? 1 : -1) * stick[1]);
+                    output.ThumbLeftY = CastStickValueByte((isLeft ? 1 : -1) * -stick[0]);
+                    output.ThumbLeftX = CastStickValueByte((isLeft ? 1 : -1) * -stick[1]);
                 }
             }
 
