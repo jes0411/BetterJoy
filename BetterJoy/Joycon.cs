@@ -397,22 +397,22 @@ namespace BetterJoy
         public void ReceiveRumble(Xbox360FeedbackReceivedEventArgs e)
         {
             DebugPrint("Rumble data Received: XInput", DebugType.Rumble);
-            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
 
             if (Other != null && Other != this)
             {
-                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
             }
         }
 
         public void Ds4_FeedbackReceived(DualShock4FeedbackReceivedEventArgs e)
         {
             DebugPrint("Rumble data Received: DS4", DebugType.Rumble);
-            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
 
             if (Other != null && Other != this)
             {
-                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / (float)255);
+                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
             }
         }
 
@@ -1613,7 +1613,7 @@ namespace BetterJoy
             float normalizedX = dx / (dx > 0 ? cal[0] : cal[4]);
             float normalizedY = dy / (dy > 0 ? cal[1] : cal[5]);
 
-            float magnitude = (float)Math.Sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+            float magnitude = MathF.Sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
 
             if (magnitude <= deadzone || range <= deadzone)
             {  
@@ -1633,12 +1633,12 @@ namespace BetterJoy
 
         private static short CastStickValue(float stickValue)
         {
-            return (short)Math.Round(stickValue * (stickValue > 0 ? short.MaxValue : -short.MinValue));
+            return (short)MathF.Round(stickValue * (stickValue > 0 ? short.MaxValue : -short.MinValue));
         }
 
         private static byte CastStickValueByte(float stickValue)
         {
-            return (byte)Math.Round((stickValue + 1.0f) / 2 * byte.MaxValue);
+            return (byte)MathF.Round((stickValue + 1.0f) * 0.5F * byte.MaxValue);
         }
 
         public void SetRumble(float lowFreq, float highFreq, float amp)
@@ -2474,15 +2474,15 @@ namespace BetterJoy
                 }
                 else if (amp < 0.117)
                 {
-                    enAmp = (byte)((Math.Log(amp * 1000, 2) * 32 - 0x60) / (5 - Math.Pow(amp, 2)) - 1);
+                    enAmp = (byte)((MathF.Log(amp * 1000, 2) * 32 - 0x60) / (5 - MathF.Pow(amp, 2)) - 1);
                 }
                 else if (amp < 0.23)
                 {
-                    enAmp = (byte)(Math.Log(amp * 1000, 2) * 32 - 0x60 - 0x5c);
+                    enAmp = (byte)(MathF.Log(amp * 1000, 2) * 32 - 0x60 - 0x5c);
                 }
                 else
                 {
-                    enAmp = (byte)((Math.Log(amp * 1000, 2) * 32 - 0x60) * 2 - 0xf6);
+                    enAmp = (byte)((MathF.Log(amp * 1000, 2) * 32 - 0x60) * 2 - 0xf6);
                 }
 
                 return enAmp;
@@ -2528,11 +2528,11 @@ namespace BetterJoy
                     queuedData[1] = Math.Clamp(queuedData[1], 81.75177f, 1252.572266f);
                     queuedData[2] = Math.Clamp(queuedData[2], 0.0f, 1.0f);
 
-                    var hf = (ushort)((Math.Round(32f * Math.Log(queuedData[1] * 0.1f, 2)) - 0x60) * 4);
-                    var lf = (byte)(Math.Round(32f * Math.Log(queuedData[0] * 0.1f, 2)) - 0x40);
+                    var hf = (ushort)((MathF.Round(32f * MathF.Log(queuedData[1] * 0.1f, 2)) - 0x60) * 4);
+                    var lf = (byte)(MathF.Round(32f * MathF.Log(queuedData[0] * 0.1f, 2)) - 0x40);
 
                     var hfAmp = EncodeAmp(queuedData[2]);
-                    var lfAmp = (ushort)(Math.Round((double)hfAmp) * 0.5f);
+                    var lfAmp = (ushort)(MathF.Round(hfAmp) * 0.5f); // weird rounding, is that correct ?
 
                     var parity = (byte)(lfAmp % 2);
                     if (parity > 0)

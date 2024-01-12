@@ -109,7 +109,7 @@ namespace BetterJoy
             var q4Q4 = q4 * q4;
 
             // Normalise accelerometer measurement
-            norm = (float)Math.Sqrt(ax * ax + ay * ay + az * az);
+            norm = MathF.Sqrt(ax * ax + ay * ay + az * az);
             if (norm == 0f)
             {
                 return; // handle NaN
@@ -125,7 +125,7 @@ namespace BetterJoy
             s2 = _4q2 * q4Q4 - _2q4 * ax + 4f * q1Q1 * q2 - _2q1 * ay - _4q2 + _8q2 * q2Q2 + _8q2 * q3Q3 + _4q2 * az;
             s3 = 4f * q1Q1 * q3 + _2q1 * ax + _4q3 * q4Q4 - _2q4 * ay - _4q3 + _8q3 * q2Q2 + _8q3 * q3Q3 + _4q3 * az;
             s4 = 4f * q2Q2 * q4 - _2q2 * ax + 4f * q3Q3 * q4 - _2q3 * ay;
-            norm = 1f / (float)Math.Sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
+            norm = 1f / MathF.Sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
             s1 *= norm;
             s2 *= norm;
             s3 *= norm;
@@ -142,7 +142,7 @@ namespace BetterJoy
             q2 += qDot2 * SamplePeriod;
             q3 += qDot3 * SamplePeriod;
             q4 += qDot4 * SamplePeriod;
-            norm = 1f / (float)Math.Sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4); // normalise quaternion
+            norm = 1f / MathF.Sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4); // normalise quaternion
             Quaternion[0] = q1 * norm;
             Quaternion[1] = q2 * norm;
             Quaternion[2] = q3 * norm;
@@ -155,9 +155,9 @@ namespace BetterJoy
 
             float q0 = Quaternion[0], q1 = Quaternion[1], q2 = Quaternion[2], q3 = Quaternion[3];
             float sq1 = q1 * q1, sq2 = q2 * q2, sq3 = q3 * q3;
-            angles[0] = (float)Math.Asin(2f * (q0 * q2 - q3 * q1)); // Pitch 
-            angles[1] = (float)Math.Atan2(2f * (q0 * q3 + q1 * q2), 1 - 2f * (sq2 + sq3)); // Yaw
-            angles[2] = (float)Math.Atan2(2f * (q0 * q1 + q2 * q3), 1 - 2f * (sq1 + sq2)); // Roll 
+            angles[0] = MathF.Asin(2f * (q0 * q2 - q3 * q1)); // Pitch 
+            angles[1] = MathF.Atan2(2f * (q0 * q3 + q1 * q2), 1 - 2f * (sq2 + sq3)); // Yaw
+            angles[2] = MathF.Atan2(2f * (q0 * q1 + q2 * q3), 1 - 2f * (sq1 + sq2)); // Roll 
 
             Array.Copy(angles, OldPitchYawRoll, 3);
         }
