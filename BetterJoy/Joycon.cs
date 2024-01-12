@@ -2464,21 +2464,6 @@ namespace BetterJoy
                 _queue.Enqueue(rumbleInfo);
             }
 
-            private float Clamp(float x, float min, float max)
-            {
-                if (x < min)
-                {
-                    return min;
-                }
-
-                if (x > max)
-                {
-                    return max;
-                }
-
-                return x;
-            }
-
             private byte EncodeAmp(float amp)
             {
                 byte enAmp;
@@ -2539,16 +2524,16 @@ namespace BetterJoy
                 }
                 else
                 {
-                    queuedData[0] = Clamp(queuedData[0], 40.875885f, 626.286133f);
-                    queuedData[1] = Clamp(queuedData[1], 81.75177f, 1252.572266f);
-
-                    queuedData[2] = Clamp(queuedData[2], 0.0f, 1.0f);
+                    queuedData[0] = Math.Clamp(queuedData[0], 40.875885f, 626.286133f);
+                    queuedData[1] = Math.Clamp(queuedData[1], 81.75177f, 1252.572266f);
+                    queuedData[2] = Math.Clamp(queuedData[2], 0.0f, 1.0f);
 
                     var hf = (ushort)((Math.Round(32f * Math.Log(queuedData[1] * 0.1f, 2)) - 0x60) * 4);
                     var lf = (byte)(Math.Round(32f * Math.Log(queuedData[0] * 0.1f, 2)) - 0x40);
-                    var hfAmp = EncodeAmp(queuedData[2]);
 
-                    var lfAmp = (ushort)(Math.Round((double)hfAmp) * .5);
+                    var hfAmp = EncodeAmp(queuedData[2]);
+                    var lfAmp = (ushort)(Math.Round((double)hfAmp) * 0.5f);
+
                     var parity = (byte)(lfAmp % 2);
                     if (parity > 0)
                     {
