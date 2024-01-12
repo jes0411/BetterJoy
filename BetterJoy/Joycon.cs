@@ -1116,7 +1116,7 @@ namespace BetterJoy
 
                 if (_buttons[(int)leftT])
                 {
-                    _sliderVal[0] = (byte)Math.Min(byte.MaxValue, Math.Max(0, _sliderVal[0] + ldy));
+                    _sliderVal[0] = (byte)Math.Clamp(_sliderVal[0] + ldy, 0, byte.MaxValue);
                 }
                 else
                 {
@@ -1125,7 +1125,7 @@ namespace BetterJoy
 
                 if (_buttons[(int)rightT])
                 {
-                    _sliderVal[1] = (byte)Math.Min(byte.MaxValue, Math.Max(0, _sliderVal[1] + rdy));
+                    _sliderVal[1] = (byte)Math.Clamp(_sliderVal[1] + rdy, 0, byte.MaxValue);
                 }
                 else
                 {
@@ -1175,8 +1175,8 @@ namespace BetterJoy
                         dy = -(_gyroStickSensitivityY * (_gyrG.Y * dt)); // pitch
                     }
 
-                    controlStick[0] = Math.Max(-1.0f, Math.Min(1.0f, controlStick[0] / _gyroStickReduction + dx));
-                    controlStick[1] = Math.Max(-1.0f, Math.Min(1.0f, controlStick[1] / _gyroStickReduction + dy));
+                    controlStick[0] = Math.Clamp(controlStick[0] / _gyroStickReduction + dx, -1.0f, 1.0f);
+                    controlStick[1] = Math.Clamp(controlStick[1] / _gyroStickReduction + dy, -1.0f, 1.0f);
                 }
             }
             else if (_extraGyroFeature == "mouse" &&
