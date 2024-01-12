@@ -90,6 +90,7 @@ namespace BetterJoy
         private static readonly bool ShowAsDs4 = bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
         private static readonly bool UseIncrementalLights = bool.Parse(ConfigurationManager.AppSettings["UseIncrementalLights"]);
         private static readonly float DefaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
+        private static readonly float DefaultRange = float.Parse(ConfigurationManager.AppSettings["SticksRange"]);
         private static readonly float AHRSBeta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
         private static readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
         private static readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
@@ -99,8 +100,8 @@ namespace BetterJoy
         private readonly short[] _accR = { 0, 0, 0 };
 
         private readonly short[] _accSensiti = { 0, 0, 0 };
-        private readonly ushort[] _activeStick1Data;
-        private readonly ushort[] _activeStick2Data;
+        private readonly ushort[] _activeStick1;
+        private readonly ushort[] _activeStick2;
 
         private readonly MadgwickAHRS _AHRS = new(0.005f, AHRSBeta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
@@ -152,35 +153,40 @@ namespace BetterJoy
         private readonly Stopwatch _shakeTimer = Stopwatch.StartNew(); //Setup a timer for measuring shake in milliseconds
 
         private readonly byte[] _sliderVal = { 0, 0 };
+
+        private readonly byte[] _stickRaw = { 0, 0, 0 };
         private readonly ushort[] _stickCal = { 0, 0, 0, 0, 0, 0 };
         private readonly ushort[] _stickPrecal = { 0, 0 };
 
-        private readonly byte[] _stickRaw = { 0, 0, 0 };
+        private readonly byte[] _stick2Raw = { 0, 0, 0 };
         private readonly ushort[] _stick2Cal = { 0, 0, 0, 0, 0, 0 };
         private readonly ushort[] _stick2Precal = { 0, 0 };
-
-        private readonly byte[] _stick2Raw = { 0, 0, 0 };
 
         private readonly bool _swapAB = bool.Parse(ConfigurationManager.AppSettings["SwapAB"]);
         private readonly bool _swapXY = bool.Parse(ConfigurationManager.AppSettings["SwapXY"]);
         private readonly bool _useFilteredIMU = bool.Parse(ConfigurationManager.AppSettings["UseFilteredIMU"]);
+        private readonly DebugType _debugType = (DebugType)int.Parse(ConfigurationManager.AppSettings["DebugType"]);
 
         private Vector3 _accG = Vector3.Zero;
         public bool ActiveGyro;
 
         private short[] _activeIMUData;
-        private ushort _activeStick1DeadZoneData;
-        private ushort _activeStick2DeadZoneData;
+        private float _activeStick1Deadzone;
+        private float _activeStick2Deadzone;
+        private float _activeStick1Range;
+        private float _activeStick2Range;
 
         public int Battery = -1;
         public bool Charging = false;
 
         public readonly int Connection = 3;
         public readonly int Constate = 2;
-        private ushort _deadzone;
-        private ushort _deadzone2;
-        private readonly DebugType _debugType = (DebugType)int.Parse(ConfigurationManager.AppSettings["DebugType"]);
 
+        private float _deadzone;
+        private float _deadzone2;
+        private float _range;
+        private float _range2;
+        
         private bool _doLocalize;
         private float _filterweight;
 
@@ -277,8 +283,8 @@ namespace BetterJoy
             SerialNumber = serialNum;
             SerialOrMac = serialNum;
             _activeIMUData = new short[6];
-            _activeStick1Data = new ushort[6];
-            _activeStick2Data = new ushort[6];
+            _activeStick1 = new ushort[6];
+            _activeStick2 = new ushort[6];
             _handle = handle;
             _IMUEnabled = imu;
             _doLocalize = localize;
@@ -378,19 +384,14 @@ namespace BetterJoy
         {
             {
                 var activeSticksData = _form.ActiveCaliSticksData(SerialOrMac);
-                Array.Copy(activeSticksData, _activeStick1Data, 6);
-                Array.Copy(activeSticksData, 6, _activeStick2Data, 0, 6);
+                Array.Copy(activeSticksData, _activeStick1, 6);
+                Array.Copy(activeSticksData, 6, _activeStick2, 0, 6);
             }
-            _activeStick1DeadZoneData = CalculateDeadzone(_activeStick1Data, DefaultDeadzone);
-            _activeStick2DeadZoneData = CalculateDeadzone(_activeStick2Data, DefaultDeadzone);
-        }
+            _activeStick1Deadzone = DefaultDeadzone;
+            _activeStick2Deadzone = DefaultDeadzone;
 
-        public ushort CalculateDeadzone(ushort[] stickDatas, float deadzone)
-        {
-            var deadzone1 = (ushort)Math.Round(Math.Abs(stickDatas[0] + stickDatas[4]) * deadzone / 2);
-            var deadzone2 = (ushort)Math.Round(Math.Abs(stickDatas[1] + stickDatas[5]) * deadzone / 2);
-
-            return Math.Max(deadzone1, deadzone2);
+            _activeStick1Range = DefaultRange;
+            _activeStick2Range = DefaultRange;
         }
 
         public void ReceiveRumble(Xbox360FeedbackReceivedEventArgs e)
@@ -1314,14 +1315,16 @@ namespace BetterJoy
 
                 var cal = _stickCal;
                 var dz = _deadzone;
+                var range = _range;
 
                 if (_form.AllowCalibration)
                 {
-                    cal = _activeStick1Data;
-                    dz = _activeStick1DeadZoneData;
+                    cal = _activeStick1;
+                    dz = _activeStick1Deadzone;
+                    range = _activeStick1Range;
                 }
 
-                CalculateStickCenter(_stickPrecal, cal, dz, _stick);
+                CalculateStickCenter(_stickPrecal, cal, dz, range, _stick);
 
                 if (IsPro)
                 {
@@ -1330,14 +1333,16 @@ namespace BetterJoy
 
                     cal = _stick2Cal;
                     dz = _deadzone2;
+                    range = _range2;
 
                     if (_form.AllowCalibration)
                     {
-                        cal = _activeStick2Data;
-                        dz = _activeStick2DeadZoneData;
+                        cal = _activeStick2;
+                        dz = _activeStick2Deadzone;
+                        range = _activeStick2Range;
                     }
 
-                    CalculateStickCenter(_stick2Precal, cal, dz, _stick2);
+                    CalculateStickCenter(_stick2Precal, cal, dz, range, _stick2);
                 }
 
                 if (_calibrateSticks)
@@ -1352,7 +1357,7 @@ namespace BetterJoy
                 }
                 else
                 {
-                    //DebugPrint($"Stick1: X={stick[0]} Y={stick[1]}. Stick2: X={stick2[0]} Y={stick2[1]}", DebugType.THREADING);
+                    //DebugPrint($"X1={_stick[0]:0.00} Y1={_stick[1]:0.00}. X2={_stick2[0]:0.00} Y2={_stick2[1]:0.00}", DebugType.Threading);
                 }
 
                 // Read other Joycon's sticks
@@ -1597,20 +1602,29 @@ namespace BetterJoy
             }
         }
 
-        private void CalculateStickCenter(ushort[] vals, ushort[] cal, ushort dz, float[] stick)
+        private void CalculateStickCenter(ushort[] vals, ushort[] cal, float deadzone, float range, float[] stick)
         {
             float dx = vals[0] - cal[2];
             float dy = vals[1] - cal[3];
 
-            if (Math.Abs(dx * dx + dy * dy) < dz * dz)
-            {
-                stick[0] = 0;
-                stick[1] = 0;
+            float normalizedX = dx / (dx > 0 ? cal[0] : cal[4]);
+            float normalizedY = dy / (dy > 0 ? cal[1] : cal[5]);
+
+            float magnitude = (float)Math.Sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+
+            if (magnitude <= deadzone || range <= deadzone)
+            {  
+                // Inner deadzone
+                stick[0] = 0.0f;
+                stick[1] = 0.0f;
             }
             else
             {
-                stick[0] = dx / (dx > 0 ? cal[0] : cal[4]);
-                stick[1] = dy / (dy > 0 ? cal[1] : cal[5]);
+                float normalizedMagnitude = Math.Min(1.0f, (magnitude - deadzone) / (range - deadzone));
+                float scale = normalizedMagnitude / magnitude;
+                
+                stick[0] = normalizedX * scale;
+                stick[1] = normalizedY * scale;
             }
         }
 
@@ -1724,6 +1738,16 @@ namespace BetterJoy
             return response;
         }
 
+        private float CalculateDeadzone(ushort[] cal, ushort deadzone)
+        {
+            return 2.0f * deadzone / Math.Max(cal[0] + cal[4], cal[1] + cal[5]);
+        }
+
+        private float CalculateRange(ushort range)
+        {
+            return (float)range / 0xFFF;
+        }
+
         private bool DumpCalibrationData()
         {
             if (IsSNES || IsThirdParty)
@@ -1738,8 +1762,11 @@ namespace BetterJoy
                 Array.Fill(_stickCal, (ushort)2048);
                 Array.Fill(_stick2Cal, (ushort)2048);
 
-                _deadzone = CalculateDeadzone(_stickCal, DefaultDeadzone);
-                _deadzone2 = CalculateDeadzone(_stick2Cal, DefaultDeadzone);
+                _deadzone = DefaultDeadzone;
+                _deadzone2 = DefaultDeadzone;
+
+                _range = DefaultRange;
+                _range2 = DefaultRange;
 
                 return true;
             }
@@ -1809,15 +1836,27 @@ namespace BetterJoy
                 }
             }
 
-            // Sticks deadzones
+            // Sticks deadzones and ranges
+            // Looks like the range is a 12 bits precision ratio.
+            // I suppose the right way to interpret it is as a float by dividing it by 0xFFF
             {
-                var factoryDeadzoneData = ReadSPICheck(0x60, IsLeft ? (byte)0x86 : (byte)0x98, 5, ref ok);
-                _deadzone = (ushort)(((factoryDeadzoneData[4] << 8) & 0xF00) | factoryDeadzoneData[3]);
+                var factoryDeadzoneData = ReadSPICheck(0x60, IsLeft ? (byte)0x86 : (byte)0x98, 6, ref ok);
+
+                var deadzone = (ushort)(((factoryDeadzoneData[4] << 8) & 0xF00) | factoryDeadzoneData[3]);
+                _deadzone = CalculateDeadzone(_stickCal, deadzone);
+
+                var range = (ushort)((factoryDeadzoneData[5] << 4) | (factoryDeadzoneData[4] >> 4));
+                _range = CalculateRange(range);
 
                 if (IsPro)
                 {
-                    var factoryDeadzone2Data = ReadSPICheck(0x60, !IsLeft ? (byte)0x86 : (byte)0x98, 5, ref ok);
-                    _deadzone2 = (ushort)(((factoryDeadzone2Data[4] << 8) & 0xF00) | factoryDeadzone2Data[3]);
+                    var factoryDeadzone2Data = ReadSPICheck(0x60, !IsLeft ? (byte)0x86 : (byte)0x98, 6, ref ok);
+
+                    var deadzone2 = (ushort)(((factoryDeadzone2Data[4] << 8) & 0xF00) | factoryDeadzone2Data[3]);
+                    _deadzone2 = CalculateDeadzone(_stick2Cal, deadzone2);
+
+                    var range2 = (ushort)((factoryDeadzone2Data[5] << 4) | (factoryDeadzone2Data[4] >> 4));
+                    _range2 = CalculateRange(range2);
                 }
             }
 
