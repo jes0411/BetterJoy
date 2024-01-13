@@ -91,6 +91,7 @@ namespace BetterJoy
         private static readonly bool UseIncrementalLights = bool.Parse(ConfigurationManager.AppSettings["UseIncrementalLights"]);
         private static readonly float DefaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
         private static readonly float DefaultRange = float.Parse(ConfigurationManager.AppSettings["SticksRange"]);
+        private static readonly bool SticksSquared = bool.Parse(ConfigurationManager.AppSettings["SticksSquared"]);
         private static readonly float AHRSBeta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
         private static readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
         private static readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
@@ -1633,8 +1634,31 @@ namespace BetterJoy
                 float normalizedMagnitude = Math.Min(1.0f, (magnitude - deadzone) / (range - deadzone));
                 float scale = normalizedMagnitude / magnitude;
                 
-                stick[0] = Math.Clamp(normalizedX * scale, -1.0f, 1.0f);
-                stick[1] = Math.Clamp(normalizedY * scale, -1.0f, 1.0f);
+                normalizedX *= scale;
+                normalizedY *= scale;
+
+                if (!SticksSquared || normalizedX == 0f || normalizedY == 0f)
+                {
+				    stick[0] = normalizedX;
+				    stick[1] = normalizedY;
+			    }
+                else
+                {
+                    // Expand the circle to a square area
+				    if (Math.Abs(normalizedX) > Math.Abs(normalizedY))
+                    {
+                        stick[0] = Math.Sign(normalizedX) * normalizedMagnitude;
+                        stick[1] = stick[0] * normalizedY / normalizedX;
+                    }
+                    else
+                    {
+                        stick[1] = Math.Sign(normalizedY) * normalizedMagnitude;
+                        stick[0] = stick[1] * normalizedX / normalizedY;
+                    }
+			    }
+
+                stick[0] = Math.Clamp(stick[0], -1.0f, 1.0f);
+                stick[1] = Math.Clamp(stick[1], -1.0f, 1.0f);
             }
         }
 
