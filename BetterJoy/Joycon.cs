@@ -808,7 +808,7 @@ namespace BetterJoy
 
                 // Shake detection logic
                 var isShaking = GetAccel().LengthSquared() >= ShakeSensitivity;
-                if ((isShaking && currentShakeTime >= _shakedTime + ShakeDelay) || (isShaking && _shakedTime == 0))
+                if (isShaking && (currentShakeTime >= _shakedTime + ShakeDelay || _shakedTime == 0))
                 {
                     _shakedTime = currentShakeTime;
                     _hasShaked = true;
@@ -899,10 +899,15 @@ namespace BetterJoy
         // For Joystick->Joystick inputs
         private void SimulateContinous(int origin, string s)
         {
+            SimulateContinous(_buttons[origin], s);
+        }
+
+        private void SimulateContinous(bool pressed, string s)
+        {
             if (s.StartsWith("joy_"))
             {
                 var button = int.Parse(s.AsSpan(4));
-                _buttonsRemapped[button] |= _buttons[origin];
+                _buttonsRemapped[button] |= pressed;
             }
         }
 
@@ -1021,6 +1026,8 @@ namespace BetterJoy
                 SimulateContinous((int)Button.SL, Config.Value("sl_r"));
                 SimulateContinous((int)Button.SR, Config.Value("sr_r"));
             }
+
+            SimulateContinous(_hasShaked, Config.Value("shake"));
         }
 
         private void RemapButtons()
