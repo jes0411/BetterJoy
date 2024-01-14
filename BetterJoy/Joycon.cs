@@ -582,10 +582,20 @@ namespace BetterJoy
                 return;
             }
 
-            var buf = Enumerable.Repeat((byte)0xFF, 25).ToArray();
+            const byte intensity = 0x1;
+
+            var buf = new byte[5];
+
+            // Global settings
             buf[0] = 0x18;
             buf[1] = 0x01;
-            Subcommand(0x38, buf, 25);
+
+            // Mini cycle 1
+            buf[2] = intensity << 4;
+            buf[3] = 0xFF;
+            buf[4] = 0xFF;
+
+            Subcommand(0x38, buf, 5);
         }
 
         public void SetHomeLight(bool on)
@@ -595,19 +605,20 @@ namespace BetterJoy
                 return;
             }
 
-            var buf = Enumerable.Repeat((byte)0xFF, 25).ToArray();
-            if (on)
-            {
-                buf[0] = 0x1F;
-                buf[1] = 0xF0;
-            }
-            else
-            {
-                buf[0] = 0x10;
-                buf[1] = 0x01;
-            }
+            byte intensity = (byte)(on ? 0x1 : 0x0);
 
-            Subcommand(0x38, buf, 25);
+            var buf = new byte[5];
+
+            // Global settings
+            buf[0] = 0x0F;
+            buf[1] = (byte)(intensity << 4);
+
+            // Mini cycle 1
+            buf[2] = (byte)(intensity << 4);
+            buf[3] = 0xFF;
+            buf[4] = 0xFF;
+
+            Subcommand(0x38, buf, 5);
         }
 
         private void SetHCIState(byte state)
