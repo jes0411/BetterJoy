@@ -310,16 +310,6 @@ namespace BetterJoy
                 controller.GetActiveSticksData();
             }
 
-            // Don't call SetHomeLight(false) when the led is disabled in the config since :
-            // - it will turn on the home led for a brief time
-            // - it will remove the blinking effect made on attach
-            // - the blinking effect disable the led anyway
-            var ledOn = bool.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
-            if (ledOn)
-            {
-                controller.SetHomeLight(true);
-            }
-
             controller.Begin();
         }
 
@@ -578,6 +568,7 @@ namespace BetterJoy
             controller.HidapiLock.EnterReadLock();
             try
             {
+                controller.HomeLEDOn = on;
                 controller.SetHomeLight(on);
             }
             finally

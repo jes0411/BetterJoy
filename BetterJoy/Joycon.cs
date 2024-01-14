@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Threading;
@@ -138,6 +137,7 @@ namespace BetterJoy
         private readonly float _gyroStickSensitivityX = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityX"]);
         private readonly float _gyroStickSensitivityY = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityY"]);
         private readonly bool _homeLongPowerOff = bool.Parse(ConfigurationManager.AppSettings["HomeLongPowerOff"]);
+        public bool HomeLEDOn = bool.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
 
         private readonly bool _IMUEnabled;
         private readonly Dictionary<int, bool> _mouseToggleBtn = new();
@@ -600,25 +600,28 @@ namespace BetterJoy
 
         public void SetHomeLight(bool on)
         {
-            if (IsThirdParty)
+            if (IsThirdParty || Type == ControllerType.JoyconLeft)
             {
                 return;
             }
 
             byte intensity = (byte)(on ? 0x1 : 0x0);
+            const byte nbCycles = 0xF; // 0x0 for permanent light
 
             var buf = new byte[5];
 
             // Global settings
-            buf[0] = 0x0F;
-            buf[1] = (byte)(intensity << 4);
+            buf[0] = 0x0F; // 0XF = 175ms base duration
+            buf[1] = (byte)(intensity << 4 | nbCycles);
 
             // Mini cycle 1
-            buf[2] = (byte)(intensity << 4);
-            buf[3] = 0xFF;
-            buf[4] = 0xFF;
+            // Somehow still used when buf[0] high nibble is set to 0x0
+            // Increase the multipliers (like 0xFF instead of 0x11) to increase the duration beyond 2625ms
+            buf[2] = (byte)(intensity << 4); // intensity | not used
+            buf[3] = 0x11; // transition multiplier | duration multiplier, both use the base duration
+            buf[4] = 0xFF; // not used
 
-            Subcommand(0x38, buf, 5);
+            SubcommandFireAndForget(0x38, buf, 5);
         }
 
         private void SetHCIState(byte state)
@@ -1266,8 +1269,13 @@ namespace BetterJoy
         {
             var buf = new byte[ReportLen];
             _stopPolling = false;
-            Stopwatch timeSinceError = new();
+
             int dropAfterMs = IsUSB ? 1500 : 3000;
+            Stopwatch timeSinceError = new();
+            
+            // the home light stays on for 2625ms, set to less than half in case of packet drop
+            const int sendHomeLightIntervalMs = 1250;
+            Stopwatch timeSinceHomeLight = new();
 
             // For IMU timestamp calculation
             _avgReceiveDeltaMs.Clear();
@@ -1284,6 +1292,13 @@ namespace BetterJoy
                         SendRumble(buf, data);
                     }
                 }
+
+                if (HomeLEDOn && (timeSinceHomeLight.ElapsedMilliseconds > sendHomeLightIntervalMs || !timeSinceHomeLight.IsRunning))
+                {
+                    SetHomeLight(HomeLEDOn);
+                    timeSinceHomeLight.Restart();
+                }
+
                 var error = ReceiveRaw(buf);
 
                 if (error == ReceiveError.None && State > Status.Dropped)
@@ -1715,7 +1730,7 @@ namespace BetterJoy
             HIDApi.hid_write(_handle, buf, new UIntPtr(ReportLen));
         }
 
-        private byte[] Subcommand(byte sc, byte[] bufParameters, uint len, bool print = true)
+        private byte[] SubcommandFireAndForget(byte sc, byte[] bufParameters, uint len, bool print = true)
         {
             if (_handle == IntPtr.Zero)
             {
@@ -1745,7 +1760,17 @@ namespace BetterJoy
 
             HIDApi.hid_write(_handle, buf, new UIntPtr(len + 11));
 
-            ref var response = ref buf;
+            return buf;
+        }
+
+        private byte[] Subcommand(byte sc, byte[] bufParameters, uint len, bool print = true)
+        {
+            var response = SubcommandFireAndForget(sc, bufParameters, len, print);
+            if (response == null)
+            {
+                return null;
+            }
+
             var tries = 0;
             var length = 0;
             var responseFound = false;
