@@ -217,7 +217,8 @@ namespace BetterJoy
         public PhysicalAddress PadMacAddress = new(new byte[] { 01, 02, 03, 04, 05, 06 });
         public readonly string Path;
 
-        private Thread _pollThreadObj;
+        private Thread _receiveReportsThread;
+        private Thread _sendCommandsThread;
 
         private Rumble _rumbleObj;
 
@@ -668,7 +669,8 @@ namespace BetterJoy
             }
 
             _stopPolling = true;
-            _pollThreadObj?.Join();
+            _receiveReportsThread?.Join();
+            _sendCommandsThread?.Join();
 
             DisconnectViGEm();
 
@@ -716,7 +718,8 @@ namespace BetterJoy
         public void Drop(bool error = false)
         {
             _stopPolling = true;
-            _pollThreadObj?.Join();
+            _receiveReportsThread?.Join();
+            _sendCommandsThread?.Join();
 
             State = error ? Status.Errored : Status.Dropped;
         }
@@ -1265,17 +1268,38 @@ namespace BetterJoy
             }
         }
 
-        private void Poll()
+        private void SendCommands()
         {
             var buf = new byte[ReportLen];
-            _stopPolling = false;
 
-            int dropAfterMs = IsUSB ? 1500 : 3000;
-            Stopwatch timeSinceError = new();
-            
             // the home light stays on for 2625ms, set to less than half in case of packet drop
             const int sendHomeLightIntervalMs = 1250;
             Stopwatch timeSinceHomeLight = new();
+
+            while (!_stopPolling && State > Status.Dropped)
+            {
+                if (HomeLEDOn && (timeSinceHomeLight.ElapsedMilliseconds > sendHomeLightIntervalMs || !timeSinceHomeLight.IsRunning))
+                {
+                    SetHomeLight(HomeLEDOn);
+                    timeSinceHomeLight.Restart();
+                }
+
+                byte[] data;
+                while ((data = _rumbleObj.GetData()) != null)
+                {
+                    SendRumble(buf, data);
+                }
+
+                Thread.Sleep(5);
+            }
+        }
+
+        private void ReceiveReports()
+        {
+            var buf = new byte[ReportLen];
+
+            int dropAfterMs = IsUSB ? 1500 : 3000;
+            Stopwatch timeSinceError = new();
 
             // For IMU timestamp calculation
             _avgReceiveDeltaMs.Clear();
@@ -1285,20 +1309,6 @@ namespace BetterJoy
 
             while (!_stopPolling && State > Status.Dropped)
             {
-                {
-                    var data = _rumbleObj.GetData();
-                    if (data != null)
-                    {
-                        SendRumble(buf, data);
-                    }
-                }
-
-                if (HomeLEDOn && (timeSinceHomeLight.ElapsedMilliseconds > sendHomeLightIntervalMs || !timeSinceHomeLight.IsRunning))
-                {
-                    SetHomeLight(HomeLEDOn);
-                    timeSinceHomeLight.Restart();
-                }
-
                 var error = ReceiveRaw(buf);
 
                 if (error == ReceiveError.None && State > Status.Dropped)
@@ -1624,13 +1634,21 @@ namespace BetterJoy
 
         public void Begin()
         {
-            if (_pollThreadObj == null)
+            if (_receiveReportsThread == null && _sendCommandsThread == null)
             {
-                _pollThreadObj = new Thread(Poll)
+                _receiveReportsThread = new Thread(ReceiveReports)
                 {
                     IsBackground = true
                 };
-                _pollThreadObj.Start();
+
+                _sendCommandsThread = new Thread(SendCommands)
+                {
+                    IsBackground = true
+                };
+
+                _stopPolling = false;
+                _sendCommandsThread.Start();
+                _receiveReportsThread.Start();
 
                 _form.AppendTextBox("Starting poll thread.");
             }
@@ -1727,7 +1745,7 @@ namespace BetterJoy
 
             Array.Copy(data, 0, buf, 2, 8);
             PrintArray(buf, DebugType.Rumble, 10, format: "Rumble data sent: {0:S}");
-            HIDApi.hid_write(_handle, buf, new UIntPtr(ReportLen));
+            HIDApi.hid_write(_handle, buf, new UIntPtr(10));
         }
 
         private byte[] SubcommandFireAndForget(byte sc, byte[] bufParameters, uint len, bool print = true)
