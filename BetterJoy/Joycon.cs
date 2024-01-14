@@ -677,6 +677,7 @@ namespace BetterJoy
                     //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
 
                     Subcommand(0x3, new byte[] { 0x3F }, 1); // set report mode to simple HID mode
+                    SetPlayerLED(0);
 
                     // Commented because you need to restart the controller to reconnect in usb again with the following
                     //if (IsUSB)
