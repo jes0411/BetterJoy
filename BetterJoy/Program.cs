@@ -346,7 +346,7 @@ namespace BetterJoy
                 }
                 catch (Exception)
                 {
-                    _form.AppendTextBox("Could not connect the fake controller for the unjoined joycon.");
+                    _form.AppendTextBox("Could not connect the virtual controller for the unjoined joycon.");
                 }
             }
 
@@ -631,7 +631,15 @@ namespace BetterJoy
                 }
                 catch (VigemBusNotFoundException)
                 {
-                    _form.AppendTextBox("Could not start VigemBus. Make sure drivers are installed correctly.");
+                    _form.AppendTextBox("Could not connect to VIGEmBus. Make sure VIGEmBus driver is installed correctly.");
+                }
+                catch (VigemBusAccessFailedException)
+                {
+                    _form.AppendTextBox("Could not connect to VIGEmBus. VIGEmBus is busy. Try restarting your computer or reinstalling VIGEmBus driver.");
+                }
+                catch (VigemBusVersionMismatchException)
+                {
+                    _form.AppendTextBox("Could not connect to VIGEmBus. The installed VIGEmBus driver is not compatible. Install a newer version of VIGEmBus driver.");
                 }
             }
 
@@ -891,6 +899,8 @@ namespace BetterJoy
             {
                 await Mgr.Stop();
             }
+
+            EmClient?.Dispose();
 
             if (Server != null)
             {
