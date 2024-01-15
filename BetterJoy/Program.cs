@@ -507,7 +507,7 @@ namespace BetterJoy
                 _form.AppendTextBox("Could not connect the virtual controller for the split joycon.");
             }
 
-            var otherController =  controller.Other;
+            var otherController = controller.Other;
 
             controller.Other = null;
             otherController.Other = null;

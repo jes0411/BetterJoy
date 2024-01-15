@@ -199,9 +199,6 @@ namespace BetterJoy
         private IntPtr _handle;
         private bool _hasShaked;
 
-        //public DebugType debug_type = DebugType.NONE; //Keep this for manual debugging during development.
-        public bool IsLeft => Type != ControllerType.JoyconRight;
-
         public readonly bool IsThirdParty;
         public readonly bool IsUSB;
         private long _lastDoubleClick = -1;
@@ -330,6 +327,8 @@ namespace BetterJoy
         public bool IsPro => Type is ControllerType.Pro or ControllerType.SNES;
         public bool IsSNES => Type == ControllerType.SNES;
         public bool IsJoycon => Type is ControllerType.JoyconRight or ControllerType.JoyconLeft;
+        public bool IsLeft => Type != ControllerType.JoyconRight;
+        public bool IsJoined => Other != null && Other != this;
 
         public Joycon Other;
 
@@ -401,7 +400,7 @@ namespace BetterJoy
             DebugPrint("Rumble data Received: XInput", DebugType.Rumble);
             SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
 
-            if (Other != null && Other != this)
+            if (IsJoined)
             {
                 Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
             }
@@ -412,7 +411,7 @@ namespace BetterJoy
             DebugPrint("Rumble data Received: DS4", DebugType.Rumble);
             SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
 
-            if (Other != null && Other != this)
+            if (IsJoined)
             {
                 Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
             }
@@ -1065,7 +1064,7 @@ namespace BetterJoy
 
         private void DoThingsWithButtons()
         {
-            var powerOffButton = (int)(IsPro || !IsLeft || (Other != null && Other != this) ? Button.Home : Button.Capture);
+            var powerOffButton = (int)(IsPro || !IsLeft || IsJoined ? Button.Home : Button.Capture);
 
             var timestampNow = Stopwatch.GetTimestamp();
             if (_homeLongPowerOff && _buttons[powerOffButton] && !IsUSB)
@@ -1396,7 +1395,7 @@ namespace BetterJoy
                     CalculateStickCenter(_stick2Precal, cal, dz, range, _stick2);
                 }
                 // Read other Joycon's sticks
-                else if (Other != null && Other != this)
+                else if (IsJoined)
                 {
                     lock (_otherStick)
                     {
@@ -1488,7 +1487,7 @@ namespace BetterJoy
                     _buttons[(int)Button.Shoulder22] = (reportBuf[3 + reportOffset] & 0x80) != 0;
                 }
 
-                if (Other != null && Other != this)
+                if (IsJoined)
                 {
                     _buttons[(int)Button.B] = Other._buttons[(int)Button.DpadDown];
                     _buttons[(int)Button.A] = Other._buttons[(int)Button.DpadRight];
