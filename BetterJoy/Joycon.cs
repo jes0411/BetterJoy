@@ -1343,6 +1343,9 @@ namespace BetterJoy
 
         private int ProcessButtonsAndStick(byte[] reportBuf)
         {
+            var activity = false;
+            var timestamp = Stopwatch.GetTimestamp();
+
             if (!IsSNES)
             {
                 var reportOffset = IsLeft ? 0 : 3;
@@ -1392,24 +1395,8 @@ namespace BetterJoy
 
                     CalculateStickCenter(_stick2Precal, cal, dz, range, _stick2);
                 }
-
-                if (_calibrateSticks)
-                {
-                    var sticks = new SticksData(
-                        _stickPrecal[0],
-                        _stickPrecal[1],
-                        _stick2Precal[0],
-                        _stick2Precal[1]
-                    );
-                    CalibrationStickDatas.Add(sticks);
-                }
-                else
-                {
-                    //DebugPrint($"X1={_stick[0]:0.00} Y1={_stick[1]:0.00}. X2={_stick2[0]:0.00} Y2={_stick2[1]:0.00}", DebugType.Threading);
-                }
-
                 // Read other Joycon's sticks
-                if (Other != null && Other != this)
+                else if (Other != null && Other != this)
                 {
                     lock (_otherStick)
                     {
@@ -1430,6 +1417,34 @@ namespace BetterJoy
                         // Write stick to linked joycon
                         Array.Copy(IsLeft ? _stick : _stick2, Other._otherStick, 2);
                     }
+                }
+                else
+                {
+                    Array.Clear(_stick2);
+                }
+
+                if (_calibrateSticks)
+                {
+                    var sticks = new SticksData(
+                        _stickPrecal[0],
+                        _stickPrecal[1],
+                        _stick2Precal[0],
+                        _stick2Precal[1]
+                    );
+                    CalibrationStickDatas.Add(sticks);
+                }
+                else
+                {
+                    //DebugPrint($"X1={_stick[0]:0.00} Y1={_stick[1]:0.00}. X2={_stick2[0]:0.00} Y2={_stick2[1]:0.00}", DebugType.Threading);
+                }
+
+                const float stickActivityThreshold = 0.1f;
+                if (MathF.Abs(_stick[0]) > stickActivityThreshold ||
+                    MathF.Abs(_stick[1]) > stickActivityThreshold ||
+                    MathF.Abs(_stick2[0]) > stickActivityThreshold ||
+                    MathF.Abs(_stick2[1]) > stickActivityThreshold)
+                {
+                    activity = true;
                 }
             }
 
@@ -1496,13 +1511,10 @@ namespace BetterJoy
                     }
                 }
 
-                var timestamp = Stopwatch.GetTimestamp();
-
                 lock (_buttonsUp)
                 {
                     lock (_buttonsDown)
                     {
-                        var changed = false;
                         for (var i = 0; i < _buttons.Length; ++i)
                         {
                             _buttonsUp[i] = _buttonsPrev[i] & !_buttons[i];
@@ -1514,16 +1526,16 @@ namespace BetterJoy
 
                             if (_buttonsUp[i] || _buttonsDown[i])
                             {
-                                changed = true;
+                                activity = true;
                             }
-                        }
-
-                        if (changed)
-                        {
-                            _timestampActivity = timestamp;
                         }
                     }
                 }
+            }
+
+            if (activity)
+            {
+                _timestampActivity = timestamp;
             }
 
             return 0;
