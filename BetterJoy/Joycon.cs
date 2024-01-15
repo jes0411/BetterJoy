@@ -2124,6 +2124,48 @@ namespace BetterJoy
             }
         }
 
+        public static DpadDirection GetDirection(bool up, bool down, bool left, bool right)
+        {
+            // Avoid conflicting outputs
+            if (up && down)
+            {
+                up = false;
+                down = false;
+            }
+
+            if (left && right)
+            {
+                left = false;
+                right = false;
+            }
+
+            if (up)
+            {
+                if (left) return DpadDirection.Northwest;
+                if (right) return DpadDirection.Northeast;
+                return DpadDirection.North;
+            }
+            
+            if (down)
+            {
+                if (left) return DpadDirection.Southwest;
+                if (right) return DpadDirection.Southeast;
+                return DpadDirection.South;
+            }
+            
+            if (left)
+            {
+                return DpadDirection.West;
+            }
+            
+            if (right)
+            {
+                return DpadDirection.East;
+            }
+
+            return DpadDirection.None;
+        }
+
         private static OutputControllerXbox360InputState MapToXbox360Input(Joycon input)
         {
             var output = new OutputControllerXbox360InputState();
@@ -2255,6 +2297,19 @@ namespace BetterJoy
                 output.TriggerRight = (byte)(buttons[(int)(isLeft ? Button.Shoulder1 : Button.Shoulder2)] ? byte.MaxValue : 0);
             }
 
+            // Avoid conflicting output
+            if (output.DpadUp && output.DpadDown)
+            {
+                output.DpadUp = false;
+                output.DpadDown = false;
+            }
+
+            if (output.DpadLeft && output.DpadRight)
+            {
+                output.DpadLeft = false;
+                output.DpadRight = false;
+            }
+
             return output;
         }
 
@@ -2283,45 +2338,12 @@ namespace BetterJoy
                 output.Triangle = buttons[(int)(!swapXY ? Button.X : Button.Y)];
                 output.Square = buttons[(int)(!swapXY ? Button.Y : Button.X)];
 
-
-                if (buttons[(int)Button.DpadUp])
-                {
-                    if (buttons[(int)Button.DpadLeft])
-                    {
-                        output.DPad = DpadDirection.Northwest;
-                    }
-                    else if (buttons[(int)Button.DpadRight])
-                    {
-                        output.DPad = DpadDirection.Northeast;
-                    }
-                    else
-                    {
-                        output.DPad = DpadDirection.North;
-                    }
-                }
-                else if (buttons[(int)Button.DpadDown])
-                {
-                    if (buttons[(int)Button.DpadLeft])
-                    {
-                        output.DPad = DpadDirection.Southwest;
-                    }
-                    else if (buttons[(int)Button.DpadRight])
-                    {
-                        output.DPad = DpadDirection.Southeast;
-                    }
-                    else
-                    {
-                        output.DPad = DpadDirection.South;
-                    }
-                }
-                else if (buttons[(int)Button.DpadLeft])
-                {
-                    output.DPad = DpadDirection.West;
-                }
-                else if (buttons[(int)Button.DpadRight])
-                {
-                    output.DPad = DpadDirection.East;
-                }
+                output.DPad = GetDirection(
+                    buttons[(int)Button.DpadUp],
+                    buttons[(int)Button.DpadDown],
+                    buttons[(int)Button.DpadLeft],
+                    buttons[(int)Button.DpadRight]
+                );
 
                 output.Share = buttons[(int)Button.Capture];
                 output.Options = buttons[(int)Button.Plus];
@@ -2350,44 +2372,12 @@ namespace BetterJoy
                             ? buttons[(int)(isLeft ? Button.X : Button.DpadUp)]
                             : buttons[(int)(isLeft ? Button.Y : Button.DpadLeft)];
 
-                    if (buttons[(int)(isLeft ? Button.DpadUp : Button.X)])
-                    {
-                        if (buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)])
-                        {
-                            output.DPad = DpadDirection.Northwest;
-                        }
-                        else if (buttons[(int)(isLeft ? Button.DpadRight : Button.A)])
-                        {
-                            output.DPad = DpadDirection.Northeast;
-                        }
-                        else
-                        {
-                            output.DPad = DpadDirection.North;
-                        }
-                    }
-                    else if (buttons[(int)(isLeft ? Button.DpadDown : Button.B)])
-                    {
-                        if (buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)])
-                        {
-                            output.DPad = DpadDirection.Southwest;
-                        }
-                        else if (buttons[(int)(isLeft ? Button.DpadRight : Button.A)])
-                        {
-                            output.DPad = DpadDirection.Southeast;
-                        }
-                        else
-                        {
-                            output.DPad = DpadDirection.South;
-                        }
-                    }
-                    else if (buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)])
-                    {
-                        output.DPad = DpadDirection.West;
-                    }
-                    else if (buttons[(int)(isLeft ? Button.DpadRight : Button.A)])
-                    {
-                        output.DPad = DpadDirection.East;
-                    }
+                    output.DPad = GetDirection(
+                        buttons[(int)(isLeft ? Button.DpadUp : Button.X)],
+                        buttons[(int)(isLeft ? Button.DpadDown : Button.B)],
+                        buttons[(int)(isLeft ? Button.DpadLeft : Button.Y)],
+                        buttons[(int)(isLeft ? Button.DpadRight : Button.A)]
+                    );
 
                     output.Share = buttons[(int)Button.Capture];
                     output.Options = buttons[(int)Button.Plus];
