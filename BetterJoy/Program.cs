@@ -14,6 +14,7 @@ using Nefarius.Drivers.HidHide;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Exceptions;
 using WindowsInput;
+using WindowsInput.Events;
 using WindowsInput.Events.Sources;
 using static BetterJoy._3rdPartyControllers;
 using static BetterJoy.HIDApi;
@@ -606,9 +607,6 @@ namespace BetterJoy
 
         private static bool _useHIDHide = bool.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
 
-        private static IKeyboardEventSource _keyboard;
-        private static IMouseEventSource _mouse;
-
         private static readonly HashSet<string> BlockedDeviceInstances = new();
 
         private static bool _isRunning;
@@ -666,11 +664,8 @@ namespace BetterJoy
                 int.Parse(ConfigurationManager.AppSettings["Port"])
             );
 
-            // Capture keyboard + mouse events for binding's sake
-            _keyboard = Capture.Global.KeyboardAsync();
-            _keyboard.KeyEvent += Keyboard_KeyEvent;
-            _mouse = Capture.Global.MouseAsync();
-            _mouse.MouseEvent += Mouse_MouseEvent;
+            InputCapture.Global.RegisterEvent(GlobalKeyEvent);
+            InputCapture.Global.RegisterEvent(GlobalMouseEvent);
 
             _form.AppendTextBox("All systems go");
             Mgr.Start();
@@ -793,14 +788,16 @@ namespace BetterJoy
             }
         }
 
-        private static void Mouse_MouseEvent(object sender, EventSourceEventArgs<MouseEvent> e)
+        private static void GlobalMouseEvent(object sender, EventSourceEventArgs<MouseEvent> e)
         {
-            if (e.Data.ButtonDown != null)
+            ButtonCode? button = e.Data.ButtonDown?.Button;
+
+            if (button != null)
             {
                 var resVal = Config.Value("reset_mouse");
                 if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonDown.Button == int.Parse(resVal.AsSpan(4)))
+                    if ((int)button == int.Parse(resVal.AsSpan(4)))
                     {
                         Simulate.Events()
                                 .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
@@ -811,40 +808,45 @@ namespace BetterJoy
                 resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonDown.Button == int.Parse(resVal.AsSpan(4)))
+                    if ((int)button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.Controllers)
+                        foreach (var controller in Mgr.Controllers)
                         {
-                            i.ActiveGyro = true;
+                            controller.ActiveGyro = true;
                         }
                     }
                 }
+                return;
             }
 
-            if (e.Data.ButtonUp != null)
+            button = e.Data.ButtonUp?.Button;
+
+            if (button != null)
             {
                 var resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonUp.Button == int.Parse(resVal.AsSpan(4)))
+                    if ((int)button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.Controllers)
+                        foreach (var controller in Mgr.Controllers)
                         {
-                            i.ActiveGyro = false;
+                            controller.ActiveGyro = false;
                         }
                     }
                 }
             }
         }
 
-        private static void Keyboard_KeyEvent(object sender, EventSourceEventArgs<KeyboardEvent> e)
+        private static void GlobalKeyEvent(object sender, EventSourceEventArgs<KeyboardEvent> e)
         {
-            if (e.Data.KeyDown != null)
+            KeyCode? key = e.Data.KeyDown?.Key;
+
+            if (key != null)
             {
                 var resVal = Config.Value("reset_mouse");
                 if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyDown.Key == int.Parse(resVal.AsSpan(4)))
+                    if ((int)key == int.Parse(resVal.AsSpan(4)))
                     {
                         Simulate.Events()
                                 .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
@@ -855,7 +857,7 @@ namespace BetterJoy
                 resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyDown.Key == int.Parse(resVal.AsSpan(4)))
+                    if ((int)key == int.Parse(resVal.AsSpan(4)))
                     {
                         foreach (var i in Mgr.Controllers)
                         {
@@ -863,14 +865,17 @@ namespace BetterJoy
                         }
                     }
                 }
+                return;
             }
 
-            if (e.Data.KeyUp != null)
+            key = e.Data.KeyUp?.Key;
+
+            if (key != null)
             {
                 var resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyUp.Key == int.Parse(resVal.AsSpan(4)))
+                    if ((int)key == int.Parse(resVal.AsSpan(4)))
                     {
                         foreach (var i in Mgr.Controllers)
                         {
@@ -890,16 +895,18 @@ namespace BetterJoy
 
             _isRunning = false;
 
-            StopHIDHide();
-
-            _keyboard?.Dispose();
-            _mouse?.Dispose();
             if (Mgr != null)
             {
                 await Mgr.Stop();
             }
 
+            InputCapture.Global.UnregisterEvent(GlobalKeyEvent);
+            InputCapture.Global.UnregisterEvent(GlobalMouseEvent);
+            InputCapture.Global.Dispose();
+
             EmClient?.Dispose();
+
+            StopHIDHide();
 
             if (Server != null)
             {

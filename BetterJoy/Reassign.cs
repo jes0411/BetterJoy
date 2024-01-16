@@ -9,8 +9,6 @@ namespace BetterJoy
     public partial class Reassign : Form
     {
         private Control _curAssignment;
-        private IKeyboardEventSource _keyboard;
-        private IMouseEventSource _mouse;
 
         private enum ButtonAction
         {
@@ -107,28 +105,30 @@ namespace BetterJoy
 
         private void Reassign_Load(object sender, EventArgs e)
         {
-            _keyboard = WindowsInput.Capture.Global.KeyboardAsync();
-            _keyboard.KeyEvent += Keyboard_KeyEvent;
-            _mouse = WindowsInput.Capture.Global.MouseAsync();
-            _mouse.MouseEvent += Mouse_MouseEvent;
+            InputCapture.Global.RegisterEvent(GlobalKeyEvent);
+            InputCapture.Global.RegisterEvent(GlobalMouseEvent);
         }
 
-        private void Mouse_MouseEvent(object sender, EventSourceEventArgs<MouseEvent> e)
+        private void GlobalMouseEvent(object sender, EventSourceEventArgs<MouseEvent> e)
         {
-            if (_curAssignment != null && e.Data.ButtonDown != null)
+            ButtonCode? button = e.Data.ButtonDown?.Button;
+
+            if (_curAssignment != null && button != null)
             {
-                Config.SetValue((string)_curAssignment.Tag, "mse_" + (int)e.Data.ButtonDown.Button);
+                Config.SetValue((string)_curAssignment.Tag, "mse_" + (int)button);
                 AsyncPrettyName(_curAssignment);
                 _curAssignment = null;
                 e.Next_Hook_Enabled = false;
             }
         }
 
-        private void Keyboard_KeyEvent(object sender, EventSourceEventArgs<KeyboardEvent> e)
+        private void GlobalKeyEvent(object sender, EventSourceEventArgs<KeyboardEvent> e)
         {
-            if (_curAssignment != null && e.Data.KeyDown != null)
+            KeyCode? key = e.Data.KeyDown?.Key;
+
+            if (_curAssignment != null && key != null)
             {
-                Config.SetValue((string)_curAssignment.Tag, "key_" + (int)e.Data.KeyDown.Key);
+                Config.SetValue((string)_curAssignment.Tag, "key_" + (int)key);
                 AsyncPrettyName(_curAssignment);
                 _curAssignment = null;
                 e.Next_Hook_Enabled = false;
@@ -137,8 +137,8 @@ namespace BetterJoy
 
         private void Reassign_FormClosing(object sender, FormClosingEventArgs e)
         {
-            _keyboard.Dispose();
-            _mouse.Dispose();
+            InputCapture.Global.UnregisterEvent(GlobalKeyEvent);
+            InputCapture.Global.UnregisterEvent(GlobalMouseEvent);
         }
 
         private void AsyncPrettyName(Control c)
