@@ -211,7 +211,7 @@ namespace BetterJoy
         // For UdpServer
         public readonly int PadId;
 
-        public PhysicalAddress PadMacAddress = new(new byte[] { 01, 02, 03, 04, 05, 06 });
+        public PhysicalAddress PadMacAddress = new([01, 02, 03, 04, 05, 06]);
         public readonly string Path;
 
         private Thread _receiveReportsThread;
@@ -287,7 +287,7 @@ namespace BetterJoy
             _handle = handle;
             _IMUEnabled = imu;
             _doLocalize = localize;
-            _rumbleObj = new Rumble(new float[] { LowFreq, HighFreq, 0 });
+            _rumbleObj = new Rumble([LowFreq, HighFreq, 0]);
             for (var i = 0; i < _buttonsDownTimestamp.Length; i++)
             {
                 _buttonsDownTimestamp[i] = -1;
@@ -465,7 +465,7 @@ namespace BetterJoy
 
             // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
             // do not always send a response so we don't check if there is one
-            Subcommand(0x3, new byte[] { 0x3F }, 1);
+            Subcommand(0x3, [0x3F], 1);
 
             // Connect
             if (IsUSB)
@@ -485,7 +485,7 @@ namespace BetterJoy
                     throw new Exception("reset mac");
                 }
 
-                PadMacAddress = new PhysicalAddress(new[] { buf[9], buf[8], buf[7], buf[6], buf[5], buf[4] });
+                PadMacAddress = new PhysicalAddress([buf[9], buf[8], buf[7], buf[6], buf[5], buf[4]]);
                 SerialOrMac = PadMacAddress.ToString().ToLower();
 
                 // USB Pairing
@@ -520,6 +520,13 @@ namespace BetterJoy
                 buf[0] = 0x80;
                 buf[1] = 0x4; // Prevent HID timeout
                 HIDApi.hid_write(_handle, buf, new UIntPtr(2)); // does not send a response
+                // Bluetooth manual pairing
+                //byte[] btmac_host = Program.BtMac.GetAddressBytes();
+                // send host MAC and acquire Joycon MAC
+                //byte[] reply = Subcommand(0x01, [0x01, btmac_host[5], btmac_host[4], btmac_host[3], btmac_host[2], btmac_host[1], btmac_host[0]], 7);
+                //byte[] LTKhash = Subcommand(0x01, [0x02], 1);
+                // save pairing info
+                //Subcommand(0x01, [0x03], 1);
             }
             else
             {
@@ -549,20 +556,12 @@ namespace BetterJoy
                 throw new Exception("reset calibration");
             }
 
-            // Bluetooth manual pairing
-            //byte[] btmac_host = Program.btMAC.GetAddressBytes();
-            // send host MAC and acquire Joycon MAC
-            //byte[] reply = Subcommand(0x01, new byte[] { 0x01, btmac_host[5], btmac_host[4], btmac_host[3], btmac_host[2], btmac_host[1], btmac_host[0] }, 7, true);
-            //byte[] LTKhash = Subcommand(0x01, new byte[] { 0x02 }, 1, true);
-            // save pairing info
-            //Subcommand(0x01, new byte[] { 0x03 }, 1, true);
-
             BlinkHomeLight();
             SetLEDByPlayerNum(PadId);
 
-            Subcommand(0x40, new[] { _IMUEnabled ? (byte)0x1 : (byte)0x0 }, 1); // enable IMU
-            Subcommand(0x48, new byte[] { 0x01 }, 1); // enable vibrations
-            Subcommand(0x3, new byte[] { 0x30 }, 1); // set report mode to NPad standard mode
+            Subcommand(0x40, [_IMUEnabled ? (byte)0x01 : (byte)0x00], 1); // enable IMU
+            Subcommand(0x48, [0x01], 1); // enable vibrations
+            Subcommand(0x03, [0x30], 1); // set report mode to NPad standard mode
 
             State = Status.Attached;
 
@@ -571,7 +570,7 @@ namespace BetterJoy
 
         public void SetPlayerLED(byte leds = 0x0)
         {
-            Subcommand(0x30, new[] { leds }, 1);
+            Subcommand(0x30, [leds], 1);
         }
 
         public void BlinkHomeLight()
@@ -626,7 +625,7 @@ namespace BetterJoy
 
         private void SetHCIState(byte state)
         {
-            Subcommand(0x06, new[] { state }, 1);
+            Subcommand(0x06, [state], 1);
         }
 
         public void PowerOff()
@@ -677,22 +676,21 @@ namespace BetterJoy
             {
                 if (State > Status.Dropped)
                 {
-                    //Subcommand(0x40, new byte[] { 0x0 }, 1); // disable IMU sensor
-                    //Subcommand(0x48, new byte[] { 0x0 }, 1); // Would turn off rumble?
-
-                    Subcommand(0x3, new byte[] { 0x3F }, 1); // set report mode to simple HID mode
+                    //Subcommand(0x40, [0x00], 1); // disable IMU sensor
+                    //Subcommand(0x48, [0x00], 1); // Would turn off rumble?
+                    Subcommand(0x03, [0x3F], 1); // set report mode to simple HID mode
                     SetPlayerLED(0);
 
                     // Commented because you need to restart the controller to reconnect in usb again with the following
                     //if (IsUSB)
                     //{
                         //var buf = new byte[ReportLen];
-                        //buf[0] = 0x80; buf[1] = 0x5; // Allow device to talk to BT again
+                        //buf[0] = 0x80; buf[1] = 0x05; // Allow device to talk to BT again
                         //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                        //ReadUSBCheck(buf, 0x5);
-                        //buf[0] = 0x80; buf[1] = 0x6; // Allow device to talk to BT again
+                        //ReadUSBCheck(buf, 0x05);
+                        //buf[0] = 0x80; buf[1] = 0x06; // Allow device to talk to BT again
                         //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                        //ReadUSBCheck(buf, 0x6);
+                        //ReadUSBCheck(buf, 0x06);
                     //}
                 }
 
@@ -1744,15 +1742,8 @@ namespace BetterJoy
             Array.Clear(buf);
 
             buf[0] = 0x10;
-            buf[1] = _globalCount;
-            if (_globalCount == 0xf)
-            {
-                _globalCount = 0;
-            }
-            else
-            {
-                ++_globalCount;
-            }
+            buf[1] = (byte)(_globalCount & 0x0F);
+            ++_globalCount;
 
             Array.Copy(data, 0, buf, 2, 8);
             PrintArray(buf, DebugType.Rumble, 10, format: "Rumble data sent: {0:S}");
@@ -1771,16 +1762,9 @@ namespace BetterJoy
             Array.Copy(_defaultBuf, 0, buf, 2, 8);
             Array.Copy(bufParameters, 0, buf, 11, len);
             buf[10] = sc;
-            buf[1] = _globalCount;
-            buf[0] = 0x1;
-            if (_globalCount == 0xf)
-            {
-                _globalCount = 0;
-            }
-            else
-            {
-                ++_globalCount;
-            }
+            buf[1] = (byte)(_globalCount & 0x0F);
+            buf[0] = 0x01;
+            ++_globalCount;
 
             if (print)
             {

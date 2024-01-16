@@ -593,7 +593,7 @@ namespace BetterJoy
 
     internal class Program
     {
-        public static PhysicalAddress BtMac = new(new byte[] { 0, 0, 0, 0, 0, 0 });
+        public static PhysicalAddress BtMac = new([0, 0, 0, 0, 0, 0]);
         public static UdpServer Server;
 
         public static ViGEmClient EmClient;
@@ -641,13 +641,14 @@ namespace BetterJoy
                 }
             }
 
+
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
             {
                 // Get local BT host MAC
                 if (nic.NetworkInterfaceType != NetworkInterfaceType.FastEthernetFx &&
                     nic.NetworkInterfaceType != NetworkInterfaceType.Wireless80211)
                 {
-                    if (nic.Name.Split()[0] == "Bluetooth")
+                    if (nic.Name.Contains("Bluetooth"))
                     {
                         BtMac = nic.GetPhysicalAddress();
                     }
