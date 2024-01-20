@@ -1367,6 +1367,7 @@ namespace BetterJoy
 
             int dropAfterMs = IsUSB ? 1500 : 3000;
             Stopwatch timeSinceError = new();
+            int reconnectAttempts = 0;
 
             // For IMU timestamp calculation
             _avgReceiveDeltaMs.Clear();
@@ -1382,12 +1383,37 @@ namespace BetterJoy
                 {
                     State = Status.IMUDataOk;
                     timeSinceError.Reset();
+                    reconnectAttempts = 0;
                 }
                 else if (timeSinceError.ElapsedMilliseconds > dropAfterMs)
                 {
-                    State = Status.Errored;
-                    _form.AppendTextBox("Dropped.");
-                    DebugPrint("Connection lost. Is the controller connected?", DebugType.All);
+                    if (IsUSB)
+                    {
+                        if (reconnectAttempts >= 3)
+                        {
+                            _form.AppendTextBox("Dropped.");
+                            State = Status.Errored;
+                        }
+                        else
+                        {
+                            _form.AppendTextBox("Attempt soft reconnect...");
+                            try
+                            {
+                                USBPairing();
+                                SetReportMode(ReportMode.StandardFull);
+                                SetLEDByPadID();
+                            }
+                            catch (Exception) { } // ignore and retry
+                        }
+                    }
+                    else
+                    {
+                        //_form.AppendTextBox("Attempt soft reconnect...");
+                        SetReportMode(ReportMode.StandardFull, false);
+                    }
+
+                    timeSinceError.Restart();
+                    ++reconnectAttempts;
                 }
                 else if (error == ReceiveError.InvalidHandle)
                 {
