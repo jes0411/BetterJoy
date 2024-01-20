@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using static BetterJoy.HIDApi;
 
 namespace BetterJoy
 {
@@ -113,13 +112,13 @@ namespace BetterJoy
         private void RefreshControllerList()
         {
             list_allControllers.Items.Clear();
-            var ptr = hid_enumerate(0x0, 0x0);
+            var ptr = HIDApi.Enumerate(0x0, 0x0);
             var topPtr = ptr;
 
             // Add device to list
-            for (HIDDeviceInfo enumerate; ptr != IntPtr.Zero; ptr = enumerate.Next)
+            for (HIDApi.HIDDeviceInfo enumerate; ptr != IntPtr.Zero; ptr = enumerate.Next)
             {
-                enumerate = (HIDDeviceInfo)Marshal.PtrToStructure(ptr, typeof(HIDDeviceInfo));
+                enumerate = (HIDApi.HIDDeviceInfo)Marshal.PtrToStructure(ptr, typeof(HIDApi.HIDDeviceInfo));
 
                 if (enumerate.SerialNumber == null)
                 {
@@ -149,7 +148,7 @@ namespace BetterJoy
                 }
             }
 
-            hid_free_enumeration(topPtr);
+            HIDApi.FreeEnumeration(topPtr);
         }
 
         private void btn_add_Click(object sender, EventArgs e)

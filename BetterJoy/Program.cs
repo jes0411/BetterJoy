@@ -17,7 +17,6 @@ using WindowsInput;
 using WindowsInput.Events;
 using WindowsInput.Events.Sources;
 using static BetterJoy._3rdPartyControllers;
-using static BetterJoy.HIDApi;
 
 namespace BetterJoy
 {
@@ -85,18 +84,18 @@ namespace BetterJoy
                 return true;
             }
 
-            int ret = hid_init();
+            int ret = HIDApi.Init();
             if (ret != 0)
             {
                 _form.AppendTextBox("Could not initialize hidapi");
                 return false;
             }
 
-            ret = hid_hotplug_register_callback(
+            ret = HIDApi.HotplugRegisterCallback(
                 0x0,
                 0x0,
-                (int)(HotplugEvent.DeviceArrived | HotplugEvent.DeviceLeft),
-                (int)HotplugFlag.Enumerate,
+                (int)(HIDApi.HotplugEvent.DeviceArrived | HIDApi.HotplugEvent.DeviceLeft),
+                (int)HIDApi.HotplugFlag.Enumerate,
                 OnDeviceNotification,
                 _channelDeviceNotifications.Writer,
                 out _hidCallbackHandle
@@ -105,7 +104,7 @@ namespace BetterJoy
             if (ret != 0)
             {
                 _form.AppendTextBox(("Could not register hidapi callback"));
-                hid_exit();
+                HIDApi.Exit();
                 return false;
             }
 
@@ -126,18 +125,18 @@ namespace BetterJoy
             return true;
         }
 
-        private static int OnDeviceNotification(int callbackHandle, HIDDeviceInfo deviceInfo, int ev, object pUserData)
+        private static int OnDeviceNotification(int callbackHandle, HIDApi.HIDDeviceInfo deviceInfo, int ev, object pUserData)
         {
             var channelWriter = (ChannelWriter<DeviceNotification>)pUserData;
-            var deviceEvent = (HotplugEvent)ev;
+            var deviceEvent = (HIDApi.HotplugEvent)ev;
 
             var notification = DeviceNotification.Type.Unknown;
             switch (deviceEvent)
             {
-                case HotplugEvent.DeviceArrived:
+                case HIDApi.HotplugEvent.DeviceArrived:
                     notification = DeviceNotification.Type.Connected;
                     break;
-                case HotplugEvent.DeviceLeft:
+                case HIDApi.HotplugEvent.DeviceLeft:
                     notification = DeviceNotification.Type.Disconnected;
                     break;
             }
@@ -161,13 +160,13 @@ namespace BetterJoy
                     {
                         case DeviceNotification.Type.Connected:
                         {
-                            var deviceInfos = (HIDDeviceInfo)job.Data;
+                            var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
                             OnDeviceConnected(deviceInfos);
                             break;
                         }
                         case DeviceNotification.Type.Disconnected:
                         {
-                            var deviceInfos = (HIDDeviceInfo)job.Data;
+                            var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
                             OnDeviceDisconnected(deviceInfos);
                             break;
                         }
@@ -182,7 +181,7 @@ namespace BetterJoy
             }
         }
 
-        private void OnDeviceConnected(HIDDeviceInfo info)
+        private void OnDeviceConnected(HIDApi.HIDDeviceInfo info)
         {
             if (info.SerialNumber == null || GetControllerByPath(info.Path) != null)
             {
@@ -219,7 +218,7 @@ namespace BetterJoy
                 return;
             }
 
-            bool isUSB = info.BusType == BusType.USB;
+            bool isUSB = info.BusType == HIDApi.BusType.USB;
             var type = Joycon.ControllerType.JoyconLeft;
 
             switch (prodId)
@@ -242,7 +241,7 @@ namespace BetterJoy
 
         private void OnDeviceConnected(string path, string serial, Joycon.ControllerType type, bool isUSB, bool isThirdparty, bool reconnect = false)
         {
-            var handle = hid_open_path(path);
+            var handle = HIDApi.OpenPath(path);
             if (handle == IntPtr.Zero)
             {
                 // don't show an error message when the controller was dropped without hidapi callback notification (after standby by example)
@@ -256,7 +255,7 @@ namespace BetterJoy
                 return;
             }
 
-            hid_set_nonblocking(handle, 1);
+            HIDApi.SetNonBlocking(handle, 1);
 
             _form.AppendTextBox(Joycon.GetControllerName(type) + " connected.");
 
@@ -314,7 +313,7 @@ namespace BetterJoy
             controller.Begin();
         }
 
-        private void OnDeviceDisconnected(HIDDeviceInfo info)
+        private void OnDeviceDisconnected(HIDApi.HIDDeviceInfo info)
         {
             var controller = GetControllerByPath(info.Path);
 
@@ -425,7 +424,7 @@ namespace BetterJoy
 
             if (_hidCallbackHandle != 0)
             {
-                hid_hotplug_deregister_callback(_hidCallbackHandle);
+                HIDApi.HotplugDeregisterCallback(_hidCallbackHandle);
             }
             
             await _devicesNotificationTask;
@@ -445,7 +444,7 @@ namespace BetterJoy
                 controller.Detach();
             }
 
-            hid_exit();
+            HIDApi.Exit();
         }
 
         public bool JoinJoycon(Joycon controller, bool joinSelf = false)
@@ -745,7 +744,7 @@ namespace BetterJoy
             {
                 var devices = new List<string>();
 
-                var instance = GetInstance(handle);
+                var instance = HIDApi.GetInstance(handle);
                 if (instance.Length == 0)
                 {
                     _form.AppendTextBox("Unable to get device instance.");
@@ -755,7 +754,7 @@ namespace BetterJoy
                     devices.Add(instance);
                 }
 
-                var parentInstance = GetParentInstance(handle);
+                var parentInstance = HIDApi.GetParentInstance(handle);
                 if (parentInstance.Length == 0)
                 {
                     _form.AppendTextBox("Unable to get device parent instance.");

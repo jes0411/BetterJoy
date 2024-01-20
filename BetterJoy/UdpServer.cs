@@ -84,13 +84,12 @@ namespace BetterJoy
         )
         {
             var size = usefulData.Length + 16;
-            using var packetDataBuffer = MemoryPool<byte>.Shared.RentCleared(size);
-            var packetDataMem = packetDataBuffer.Memory;
+            using var packetDataBuffer = ArrayPoolHelper<byte>.Shared.RentCleared(size);
 
             // needed to use span in async function
             void MakePacket()
             {
-                var packetData = packetDataMem.Span;
+                var packetData = packetDataBuffer.Span;
 
                 var currIdx = BeginPacket(packetData, reqProtocolVersion);
                 usefulData.AsSpan().CopyTo(packetData.Slice(currIdx));
@@ -101,7 +100,7 @@ namespace BetterJoy
 
             try
             {
-                await _udpSock.SendToAsync(clientEp, packetDataMem);
+                await _udpSock.SendToAsync(clientEp, packetDataBuffer.ReadOnlyMemory);
             }
             catch (SocketException /*e*/) { }
         }
@@ -510,14 +509,20 @@ namespace BetterJoy
 
             var nbClients = 0;
             var now = DateTime.UtcNow;
+            Span<IPEndPoint> relevantClients = null; 
 
             Monitor.Enter(_clients);
-            using var relevantClientsBuffer = MemoryPool<IPEndPoint>.Shared.RentCleared(_clients.Count);
-            var relevantClientsMemory = relevantClientsBuffer.Memory;
-            var relevantClients = relevantClientsMemory.Span;
 
             try
             {
+                if (_clients.Count == 0)
+                {
+                    return;
+                }
+
+                var relevantClientsBuffer = new IPEndPoint[_clients.Count];
+                relevantClients = relevantClientsBuffer.AsSpan();
+
                 foreach (var client in _clients)
                 {
                     if (!IsControllerTimedout(now, client.Value.AllPadsTime))
@@ -580,9 +585,8 @@ namespace BetterJoy
 
             relevantClients = relevantClients.Slice(0, nbClients);
 
-            using var reportBuffer = MemoryPool<byte>.Shared.RentCleared(ReportSize);
-            var reportBufferMem = reportBuffer.Memory;
-            var outputData = reportBufferMem.Span;
+            Span<byte> outputData = stackalloc byte[ReportSize];
+            outputData.Clear();
 
             var outIdx = BeginPacket(outputData);
             BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), (uint)MessageType.DsusPadDataRsp);

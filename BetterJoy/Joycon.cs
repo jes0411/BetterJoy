@@ -80,7 +80,15 @@ namespace BetterJoy
             NoData
         }
 
-        private const int ReportLen = 49;
+        private enum ReportMode
+        {
+            StandardFull = 0x30,
+            SimpleHID = 0x3F
+        }
+
+        private const int ReportLength = 49;
+        private readonly int _CommandLength;
+        private readonly int _MixedComsLength; // when the buffer is used for both read and write to hid
 
         private static readonly int LowFreq = int.Parse(ConfigurationManager.AppSettings["LowFreqRumble"]);
         private static readonly int HighFreq = int.Parse(ConfigurationManager.AppSettings["HighFreqRumble"]);
@@ -302,6 +310,8 @@ namespace BetterJoy
             Type = type;
             IsThirdParty = isThirdParty;
             Path = path;
+            _CommandLength = isUSB ? 64 : 49;
+            _MixedComsLength = Math.Max(ReportLength, _CommandLength);
 
             Connection = isUSB ? 0x01 : 0x02;
 
@@ -465,88 +475,30 @@ namespace BetterJoy
 
             // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
             // do not always send a response so we don't check if there is one
-            Subcommand(0x3, [0x3F], 1);
+            SetReportMode(ReportMode.SimpleHID);
 
             // Connect
             if (IsUSB)
             {
                 _form.AppendTextBox("Using USB.");
 
-                var buf = new byte[ReportLen];
-
-                // Get MAC
-                buf[0] = 0x80;
-                buf[1] = 0x1;
-                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                if (ReadUSBCheck(buf, 0x1) == 0)
+                try
                 {
-                    // can occur when USB connection isn't closed properly
-                    Reset();
-                    throw new Exception("reset mac");
+                    GetMAC();
+                    USBPairing();
                 }
-
-                PadMacAddress = new PhysicalAddress([buf[9], buf[8], buf[7], buf[6], buf[5], buf[4]]);
-                SerialOrMac = PadMacAddress.ToString().ToLower();
-
-                // USB Pairing
-                buf[0] = 0x80;
-                buf[1] = 0x2; // Handshake
-                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                if (ReadUSBCheck(buf, 0x2) == 0)
-                {
-                    // can occur when another software sends commands to the device, disable PurgeAffectedDevice in the config to avoid this
-                    Reset();
-                    throw new Exception("reset handshake");
-                }
-
-                buf[0] = 0x80;
-                buf[1] = 0x3; // 3Mbit baud rate
-                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                if (ReadUSBCheck(buf, 0x3) == 0)
+                catch (Exception)
                 {
                     Reset();
-                    throw new Exception("reset baud rate");
+                    throw;
                 }
 
-                buf[0] = 0x80;
-                buf[1] = 0x2; // Handshake at new baud rate
-                HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                if (ReadUSBCheck(buf, 0x2) == 0)
-                {
-                    Reset();
-                    throw new Exception("reset new handshake");
-                }
-
-                buf[0] = 0x80;
-                buf[1] = 0x4; // Prevent HID timeout
-                HIDApi.hid_write(_handle, buf, new UIntPtr(2)); // does not send a response
-                // Bluetooth manual pairing
-                //byte[] btmac_host = Program.BtMac.GetAddressBytes();
-                // send host MAC and acquire Joycon MAC
-                //byte[] reply = Subcommand(0x01, [0x01, btmac_host[5], btmac_host[4], btmac_host[3], btmac_host[2], btmac_host[1], btmac_host[0]], 7);
-                //byte[] LTKhash = Subcommand(0x01, [0x02], 1);
-                // save pairing info
-                //Subcommand(0x01, [0x03], 1);
+                //BTManualPairing();
             }
             else
             {
                 _form.AppendTextBox("Using Bluetooth.");
-
-                // Serial = MAC address of the controller in bluetooth
-                var mac = new byte[6];
-                try
-                {
-                    for (var n = 0; n < 6 && n < SerialNumber.Length; n++)
-                    {
-                        mac[n] = byte.Parse(SerialNumber.AsSpan(n * 2, 2), NumberStyles.HexNumber);
-                    }
-                }
-                catch (Exception)
-                {
-                    // could not parse mac address
-                }
-
-                PadMacAddress = new PhysicalAddress(mac);
+                GetMAC();
             }
 
             var ok = DumpCalibrationData();
@@ -559,18 +511,103 @@ namespace BetterJoy
             BlinkHomeLight();
             SetLEDByPlayerNum(PadId);
 
-            Subcommand(0x40, [_IMUEnabled ? (byte)0x01 : (byte)0x00], 1); // enable IMU
-            Subcommand(0x48, [0x01], 1); // enable vibrations
-            Subcommand(0x03, [0x30], 1); // set report mode to NPad standard mode
+            SetIMU(_IMUEnabled);
+            SetRumble(true);
+            SetReportMode(ReportMode.StandardFull);
 
             State = Status.Attached;
 
             DebugPrint("Done with init.", DebugType.Comms);
         }
 
-        public void SetPlayerLED(byte leds = 0x0)
+        private void GetMAC()
         {
-            Subcommand(0x30, [leds], 1);
+            if (IsUSB)
+            {
+                Span<byte> buf = stackalloc byte[_MixedComsLength];
+
+                // Get MAC
+                buf[0] = 0x80;
+                buf[1] = 0x01;
+                Write(buf);
+                if (ReadUSBCheck(0x1, buf) < 10)
+                {
+                    // can occur when USB connection isn't closed properly
+                    Reset();
+                    throw new Exception("reset mac");
+                }
+
+                PadMacAddress = new PhysicalAddress([buf[9], buf[8], buf[7], buf[6], buf[5], buf[4]]);
+                SerialOrMac = PadMacAddress.ToString().ToLower();
+                return;
+            }
+            
+            // Serial = MAC address of the controller in bluetooth
+            var mac = new byte[6];
+            try
+            {
+                for (var n = 0; n < 6 && n < SerialNumber.Length; n++)
+                {
+                    mac[n] = byte.Parse(SerialNumber.AsSpan(n * 2, 2), NumberStyles.HexNumber);
+                }
+            }
+            catch (Exception)
+            {
+                // could not parse mac address
+            }
+
+            PadMacAddress = new PhysicalAddress(mac);
+        }
+
+        private void USBPairing()
+        {
+            Span<byte> buf = stackalloc byte[_MixedComsLength];
+
+            buf[0] = 0x80;
+            buf[1] = 0x02; // Handshake
+            Write(buf);
+            if (ReadUSBCheck(0x02, buf) == 0)
+            {
+                throw new Exception("reset handshake");
+            }
+
+            buf[0] = 0x80;
+            buf[1] = 0x03; // 3Mbit baud rate
+            Write(buf);
+            if (ReadUSBCheck(0x03, buf) == 0)
+            {
+                throw new Exception("reset baud rate");
+            }
+
+            buf[0] = 0x80;
+            buf[1] = 0x02; // Handshake at new baud rate
+            Write(buf);
+            if (ReadUSBCheck(0x02, buf) == 0)
+            {
+                throw new Exception("reset new handshake");
+            }
+
+            buf[0] = 0x80;
+            buf[1] = 0x04; // Prevent HID timeout
+            Write(buf); // does not send a response
+        }
+
+        private void BTManualPairing()
+        {
+            Span<byte> buf = stackalloc byte[ReportLength];
+
+            // Bluetooth manual pairing
+            byte[] btmac_host = Program.BtMac.GetAddressBytes();
+
+            // send host MAC and acquire Joycon MAC
+            SubcommandCheck(0x01, [0x01, btmac_host[5], btmac_host[4], btmac_host[3], btmac_host[2], btmac_host[1], btmac_host[0]], 7, buf);
+            SubcommandCheck(0x01, [0x02], 1, buf); // LTKhash
+            SubcommandCheck(0x01, [0x03], 1, buf); // save pairing info
+        }
+
+        public void SetPlayerLED(byte leds = 0x00)
+        {
+            SubcommandCheck(0x30, [leds], 1);
         }
 
         public void BlinkHomeLight()
@@ -594,7 +631,7 @@ namespace BetterJoy
             buf[3] = 0xFF;
             buf[4] = 0xFF;
 
-            Subcommand(0x38, buf, 5);
+            SubcommandCheck(0x38, buf, 5);
         }
 
         public void SetHomeLight(bool on)
@@ -620,12 +657,53 @@ namespace BetterJoy
             buf[3] = 0x11; // transition multiplier | duration multiplier, both use the base duration
             buf[4] = 0xFF; // not used
 
-            SubcommandFireAndForget(0x38, buf, 5);
+            Subcommand(0x38, buf, 5); // don't wait for reply
         }
 
         private void SetHCIState(byte state)
         {
-            Subcommand(0x06, [state], 1);
+            SubcommandCheck(0x06, [state], 1);
+        }
+
+        private void SetIMU(bool enable)
+        {
+            SubcommandCheck(0x40, [enable ? (byte)0x01 : (byte)0x00], 1);
+        }
+
+        private void SetRumble(bool enable)
+        {
+            SubcommandCheck(0x48, [enable ? (byte)0x01 : (byte)0x00], 1);
+        }
+
+        private void SetReportMode(ReportMode reportMode, bool checkReply = true)
+        {
+            if (checkReply)
+            {
+                SubcommandCheck(0x03, [(byte)reportMode], 1);
+                return;
+            }
+            Subcommand(0x03, [(byte)reportMode], 1);
+        }
+
+        private void BTActivate()
+        {
+            if (!IsUSB)
+            {
+                return;
+            }
+
+            Span<byte> buf = stackalloc byte[_MixedComsLength];
+            buf.Clear();
+
+            buf[0] = 0x80;
+            buf[1] = 0x05; // Allow device to talk to BT again
+            Write(buf);
+            ReadUSBCheck(0x05, buf);
+
+            buf[0] = 0x80;
+            buf[1] = 0x06; // Allow device to talk to BT again
+            Write(buf);
+            ReadUSBCheck(0x06, buf);
         }
 
         public void PowerOff()
@@ -676,22 +754,13 @@ namespace BetterJoy
             {
                 if (State > Status.Dropped)
                 {
-                    //Subcommand(0x40, [0x00], 1); // disable IMU sensor
-                    //Subcommand(0x48, [0x00], 1); // Would turn off rumble?
-                    Subcommand(0x03, [0x3F], 1); // set report mode to simple HID mode
+                    //SetIMU(false);
+                    //SetRumble(false);
+                    SetReportMode(ReportMode.SimpleHID);
                     SetPlayerLED(0);
 
                     // Commented because you need to restart the controller to reconnect in usb again with the following
-                    //if (IsUSB)
-                    //{
-                        //var buf = new byte[ReportLen];
-                        //buf[0] = 0x80; buf[1] = 0x05; // Allow device to talk to BT again
-                        //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                        //ReadUSBCheck(buf, 0x05);
-                        //buf[0] = 0x80; buf[1] = 0x06; // Allow device to talk to BT again
-                        //HIDApi.hid_write(_handle, buf, new UIntPtr(2));
-                        //ReadUSBCheck(buf, 0x06);
-                    //}
+                    //BTActivate();
                 }
 
                 if (close)
@@ -699,7 +768,7 @@ namespace BetterJoy
                     HidapiLock.EnterWriteLock();
                     try
                     {
-                        HIDApi.hid_close(_handle);
+                        HIDApi.Close(_handle);
                         _handle = IntPtr.Zero;
                     }
                     finally
@@ -738,7 +807,7 @@ namespace BetterJoy
         }
 
         // Run from poll thread
-        private ReceiveError ReceiveRaw(byte[] buf)
+        private ReceiveError ReceiveRaw(Span<byte> buf)
         {
             if (_handle == IntPtr.Zero)
             {
@@ -746,7 +815,7 @@ namespace BetterJoy
             }
 
             // The controller should report back at 60hz or between 60-120hz for the Pro Controller in USB
-            var length = HIDApi.hid_read_timeout(_handle, buf, new UIntPtr(ReportLen), 100);
+            var length = Read(buf, 100);
 
             if (length < 0)
             {
@@ -758,9 +827,8 @@ namespace BetterJoy
                 return ReceiveError.NoData;
             }
 
-            if (buf[0] != 0x30)
+            if (buf[0] != (byte)ReportMode.StandardFull)
             {
-                // 0x30 = standard full mode report
                 return ReceiveError.InvalidPacket;
             }
 
@@ -775,9 +843,9 @@ namespace BetterJoy
             _timeSinceReceive.Restart();
 
             // clear remaining of buffer just to be safe
-            if (length < ReportLen)
+            if (length < ReportLength)
             {
-                Array.Clear(buf, length, ReportLen - length);
+                buf.Slice(length,  ReportLength - length).Clear();
             }
 
             // Process packets as soon as they come
@@ -1245,7 +1313,7 @@ namespace BetterJoy
             }
         }
 
-        private void GetBatteryInfos(byte[] reportBuf)
+        private void GetBatteryInfos(ReadOnlySpan<byte> reportBuf)
         {
             var prevBattery = Battery;
             var prevCharging = Charging;
@@ -1267,7 +1335,8 @@ namespace BetterJoy
 
         private void SendCommands()
         {
-            var buf = new byte[ReportLen];
+            Span<byte> buf = stackalloc byte[_CommandLength];
+            buf.Clear();
 
             // the home light stays on for 2625ms, set to less than half in case of packet drop
             const int sendHomeLightIntervalMs = 1250;
@@ -1293,7 +1362,8 @@ namespace BetterJoy
 
         private void ReceiveReports()
         {
-            var buf = new byte[ReportLen];
+            Span<byte> buf = stackalloc byte[ReportLength];
+            buf.Clear();
 
             int dropAfterMs = IsUSB ? 1500 : 3000;
             Stopwatch timeSinceError = new();
@@ -1338,7 +1408,7 @@ namespace BetterJoy
             }
         }
 
-        private int ProcessButtonsAndStick(byte[] reportBuf)
+        private int ProcessButtonsAndStick(ReadOnlySpan<byte> reportBuf)
         {
             var activity = false;
             var timestamp = Stopwatch.GetTimestamp();
@@ -1539,7 +1609,7 @@ namespace BetterJoy
         }
 
         // Get Gyro/Accel data
-        private void ExtractIMUValues(byte[] reportBuf, int n = 0)
+        private void ExtractIMUValues(ReadOnlySpan<byte> reportBuf, int n = 0)
         {
             if (IsSNES)
             {
@@ -1737,30 +1807,31 @@ namespace BetterJoy
         }
 
         // Run from poll thread
-        private void SendRumble(byte[] buf, byte[] data)
+        private void SendRumble(Span<byte> buf, ReadOnlySpan<byte> data)
         {
-            Array.Clear(buf);
+            buf.Clear();
 
             buf[0] = 0x10;
             buf[1] = (byte)(_globalCount & 0x0F);
             ++_globalCount;
 
-            Array.Copy(data, 0, buf, 2, 8);
-            PrintArray(buf, DebugType.Rumble, 10, format: "Rumble data sent: {0:S}");
-            HIDApi.hid_write(_handle, buf, new UIntPtr(10));
+            data.Slice(0, 8).CopyTo(buf.Slice(2));
+            PrintArray<byte>(buf, DebugType.Rumble, 10, format: "Rumble data sent: {0:S}");
+            Write(buf);
         }
 
-        private byte[] SubcommandFireAndForget(byte sc, byte[] bufParameters, uint len, bool print = true)
+        private bool Subcommand(byte sc, ReadOnlySpan<byte> bufParameters, int len, bool print = true)
         {
             if (_handle == IntPtr.Zero)
             {
-                return null;
+                return false;
             }
 
-            var buf = new byte[ReportLen];
+            Span<byte> buf = stackalloc byte[_CommandLength];
+            buf.Clear();
 
-            Array.Copy(_defaultBuf, 0, buf, 2, 8);
-            Array.Copy(bufParameters, 0, buf, 11, len);
+            _defaultBuf.AsSpan(0, 8).CopyTo(buf.Slice(2));
+            bufParameters.CopyTo(buf.Slice(11));
             buf[10] = sc;
             buf[1] = (byte)(_globalCount & 0x0F);
             buf[0] = 0x01;
@@ -1768,20 +1839,27 @@ namespace BetterJoy
 
             if (print)
             {
-                PrintArray(buf, DebugType.Comms, len, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
+                PrintArray<byte>(buf, DebugType.Comms, len, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
             }
 
-            HIDApi.hid_write(_handle, buf, new UIntPtr(len + 11));
+            Write(buf);
 
-            return buf;
+            return true;
         }
 
-        private byte[] Subcommand(byte sc, byte[] bufParameters, uint len, bool print = true)
+        private int SubcommandCheck(byte sc, ReadOnlySpan<byte> bufParameters, int len, bool print = true)
         {
-            var response = SubcommandFireAndForget(sc, bufParameters, len, print);
-            if (response == null)
+            Span<byte> response = stackalloc byte[ReportLength];
+
+            return SubcommandCheck(sc, bufParameters, len, response, print);
+        }
+
+        private int SubcommandCheck(byte sc, ReadOnlySpan<byte> bufParameters, int len, Span<byte> response, bool print = true)
+        {
+            bool sent = Subcommand(sc, bufParameters, len, print);
+            if (!sent)
             {
-                return null;
+                return 0;
             }
 
             var tries = 0;
@@ -1789,12 +1867,7 @@ namespace BetterJoy
             var responseFound = false;
             do
             {
-                length = HIDApi.hid_read_timeout(
-                    _handle,
-                    response,
-                    new UIntPtr(ReportLen),
-                    100
-                ); // don't set the timeout lower than 100 or might not always work
+                length = Read(response, 100); // don't set the timeout lower than 100 or might not always work
                 responseFound = length >= 20 && response[0] == 0x21 && response[14] == sc;
                 tries++;
             } while (tries < 10 && !responseFound);
@@ -1802,21 +1875,21 @@ namespace BetterJoy
             if (!responseFound)
             {
                 DebugPrint("No response.", DebugType.Comms);
-                return null;
+                return 0;
             }
 
             if (print)
             {
-                PrintArray(
+                PrintArray<byte>(
                     response,
                     DebugType.Comms,
-                    (uint)length - 1,
+                    length - 1,
                     1,
                     $"Response ID 0x{response[0]:X2}." + " Data: 0x{0:S}"
                 );
             }
 
-            return response;
+            return length;
         }
 
         private float CalculateDeadzone(ushort[] cal, ushort deadzone)
@@ -1885,7 +1958,7 @@ namespace BetterJoy
                 _stickCal[IsLeft ? 4 : 0] = (ushort)(((stick1Data[7] << 8) & 0xF00) | stick1Data[6]); // X Axis Min below center
                 _stickCal[IsLeft ? 5 : 1] = (ushort)((stick1Data[8] << 4) | (stick1Data[7] >> 4)); // Y Axis Min below center
 
-                PrintArray(_stickCal, len: 6, start: 0, format: $"{stick1Name} stick 1 calibration data: {{0:S}}");
+                PrintArray<ushort>(_stickCal, len: 6, start: 0, format: $"{stick1Name} stick 1 calibration data: {{0:S}}");
 
                 if (IsPro)
                 {
@@ -1913,7 +1986,7 @@ namespace BetterJoy
                     _stick2Cal[!IsLeft ? 4 : 0] = (ushort)(((stick2Data[7] << 8) & 0xF00) | stick2Data[6]); // X Axis Min below center
                     _stick2Cal[!IsLeft ? 5 : 1] = (ushort)((stick2Data[8] << 4) | (stick2Data[7] >> 4)); // Y Axis Min below center
 
-                    PrintArray(_stick2Cal, len: 6, start: 0, format: $"{stick2Name} stick calibration data: {{0:S}}");
+                    PrintArray<ushort>(_stick2Cal, len: 6, start: 0, format: $"{stick2Name} stick calibration data: {{0:S}}");
                 }
             }
 
@@ -2010,7 +2083,7 @@ namespace BetterJoy
                     _form.AppendTextBox($"Some sensor calibrations datas are missing, fallback to default ones.");
                 }
 
-                PrintArray(_gyrNeutral, len: 3, d: DebugType.IMU, format: "Gyro neutral position: {0:S}");
+                PrintArray<short>(_gyrNeutral, len: 3, d: DebugType.IMU, format: "Gyro neutral position: {0:S}");
             }
 
             if (!ok)
@@ -2021,15 +2094,41 @@ namespace BetterJoy
             return ok;
         }
 
-        private int ReadUSBCheck(byte[] data, byte command)
+        private int Read(Span<byte> response, int timeout = 100)
+        {
+            if (response.Length < ReportLength)
+            {
+                throw new IndexOutOfRangeException();
+            }
+
+            if (timeout >= 0)
+            {
+                return HIDApi.ReadTimeout(_handle, response, ReportLength, timeout);
+            }
+            return HIDApi.Read(_handle, response, ReportLength);
+        }
+
+        private int Write(ReadOnlySpan<byte> command)
+        {
+            if (command.Length < _CommandLength)
+            {
+                throw new IndexOutOfRangeException();
+            }
+
+            int length = HIDApi.Write(_handle, command, _CommandLength);
+            return length;
+        }
+
+        private int ReadUSBCheck(byte command, Span<byte> response)
         {
             int length;
             bool responseFound;
             var tries = 0;
+
             do
             {
-                length = HIDApi.hid_read_timeout(_handle, data, new UIntPtr(ReportLen), 100);
-                responseFound = length > 1 && data[0] == 0x81 && data[1] == command;
+                length = Read(response, 100);
+                responseFound = length > 1 && response[0] == 0x81 && response[1] == command;
                 ++tries;
             } while (tries < 10 && !responseFound);
 
@@ -2041,7 +2140,7 @@ namespace BetterJoy
             return length;
         }
 
-        private byte[] ReadSPICheck(byte addr1, byte addr2, uint len, ref bool ok, bool print = false)
+        private byte[] ReadSPICheck(byte addr1, byte addr2, int len, ref bool ok, bool print = false)
         {
             var readBuf = new byte[len];
             if (!ok)
@@ -2050,13 +2149,14 @@ namespace BetterJoy
             }
 
             byte[] bufSubcommand = { addr2, addr1, 0x00, 0x00, (byte)len };
-            byte[] buf = null;
+            
+            Span<byte> response = stackalloc byte[ReportLength];
 
             ok = false;
             for (var i = 0; i < 5; ++i)
             {
-                buf = Subcommand(0x10, bufSubcommand, 5, false);
-                if (buf != null && buf[15] == addr2 && buf[16] == addr1)
+                int length = SubcommandCheck(0x10, bufSubcommand, 5, response, false);
+                if (length >= 20 + len && response[15] == addr2 && response[16] == addr1)
                 {
                     ok = true;
                     break;
@@ -2065,10 +2165,10 @@ namespace BetterJoy
 
             if (ok)
             {
-                Array.Copy(buf, 20, readBuf, 0, len);
+                response.Slice(20, len).CopyTo(readBuf);
                 if (print)
                 {
-                    PrintArray(readBuf, DebugType.Comms, len);
+                    PrintArray<byte>(readBuf, DebugType.Comms, len);
                 }
             }
             else
@@ -2080,10 +2180,10 @@ namespace BetterJoy
         }
 
         private void PrintArray<T>(
-            T[] arr,
+            ReadOnlySpan<T> arr,
             DebugType d = DebugType.None,
-            uint len = 0,
-            uint start = 0,
+            int len = 0,
+            int start = 0,
             string format = "{0:S}"
         )
         {
@@ -2094,7 +2194,7 @@ namespace BetterJoy
 
             if (len == 0)
             {
-                len = (uint)arr.Length;
+                len = arr.Length;
             }
 
             var tostr = "";

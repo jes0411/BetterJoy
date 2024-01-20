@@ -1,6 +1,5 @@
 ﻿﻿using System;
 using System.Threading;
-using WindowsInput.Events;
 using WindowsInput.Events.Sources;
 
 namespace BetterJoy
