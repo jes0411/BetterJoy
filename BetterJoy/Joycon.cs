@@ -211,9 +211,11 @@ namespace BetterJoy
         public readonly bool IsUSB;
         private long _lastDoubleClick = -1;
         public readonly int Model = 2;
-        public OutputControllerDualShock4 OutDs4;
 
+        public OutputControllerDualShock4 OutDs4;
         public OutputControllerXbox360 OutXbox;
+        private readonly object _updateInputLock = new object();
+
         public int PacketCounter;
 
         // For UdpServer
@@ -806,6 +808,48 @@ namespace BetterJoy
             catch { } // nothing we can do, might not be connected in the first place
         }
 
+        private void UpdateInput()
+        {
+            bool lockTaken = false;
+            bool otherLockTaken = false;
+
+            if (Type == ControllerType.JoyconLeft)
+            {
+                Monitor.Enter(_updateInputLock, ref lockTaken); // need with joined joycons
+            }
+
+            try
+            {
+                ref var ds4 = ref OutDs4;
+                ref var xbox = ref OutXbox;
+
+                // Update the left joycon virtual controller when joined
+                if (!IsLeft && IsJoined)
+                {
+                    Monitor.Enter(Other._updateInputLock, ref otherLockTaken);
+
+                    ds4 = ref Other.OutDs4;
+                    xbox = ref Other.OutXbox;
+                }
+
+                ds4?.UpdateInput(MapToDualShock4Input(this));
+                xbox?.UpdateInput(MapToXbox360Input(this));
+            }
+            catch { } // ignore
+            finally
+            {
+                if (lockTaken)
+                {
+                    Monitor.Exit(_updateInputLock);
+                }
+
+                if (otherLockTaken)
+                {
+                    Monitor.Exit(Other._updateInputLock);
+                }
+            }
+        }
+
         // Run from poll thread
         private ReceiveError ReceiveRaw(Span<byte> buf)
         {
@@ -872,12 +916,7 @@ namespace BetterJoy
                 Program.Server?.NewReportIncoming(this);
             }
 
-            try
-            {
-                OutDs4?.UpdateInput(MapToDualShock4Input(this));
-                OutXbox?.UpdateInput(MapToXbox360Input(this));
-            }
-            catch { } // ignore
+            UpdateInput();
 
             //DebugPrint($"Bytes read: {length:D}. Elapsed: {deltaReceiveMs}ms AVG: {_avgReceiveDeltaMs.GetAverage()}ms", DebugType.Threading);
 
