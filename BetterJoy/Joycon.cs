@@ -163,11 +163,9 @@ namespace BetterJoy
 
         private readonly byte[] _sliderVal = { 0, 0 };
 
-        private readonly byte[] _stickRaw = { 0, 0, 0 };
         private readonly ushort[] _stickCal = { 0, 0, 0, 0, 0, 0 };
         private readonly ushort[] _stickPrecal = { 0, 0 };
 
-        private readonly byte[] _stick2Raw = { 0, 0, 0 };
         private readonly ushort[] _stick2Cal = { 0, 0, 0, 0, 0, 0 };
         private readonly ushort[] _stick2Precal = { 0, 0 };
 
@@ -871,20 +869,13 @@ namespace BetterJoy
                 return ReceiveError.NoData;
             }
 
-            if (buf[0] != (byte)ReportMode.StandardFull)
+            //DebugPrint($"Received packet {buf[0]:X}", DebugType.Threading);
+
+            byte packetType = buf[0];
+            if (packetType != (byte)ReportMode.StandardFull && packetType != (byte)ReportMode.SimpleHID)
             {
                 return ReceiveError.InvalidPacket;
             }
-
-            // Determine the IMU timestamp with a rolling average instead of relying on the unreliable packet's timestamp
-            // more detailed explanations on why : https://github.com/torvalds/linux/blob/52b1853b080a082ec3749c3a9577f6c71b1d4a90/drivers/hid/hid-nintendo.c#L1115
-            long deltaReceiveMs = 0;
-            if (_timeSinceReceive.IsRunning)
-            {
-                deltaReceiveMs = _timeSinceReceive.ElapsedMilliseconds;
-                _avgReceiveDeltaMs.AddValue((int)deltaReceiveMs);
-            }
-            _timeSinceReceive.Restart();
 
             // clear remaining of buffer just to be safe
             if (length < ReportLength)
@@ -892,16 +883,30 @@ namespace BetterJoy
                 buf.Slice(length,  ReportLength - length).Clear();
             }
 
-            // Process packets as soon as they come
             const int nbPackets = 3;
+            ulong deltaPacketsMicroseconds = 0;
 
-            var deltaPacketsMs = _avgReceiveDeltaMs.GetAverage() / nbPackets;
-            var deltaPacketsMicroseconds = (ulong)(deltaPacketsMs * 1000);
-             _AHRS.SamplePeriod = deltaPacketsMs / 1000;
+            if (packetType == (byte)ReportMode.StandardFull)
+            {
+                // Determine the IMU timestamp with a rolling average instead of relying on the unreliable packet's timestamp
+                // more detailed explanations on why : https://github.com/torvalds/linux/blob/52b1853b080a082ec3749c3a9577f6c71b1d4a90/drivers/hid/hid-nintendo.c#L1115
+                if (_timeSinceReceive.IsRunning)
+                {
+                    var deltaReceiveMs = _timeSinceReceive.ElapsedMilliseconds;
+                    _avgReceiveDeltaMs.AddValue((int)deltaReceiveMs);
+                }
+                _timeSinceReceive.Restart();
 
+                var deltaPacketsMs = _avgReceiveDeltaMs.GetAverage() / nbPackets;
+                deltaPacketsMicroseconds = (ulong)(deltaPacketsMs * 1000);
+
+                 _AHRS.SamplePeriod = deltaPacketsMs / 1000;
+            }
+
+            // Process packets as soon as they come
             for (var n = 0; n < nbPackets; n++)
             {
-                ExtractIMUValues(buf, n);
+                bool updateIMU = ExtractIMUValues(buf, n);
 
                 if (n == 0)
                 {
@@ -910,9 +915,14 @@ namespace BetterJoy
                     GetBatteryInfos(buf);
                 }
 
-                Timestamp += deltaPacketsMicroseconds;
+                if (!updateIMU)
+                {
+                    break;
+                }
 
+                Timestamp += deltaPacketsMicroseconds;
                 PacketCounter++;
+
                 Program.Server?.NewReportIncoming(this);
             }
 
@@ -1354,6 +1364,12 @@ namespace BetterJoy
 
         private void GetBatteryInfos(ReadOnlySpan<byte> reportBuf)
         {
+            byte packetType = reportBuf[0];
+            if (packetType != (byte)ReportMode.StandardFull)
+            {
+                return;
+            }
+
             var prevBattery = Battery;
             var prevCharging = Charging;
 
@@ -1473,28 +1489,183 @@ namespace BetterJoy
             }
         }
 
-        private int ProcessButtonsAndStick(ReadOnlySpan<byte> reportBuf)
+        private static ushort Scale16bitsTo12bits(int value)
+        {
+            const float scale16bitsTo12bits = 4095f / 65535f;
+
+            return (ushort)MathF.Round(value * scale16bitsTo12bits);
+        }
+
+        private void ExtractSticksValues(ReadOnlySpan<byte> reportBuf)
+        {
+            byte reportType = reportBuf[0];
+
+            if (reportType == (byte)ReportMode.StandardFull)
+            {
+                var offset = IsLeft ? 0 : 3;
+
+                _stickPrecal[0] = (ushort)(reportBuf[6 + offset] | ((reportBuf[7 + offset] & 0xF) << 8));
+                _stickPrecal[1] = (ushort)((reportBuf[7 + offset] >> 4) | (reportBuf[8 + offset] << 4));
+
+                if (IsPro)
+                {
+                    _stick2Precal[0] = (ushort)(reportBuf[9] | ((reportBuf[10] & 0xF) << 8));
+                    _stick2Precal[1] = (ushort)((reportBuf[10] >> 4) | (reportBuf[11] << 4));
+                }
+            }
+            else if (reportType == (byte)ReportMode.SimpleHID)
+            {
+                if (IsPro)
+                {
+                    // Scale down to 12 bits to match the calibrations datas precision
+                    // Invert y axis by substracting from 0xFFFF to match 0x30 reports 
+                    _stickPrecal[0] = Scale16bitsTo12bits(reportBuf[4] | (reportBuf[5] << 8));
+                    _stickPrecal[1] = Scale16bitsTo12bits(0XFFFF - (reportBuf[6] | (reportBuf[7] << 8)));
+
+                    _stick2Precal[0] = Scale16bitsTo12bits(reportBuf[8] | (reportBuf[9] << 8));
+                    _stick2Precal[1] = Scale16bitsTo12bits(0xFFFF - (reportBuf[10] | (reportBuf[11] << 8)));
+                }
+                else
+                {
+                    // Simulate stick data from stick hat data
+
+                    int offsetX = 0;
+                    int offsetY = 0;
+
+                    byte stickHat = reportBuf[3];
+
+                    // Rotate the stick hat to the correct stick orientation.
+                    // The following table contains the position of the stick hat for each value
+                    // Each value on the edges can be easily rotated with a modulo as those are successive increments of 2
+                    // (1 3 5 7) and (0 2 4 6)
+                    // ------------------
+                    // | SL | SYNC | SR |
+                    // |----------------|
+                    // | 7  |  0   | 1  |
+                    // |----------------|
+                    // | 6  |  8   | 2  |
+                    // |----------------|
+                    // | 5  |  4   | 3  |
+                    // ------------------
+                    if (stickHat < 0x08) // Some thirdparty controller set it to 0x0F instead of 0x08 when centered
+                    {
+                        var rotation = IsLeft ? 0x02 : 0x06;
+                        stickHat = (byte)((stickHat + rotation) % 8);
+                    }
+
+                    switch (stickHat)
+                    {
+                        case 0x00: offsetY = _stickCal[1]; break; // top
+                        case 0x01: offsetX = _stickCal[0]; offsetY = _stickCal[1]; break; // top right
+                        case 0x02: offsetX = _stickCal[0]; break; // right
+                        case 0x03: offsetX = _stickCal[0]; offsetY = -_stickCal[5]; break; // bottom right
+                        case 0x04: offsetY = -_stickCal[5]; break; // bottom
+                        case 0x05: offsetX = -_stickCal[4]; offsetY = -_stickCal[5]; break; // bottom left
+                        case 0x06: offsetX = -_stickCal[4]; break; // left
+                        case 0x07: offsetX = -_stickCal[4]; offsetY = _stickCal[1]; break; // top left
+                        case 0x08: default: break; // center
+                    }
+
+                    _stickPrecal[0] = (ushort)(_stickCal[2] + offsetX);
+                    _stickPrecal[1] = (ushort)(_stickCal[3] + offsetY);
+                }
+            }
+            else
+            {
+                throw new NotImplementedException($"Cannot extract sticks values for report {reportType:X}");
+            }
+        }
+
+        private void ExtractButtonsValues(ReadOnlySpan<byte> reportBuf)
+        {
+            byte reportType = reportBuf[0];
+
+            if (reportType == (byte)ReportMode.StandardFull)
+            {
+                var offset = IsLeft ? 2 : 0;
+
+                _buttons[(int)Button.DpadDown] = (reportBuf[3 + offset] & (IsLeft ? 0x01 : 0x04)) != 0;
+                _buttons[(int)Button.DpadRight] = (reportBuf[3 + offset] & (IsLeft ? 0x04 : 0x08)) != 0;
+                _buttons[(int)Button.DpadUp] = (reportBuf[3 + offset] & 0x02) != 0;
+                _buttons[(int)Button.DpadLeft] = (reportBuf[3 + offset] & (IsLeft ? 0x08 : 0x01)) != 0;
+                _buttons[(int)Button.Home] = (reportBuf[4] & 0x10) != 0;
+                _buttons[(int)Button.Capture] = (reportBuf[4] & 0x20) != 0;
+                _buttons[(int)Button.Minus] = (reportBuf[4] & 0x01) != 0;
+                _buttons[(int)Button.Plus] = (reportBuf[4] & 0x02) != 0;
+                _buttons[(int)Button.Stick] = (reportBuf[4] & (IsLeft ? 0x08 : 0x04)) != 0;
+                _buttons[(int)Button.Shoulder1] = (reportBuf[3 + offset] & 0x40) != 0;
+                _buttons[(int)Button.Shoulder2] = (reportBuf[3 + offset] & 0x80) != 0;
+                _buttons[(int)Button.SR] = (reportBuf[3 + offset] & 0x10) != 0;
+                _buttons[(int)Button.SL] = (reportBuf[3 + offset] & 0x20) != 0;
+
+                if (IsPro)
+                {
+                    _buttons[(int)Button.B] = (reportBuf[3] & 0x04) != 0;
+                    _buttons[(int)Button.A] = (reportBuf[3] & 0x08) != 0;
+                    _buttons[(int)Button.X] = (reportBuf[3] & 0x02) != 0;
+                    _buttons[(int)Button.Y] = (reportBuf[3] & 0x01) != 0;
+
+                    _buttons[(int)Button.Stick2] = (reportBuf[4] & 0x04) != 0;
+                    _buttons[(int)Button.Shoulder21] = (reportBuf[3] & 0x40) != 0;
+                    _buttons[(int)Button.Shoulder22] = (reportBuf[3] & 0x80) != 0;
+                }
+            }
+            else if (reportType == (byte)ReportMode.SimpleHID)
+            {
+                _buttons[(int)Button.Home] = (reportBuf[2] & 0x10) != 0;
+                _buttons[(int)Button.Capture] = (reportBuf[2] & 0x20) != 0;
+                _buttons[(int)Button.Minus] = (reportBuf[2] & 0x01) != 0;
+                _buttons[(int)Button.Plus] = (reportBuf[2] & 0x02) != 0;
+                _buttons[(int)Button.Stick] = (reportBuf[2] & (IsLeft ? 0x04 : 0x08)) != 0;
+                
+                if (IsPro)
+                {
+                    byte stickHat = reportBuf[3];
+
+                    _buttons[(int)Button.DpadDown] = stickHat == 0x03 || stickHat == 0x04 || stickHat == 0x05;
+                    _buttons[(int)Button.DpadRight] = stickHat == 0x01 || stickHat == 0x02 || stickHat == 0x03;
+                    _buttons[(int)Button.DpadUp] = stickHat == 0x07 || stickHat == 0x00 || stickHat == 0x01;
+                    _buttons[(int)Button.DpadLeft] =  stickHat == 0x05 ||  stickHat == 0x06 || stickHat == 0x07;
+
+                    _buttons[(int)Button.B] = (reportBuf[1] & 0x01) != 0;
+                    _buttons[(int)Button.A] = (reportBuf[1] & 0x02) != 0;
+                    _buttons[(int)Button.X] = (reportBuf[1] & 0x08) != 0;
+                    _buttons[(int)Button.Y] = (reportBuf[1] & 0x04) != 0;
+
+                    _buttons[(int)Button.Stick2] = (reportBuf[2] & 0x08) != 0;
+                    _buttons[(int)Button.Shoulder1] = (reportBuf[1] & 0x10) != 0;
+                    _buttons[(int)Button.Shoulder2] = (reportBuf[1] & 0x40) != 0;
+                    _buttons[(int)Button.Shoulder21] = (reportBuf[1] & 0x20) != 0;
+                    _buttons[(int)Button.Shoulder22] = (reportBuf[1] & 0x80) != 0;
+                }
+                else
+                {
+                    _buttons[(int)Button.DpadDown] = (reportBuf[1] & (IsLeft ? 0x02 : 0x04)) != 0;
+                    _buttons[(int)Button.DpadRight] = (reportBuf[1] & (IsLeft ? 0x08 : 0x01)) != 0;
+                    _buttons[(int)Button.DpadUp] = (reportBuf[1] & (IsLeft ? 0x04 : 0x02)) != 0;
+                    _buttons[(int)Button.DpadLeft] = (reportBuf[1] & (IsLeft ? 0x01 : 0x08)) != 0;
+
+                    _buttons[(int)Button.Shoulder1] = (reportBuf[2] & 0x40) != 0;
+                    _buttons[(int)Button.Shoulder2] = (reportBuf[2] & 0x80) != 0;
+
+                    _buttons[(int)Button.SR] = (reportBuf[1] & 0x20) != 0;
+                    _buttons[(int)Button.SL] = (reportBuf[1] & 0x10) != 0;
+                }
+            }
+            else
+            {
+                throw new NotImplementedException($"Cannot extract buttons values for report {reportType:X}");
+            }
+        }
+
+        private void ProcessButtonsAndStick(ReadOnlySpan<byte> reportBuf)
         {
             var activity = false;
             var timestamp = Stopwatch.GetTimestamp();
 
             if (!IsSNES)
             {
-                var reportOffset = IsLeft ? 0 : 3;
-                _stickRaw[0] = reportBuf[6 + reportOffset];
-                _stickRaw[1] = reportBuf[7 + reportOffset];
-                _stickRaw[2] = reportBuf[8 + reportOffset];
-
-                if (IsPro)
-                {
-                    reportOffset = !IsLeft ? 0 : 3;
-                    _stick2Raw[0] = reportBuf[6 + reportOffset];
-                    _stick2Raw[1] = reportBuf[7 + reportOffset];
-                    _stick2Raw[2] = reportBuf[8 + reportOffset];
-                }
-
-                _stickPrecal[0] = (ushort)(_stickRaw[0] | ((_stickRaw[1] & 0xf) << 8));
-                _stickPrecal[1] = (ushort)((_stickRaw[1] >> 4) | (_stickRaw[2] << 4));
+                ExtractSticksValues(reportBuf);
 
                 var cal = _stickCal;
                 var dz = _deadzone;
@@ -1511,9 +1682,6 @@ namespace BetterJoy
 
                 if (IsPro)
                 {
-                    _stick2Precal[0] = (ushort)(_stick2Raw[0] | ((_stick2Raw[1] & 0xf) << 8));
-                    _stick2Precal[1] = (ushort)((_stick2Raw[1] >> 4) | (_stick2Raw[2] << 4));
-
                     cal = _stick2Cal;
                     dz = _deadzone2;
                     range = _range2;
@@ -1590,35 +1758,7 @@ namespace BetterJoy
 
                 Array.Clear(_buttons);
 
-                var reportOffset = IsLeft ? 2 : 0;
-
-                _buttons[(int)Button.DpadDown] = (reportBuf[3 + reportOffset] & (IsLeft ? 0x01 : 0x04)) != 0;
-                _buttons[(int)Button.DpadRight] = (reportBuf[3 + reportOffset] & (IsLeft ? 0x04 : 0x08)) != 0;
-                _buttons[(int)Button.DpadUp] = (reportBuf[3 + reportOffset] & 0x02) != 0;
-                _buttons[(int)Button.DpadLeft] = (reportBuf[3 + reportOffset] & (IsLeft ? 0x08 : 0x01)) != 0;
-                _buttons[(int)Button.Home] = (reportBuf[4] & 0x10) != 0;
-                _buttons[(int)Button.Capture] = (reportBuf[4] & 0x20) != 0;
-                _buttons[(int)Button.Minus] = (reportBuf[4] & 0x01) != 0;
-                _buttons[(int)Button.Plus] = (reportBuf[4] & 0x02) != 0;
-                _buttons[(int)Button.Stick] = (reportBuf[4] & (IsLeft ? 0x08 : 0x04)) != 0;
-                _buttons[(int)Button.Shoulder1] = (reportBuf[3 + reportOffset] & 0x40) != 0;
-                _buttons[(int)Button.Shoulder2] = (reportBuf[3 + reportOffset] & 0x80) != 0;
-                _buttons[(int)Button.SR] = (reportBuf[3 + reportOffset] & 0x10) != 0;
-                _buttons[(int)Button.SL] = (reportBuf[3 + reportOffset] & 0x20) != 0;
-
-                if (IsPro)
-                {
-                    reportOffset = !IsLeft ? 2 : 0;
-
-                    _buttons[(int)Button.B] = (reportBuf[3 + reportOffset] & (!IsLeft ? 0x01 : 0x04)) != 0;
-                    _buttons[(int)Button.A] = (reportBuf[3 + reportOffset] & (!IsLeft ? 0x04 : 0x08)) != 0;
-                    _buttons[(int)Button.X] = (reportBuf[3 + reportOffset] & 0x02) != 0;
-                    _buttons[(int)Button.Y] = (reportBuf[3 + reportOffset] & (!IsLeft ? 0x08 : 0x01)) != 0;
-
-                    _buttons[(int)Button.Stick2] = (reportBuf[4] & (!IsLeft ? 0x08 : 0x04)) != 0;
-                    _buttons[(int)Button.Shoulder21] = (reportBuf[3 + reportOffset] & 0x40) != 0;
-                    _buttons[(int)Button.Shoulder22] = (reportBuf[3 + reportOffset] & 0x80) != 0;
-                }
+                ExtractButtonsValues(reportBuf);
 
                 if (IsJoined)
                 {
@@ -1669,16 +1809,14 @@ namespace BetterJoy
             {
                 _timestampActivity = timestamp;
             }
-
-            return 0;
         }
 
         // Get Gyro/Accel data
-        private void ExtractIMUValues(ReadOnlySpan<byte> reportBuf, int n = 0)
+        private bool ExtractIMUValues(ReadOnlySpan<byte> reportBuf, int n = 0)
         {
-            if (IsSNES)
+            if (IsSNES || reportBuf[0] != (byte)ReportMode.StandardFull)
             {
-                return;
+                return false;
             }
 
             _gyrR[0] = (short)(reportBuf[19 + n * 12] | (reportBuf[20 + n * 12] << 8));
@@ -1774,6 +1912,8 @@ namespace BetterJoy
                 _accG.Y,
                 _accG.Z
             );
+
+            return true;
         }
 
         public void Begin()
