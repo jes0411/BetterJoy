@@ -600,38 +600,38 @@ namespace BetterJoy
             byte[] btmac_host = Program.BtMac.GetAddressBytes();
 
             // send host MAC and acquire Joycon MAC
-            SubcommandCheck(0x01, [0x01, btmac_host[5], btmac_host[4], btmac_host[3], btmac_host[2], btmac_host[1], btmac_host[0]], 7, buf);
-            SubcommandCheck(0x01, [0x02], 1, buf); // LTKhash
-            SubcommandCheck(0x01, [0x03], 1, buf); // save pairing info
+            SubcommandCheck(0x01, [0x01, btmac_host[5], btmac_host[4], btmac_host[3], btmac_host[2], btmac_host[1], btmac_host[0]], buf);
+            SubcommandCheck(0x01, [0x02], buf); // LTKhash
+            SubcommandCheck(0x01, [0x03], buf); // save pairing info
         }
 
         public void SetPlayerLED(byte leds = 0x00)
         {
-            SubcommandCheck(0x30, [leds], 1);
+            SubcommandCheck(0x30, [leds]);
         }
 
         public void BlinkHomeLight()
         {
             // do not call after initial setup
-            if (IsThirdParty)
+            if (IsThirdParty || Type == ControllerType.JoyconLeft)
             {
                 return;
             }
 
             const byte intensity = 0x1;
 
-            var buf = new byte[5];
+            Span<byte> buf =
+            [
+                // Global settings
+                0x18,
+                0x01,
 
-            // Global settings
-            buf[0] = 0x18;
-            buf[1] = 0x01;
-
-            // Mini cycle 1
-            buf[2] = intensity << 4;
-            buf[3] = 0xFF;
-            buf[4] = 0xFF;
-
-            SubcommandCheck(0x38, buf, 5);
+                // Mini cycle 1
+                intensity << 4,
+                0xFF,
+                0xFF,
+            ];
+            SubcommandCheck(0x38, buf);
         }
 
         public void SetHomeLight(bool on)
@@ -644,45 +644,45 @@ namespace BetterJoy
             byte intensity = (byte)(on ? 0x1 : 0x0);
             const byte nbCycles = 0xF; // 0x0 for permanent light
 
-            var buf = new byte[5];
+            Span<byte> buf =
+            [
+                // Global settings
+                0x0F, // 0XF = 175ms base duration
+                (byte)(intensity << 4 | nbCycles),
 
-            // Global settings
-            buf[0] = 0x0F; // 0XF = 175ms base duration
-            buf[1] = (byte)(intensity << 4 | nbCycles);
-
-            // Mini cycle 1
-            // Somehow still used when buf[0] high nibble is set to 0x0
-            // Increase the multipliers (like 0xFF instead of 0x11) to increase the duration beyond 2625ms
-            buf[2] = (byte)(intensity << 4); // intensity | not used
-            buf[3] = 0x11; // transition multiplier | duration multiplier, both use the base duration
-            buf[4] = 0xFF; // not used
-
-            Subcommand(0x38, buf, 5); // don't wait for reply
+                // Mini cycle 1
+                // Somehow still used when buf[0] high nibble is set to 0x0
+                // Increase the multipliers (like 0xFF instead of 0x11) to increase the duration beyond 2625ms
+                (byte)(intensity << 4), // intensity | not used
+                0x11, // transition multiplier | duration multiplier, both use the base duration
+                0xFF, // not used
+            ];
+            Subcommand(0x38, buf); // don't wait for reply
         }
 
         private void SetHCIState(byte state)
         {
-            SubcommandCheck(0x06, [state], 1);
+            SubcommandCheck(0x06, [state]);
         }
 
         private void SetIMU(bool enable)
         {
-            SubcommandCheck(0x40, [enable ? (byte)0x01 : (byte)0x00], 1);
+            SubcommandCheck(0x40, [enable ? (byte)0x01 : (byte)0x00]);
         }
 
         private void SetRumble(bool enable)
         {
-            SubcommandCheck(0x48, [enable ? (byte)0x01 : (byte)0x00], 1);
+            SubcommandCheck(0x48, [enable ? (byte)0x01 : (byte)0x00]);
         }
 
         private void SetReportMode(ReportMode reportMode, bool checkReply = true)
         {
             if (checkReply)
             {
-                SubcommandCheck(0x03, [(byte)reportMode], 1);
+                SubcommandCheck(0x03, [(byte)reportMode]);
                 return;
             }
-            Subcommand(0x03, [(byte)reportMode], 1);
+            Subcommand(0x03, [(byte)reportMode]);
         }
 
         private void BTActivate()
@@ -2025,7 +2025,7 @@ namespace BetterJoy
             Write(buf);
         }
 
-        private bool Subcommand(byte sc, ReadOnlySpan<byte> bufParameters, int len, bool print = true)
+        private bool Subcommand(byte sc, ReadOnlySpan<byte> bufParameters, bool print = true)
         {
             if (_handle == IntPtr.Zero)
             {
@@ -2044,7 +2044,7 @@ namespace BetterJoy
 
             if (print)
             {
-                PrintArray<byte>(buf, DebugType.Comms, len, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
+                PrintArray<byte>(buf, DebugType.Comms, bufParameters.Length, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
             }
 
             Write(buf);
@@ -2052,16 +2052,16 @@ namespace BetterJoy
             return true;
         }
 
-        private int SubcommandCheck(byte sc, ReadOnlySpan<byte> bufParameters, int len, bool print = true)
+        private int SubcommandCheck(byte sc, ReadOnlySpan<byte> bufParameters, bool print = true)
         {
             Span<byte> response = stackalloc byte[ReportLength];
 
-            return SubcommandCheck(sc, bufParameters, len, response, print);
+            return SubcommandCheck(sc, bufParameters, response, print);
         }
 
-        private int SubcommandCheck(byte sc, ReadOnlySpan<byte> bufParameters, int len, Span<byte> response, bool print = true)
+        private int SubcommandCheck(byte sc, ReadOnlySpan<byte> bufParameters, Span<byte> response, bool print = true)
         {
-            bool sent = Subcommand(sc, bufParameters, len, print);
+            bool sent = Subcommand(sc, bufParameters, print);
             if (!sent)
             {
                 return 0;
@@ -2360,7 +2360,7 @@ namespace BetterJoy
             ok = false;
             for (var i = 0; i < 5; ++i)
             {
-                int length = SubcommandCheck(0x10, bufSubcommand, 5, response, false);
+                int length = SubcommandCheck(0x10, bufSubcommand, response, false);
                 if (length >= 20 + len && response[15] == addr2 && response[16] == addr1)
                 {
                     ok = true;
