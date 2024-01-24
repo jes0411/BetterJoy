@@ -432,16 +432,16 @@ namespace BetterJoy
             StateChanged?.Invoke(this, e);
         }
 
-        public void DebugPrint(string s, DebugType d)
+        public void DebugPrint(string message, DebugType type)
         {
             if (_debugType == DebugType.None)
             {
                 return;
             }
 
-            if (d == DebugType.All || d == _debugType || _debugType == DebugType.All)
+            if (type == DebugType.All || type == _debugType || _debugType == DebugType.All)
             {
-                _form.AppendTextBox("[J" + (PadId + 1) + "] " + s);
+                Log(message);
             }
         }
 
@@ -457,7 +457,7 @@ namespace BetterJoy
 
         public void Reset()
         {
-            _form.AppendTextBox("Resetting connection.");
+            Log("Resetting connection.");
             SetHCIState(0x01);
         }
 
@@ -480,7 +480,7 @@ namespace BetterJoy
             // Connect
             if (IsUSB)
             {
-                _form.AppendTextBox("Using USB.");
+                Log("Using USB.");
 
                 try
                 {
@@ -497,7 +497,7 @@ namespace BetterJoy
             }
             else
             {
-                _form.AppendTextBox("Using Bluetooth.");
+                Log("Using Bluetooth.");
                 GetMAC();
             }
 
@@ -1446,12 +1446,12 @@ namespace BetterJoy
                     {
                         if (reconnectAttempts >= 3)
                         {
-                            _form.AppendTextBox("Dropped.");
+                            Log("Dropped.");
                             State = Status.Errored;
                         }
                         else
                         {
-                            _form.AppendTextBox("Attempt soft reconnect...");
+                            Log("Attempt soft reconnect...");
                             try
                             {
                                 USBPairing();
@@ -1463,7 +1463,7 @@ namespace BetterJoy
                     }
                     else
                     {
-                        //_form.AppendTextBox("Attempt soft reconnect...");
+                        //Log("Attempt soft reconnect...");
                         SetReportMode(ReportMode.StandardFull, false);
                     }
 
@@ -1474,7 +1474,7 @@ namespace BetterJoy
                 {
                     // should not happen
                     State = Status.Errored;
-                    _form.AppendTextBox("Dropped (invalid handle).");
+                    Log("Dropped (invalid handle).");
                 }
                 else
                 {
@@ -1934,11 +1934,11 @@ namespace BetterJoy
                 _sendCommandsThread.Start();
                 _receiveReportsThread.Start();
 
-                _form.AppendTextBox("Starting poll thread.");
+                Log("Starting poll thread.");
             }
             else
             {
-                _form.AppendTextBox("Poll cannot start.");
+                Log("Poll cannot start.");
             }
         }
 
@@ -2146,13 +2146,13 @@ namespace BetterJoy
                 {
                     if (userStickData[IsLeft ? 0 : 11] == 0xB2 && userStickData[IsLeft ? 1 : 12] == 0xA1)
                     {
-                        _form.AppendTextBox($"Using user {stick1Name} stick calibration data.");
+                        Log($"Using user {stick1Name} stick calibration data.");
                     }
                     else
                     {
                         stick1Data = new ReadOnlySpan<byte>(factoryStickData, IsLeft ? 0 : 9, 9);
 
-                        _form.AppendTextBox($"Using factory {stick1Name} stick calibration data.");
+                        Log($"Using factory {stick1Name} stick calibration data.");
                     }
                 }
 
@@ -2174,13 +2174,13 @@ namespace BetterJoy
                     {
                         if (userStickData[!IsLeft ? 0 : 11] == 0xB2 && userStickData[!IsLeft ? 1 : 12] == 0xA1)
                         {
-                            _form.AppendTextBox($"Using user {stick2Name} stick calibration data.");
+                            Log($"Using user {stick2Name} stick calibration data.");
                         }
                         else
                         {
                             stick2Data = new ReadOnlySpan<byte>(factoryStickData, !IsLeft ? 0 : 9, 9);
 
-                            _form.AppendTextBox($"Using factory {stick2Name} stick calibration data.");
+                            Log($"Using factory {stick2Name} stick calibration data.");
                         }
                     }
 
@@ -2228,14 +2228,14 @@ namespace BetterJoy
                 {
                     if (userSensorData[0] == 0xB2 && userSensorData[1] == 0xA1)
                     {
-                        _form.AppendTextBox($"Using user sensors calibration data.");
+                        Log($"Using user sensors calibration data.");
                     }
                     else
                     {
                         var factorySensorData = ReadSPICheck(0x60, 0x20, 0x18, ref ok);
                         sensorData = new ReadOnlySpan<byte>(factorySensorData, 0, 24);
 
-                        _form.AppendTextBox($"Using factory sensors calibration data.");
+                        Log($"Using factory sensors calibration data.");
                     }
                 }
 
@@ -2285,7 +2285,7 @@ namespace BetterJoy
 
                 if (noCalibration)
                 {
-                    _form.AppendTextBox($"Some sensor calibrations datas are missing, fallback to default ones.");
+                    Log($"Some sensor calibrations datas are missing, fallback to default ones.");
                 }
 
                 PrintArray<short>(_gyrNeutral, len: 3, d: DebugType.IMU, format: "Gyro neutral position: {0:S}");
@@ -2293,7 +2293,7 @@ namespace BetterJoy
 
             if (!ok)
             {
-                _form.AppendTextBox("Error while reading calibration data.");
+                Log("Error while reading calibration data.");
             }
 
             return ok;
@@ -2378,7 +2378,7 @@ namespace BetterJoy
             }
             else
             {
-                _form.AppendTextBox("ReadSPI error");
+                Log("ReadSPI error");
             }
 
             return readBuf;
@@ -2802,6 +2802,11 @@ namespace BetterJoy
             {
                 CalibrationIMUDatas.Clear();
             }
+        }
+
+        private void Log(string message)
+        {
+            _form.AppendTextBox($"[P{PadId + 1}] {message}");
         }
 
         private struct Rumble
