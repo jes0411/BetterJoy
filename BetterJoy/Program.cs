@@ -103,7 +103,7 @@ namespace BetterJoy
 
             if (ret != 0)
             {
-                _form.AppendTextBox(("Could not register hidapi callback"));
+                _form.AppendTextBox("Could not register hidapi callback");
                 HIDApi.Exit();
                 return false;
             }
@@ -711,7 +711,7 @@ namespace BetterJoy
             {
                 hidHideService.IsAppListInverted = false;
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("Unable to set HIDHide in whitelist mode.");
                 return false;
@@ -720,7 +720,7 @@ namespace BetterJoy
             //if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
             //    try {
             //        hidHideService.ClearBlockedInstancesList();
-            //    } catch (Exception /*e*/) {
+            //    } catch (Exception) {
             //        form.AppendTextBox("Unable to purge blacklisted devices.");
             //        return false;
             //    }
@@ -735,7 +735,7 @@ namespace BetterJoy
 
                 hidHideService.AddApplicationPath(Environment.ProcessPath);
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("Unable to add program to whitelist.");
                 return false;
@@ -745,7 +745,7 @@ namespace BetterJoy
             {
                 hidHideService.IsActive = true;
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("Unable to hide devices.");
                 return false;
@@ -954,7 +954,7 @@ namespace BetterJoy
             {
                 hidHideService.RemoveApplicationPath(Environment.ProcessPath);
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("Unable to remove program from whitelist.");
             }
@@ -968,7 +968,7 @@ namespace BetterJoy
                         hidHideService.RemoveBlockedInstanceId(instance);
                     }
                 }
-                catch (Exception /*e*/)
+                catch (Exception)
                 {
                     _form.AppendTextBox("Unable to purge blacklisted devices.");
                 }
@@ -978,7 +978,7 @@ namespace BetterJoy
             {
                 hidHideService.IsActive = false;
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("Unable to disable HIDHide.");
             }

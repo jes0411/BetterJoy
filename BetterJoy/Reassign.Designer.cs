@@ -72,261 +72,282 @@ namespace BetterJoy {
 			base.Dispose(disposing);
 		}
 
-		#region Windows Form Designer generated code
+        #region Windows Form Designer generated code
 
-		/// <summary>
-		/// Required method for Designer support - do not modify
-		/// the contents of this method with the code editor.
-		/// </summary>
-		private void InitializeComponent() {
-            this.components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Reassign));
-            this.btn_capture = new BetterJoy.SplitButton();
-            this.lbl_capture = new System.Windows.Forms.Label();
-            this.lbl_home = new System.Windows.Forms.Label();
-            this.btn_home = new BetterJoy.SplitButton();
-            this.lbl_sl_l = new System.Windows.Forms.Label();
-            this.btn_sl_l = new BetterJoy.SplitButton();
-            this.lbl_sr_l = new System.Windows.Forms.Label();
-            this.btn_sr_l = new BetterJoy.SplitButton();
-            this.lbl_sl_r = new System.Windows.Forms.Label();
-            this.btn_sl_r = new BetterJoy.SplitButton();
-            this.lbl_sr_r = new System.Windows.Forms.Label();
-            this.btn_sr_r = new BetterJoy.SplitButton();
-            this.btn_close = new System.Windows.Forms.Button();
-            this.btn_apply = new System.Windows.Forms.Button();
-            this.tip_reassign = new System.Windows.Forms.ToolTip(this.components);
-            this.lbl_reset_mouse = new System.Windows.Forms.Label();
-            this.btn_reset_mouse = new BetterJoy.SplitButton();
-            this.lbl_activate_gyro = new System.Windows.Forms.Label();
-            this.btn_active_gyro = new BetterJoy.SplitButton();
-            this.lbl_shake = new System.Windows.Forms.Label();
-            this.btn_shake = new BetterJoy.SplitButton();
-            this.SuspendLayout();
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            components = new Container();
+            var resources = new ComponentResourceManager(typeof(Reassign));
+            btn_capture = new SplitButton();
+            lbl_capture = new Label();
+            lbl_home = new Label();
+            btn_home = new SplitButton();
+            lbl_sl_l = new Label();
+            btn_sl_l = new SplitButton();
+            lbl_sr_l = new Label();
+            btn_sr_l = new SplitButton();
+            lbl_sl_r = new Label();
+            btn_sl_r = new SplitButton();
+            lbl_sr_r = new Label();
+            btn_sr_r = new SplitButton();
+            btn_close = new Button();
+            btn_apply = new Button();
+            tip_reassign = new ToolTip(components);
+            lbl_reset_mouse = new Label();
+            btn_reset_mouse = new SplitButton();
+            lbl_activate_gyro = new Label();
+            btn_active_gyro = new SplitButton();
+            lbl_shake = new Label();
+            btn_shake = new SplitButton();
+            SuspendLayout();
             // 
             // btn_capture
             // 
-            this.btn_capture.Location = new System.Drawing.Point(105, 12);
-            this.btn_capture.Name = "btn_capture";
-            this.btn_capture.Size = new System.Drawing.Size(75, 23);
-            this.btn_capture.TabIndex = 0;
-            this.btn_capture.UseVisualStyleBackColor = true;
+            btn_capture.Location = new Point(122, 14);
+            btn_capture.Margin = new Padding(4, 3, 4, 3);
+            btn_capture.Name = "btn_capture";
+            btn_capture.Size = new Size(88, 27);
+            btn_capture.TabIndex = 0;
+            btn_capture.UseVisualStyleBackColor = true;
             // 
             // lbl_capture
             // 
-            this.lbl_capture.AutoSize = true;
-            this.lbl_capture.Location = new System.Drawing.Point(15, 17);
-            this.lbl_capture.Name = "lbl_capture";
-            this.lbl_capture.Size = new System.Drawing.Size(44, 13);
-            this.lbl_capture.TabIndex = 2;
-            this.lbl_capture.Text = "Capture";
-            this.lbl_capture.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_capture.AutoSize = true;
+            lbl_capture.Location = new Point(18, 20);
+            lbl_capture.Margin = new Padding(4, 0, 4, 0);
+            lbl_capture.Name = "lbl_capture";
+            lbl_capture.Size = new Size(49, 15);
+            lbl_capture.TabIndex = 2;
+            lbl_capture.Text = "Capture";
+            lbl_capture.TextAlign = ContentAlignment.TopCenter;
             // 
             // lbl_home
             // 
-            this.lbl_home.AutoSize = true;
-            this.lbl_home.Location = new System.Drawing.Point(15, 46);
-            this.lbl_home.Name = "lbl_home";
-            this.lbl_home.Size = new System.Drawing.Size(35, 13);
-            this.lbl_home.TabIndex = 4;
-            this.lbl_home.Text = "Home";
-            this.lbl_home.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_home.AutoSize = true;
+            lbl_home.Location = new Point(18, 53);
+            lbl_home.Margin = new Padding(4, 0, 4, 0);
+            lbl_home.Name = "lbl_home";
+            lbl_home.Size = new Size(40, 15);
+            lbl_home.TabIndex = 4;
+            lbl_home.Text = "Home";
+            lbl_home.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_home
             // 
-            this.btn_home.Location = new System.Drawing.Point(105, 41);
-            this.btn_home.Name = "btn_home";
-            this.btn_home.Size = new System.Drawing.Size(75, 23);
-            this.btn_home.TabIndex = 3;
-            this.btn_home.UseVisualStyleBackColor = true;
+            btn_home.Location = new Point(122, 47);
+            btn_home.Margin = new Padding(4, 3, 4, 3);
+            btn_home.Name = "btn_home";
+            btn_home.Size = new Size(88, 27);
+            btn_home.TabIndex = 3;
+            btn_home.UseVisualStyleBackColor = true;
             // 
             // lbl_sl_l
             // 
-            this.lbl_sl_l.AutoSize = true;
-            this.lbl_sl_l.Location = new System.Drawing.Point(15, 75);
-            this.lbl_sl_l.Name = "lbl_sl_l";
-            this.lbl_sl_l.Size = new System.Drawing.Size(78, 13);
-            this.lbl_sl_l.TabIndex = 6;
-            this.lbl_sl_l.Text = "SL Left Joycon";
-            this.lbl_sl_l.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_sl_l.AutoSize = true;
+            lbl_sl_l.Location = new Point(18, 87);
+            lbl_sl_l.Margin = new Padding(4, 0, 4, 0);
+            lbl_sl_l.Name = "lbl_sl_l";
+            lbl_sl_l.Size = new Size(82, 15);
+            lbl_sl_l.TabIndex = 6;
+            lbl_sl_l.Text = "SL Left Joycon";
+            lbl_sl_l.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sl_l
             // 
-            this.btn_sl_l.Location = new System.Drawing.Point(105, 70);
-            this.btn_sl_l.Name = "btn_sl_l";
-            this.btn_sl_l.Size = new System.Drawing.Size(75, 23);
-            this.btn_sl_l.TabIndex = 5;
-            this.btn_sl_l.UseVisualStyleBackColor = true;
+            btn_sl_l.Location = new Point(122, 81);
+            btn_sl_l.Margin = new Padding(4, 3, 4, 3);
+            btn_sl_l.Name = "btn_sl_l";
+            btn_sl_l.Size = new Size(88, 27);
+            btn_sl_l.TabIndex = 5;
+            btn_sl_l.UseVisualStyleBackColor = true;
             // 
             // lbl_sr_l
             // 
-            this.lbl_sr_l.AutoSize = true;
-            this.lbl_sr_l.Location = new System.Drawing.Point(15, 104);
-            this.lbl_sr_l.Name = "lbl_sr_l";
-            this.lbl_sr_l.Size = new System.Drawing.Size(80, 13);
-            this.lbl_sr_l.TabIndex = 8;
-            this.lbl_sr_l.Text = "SR Left Joycon";
-            this.lbl_sr_l.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_sr_l.AutoSize = true;
+            lbl_sr_l.Location = new Point(18, 120);
+            lbl_sr_l.Margin = new Padding(4, 0, 4, 0);
+            lbl_sr_l.Name = "lbl_sr_l";
+            lbl_sr_l.Size = new Size(83, 15);
+            lbl_sr_l.TabIndex = 8;
+            lbl_sr_l.Text = "SR Left Joycon";
+            lbl_sr_l.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sr_l
             // 
-            this.btn_sr_l.Location = new System.Drawing.Point(105, 99);
-            this.btn_sr_l.Name = "btn_sr_l";
-            this.btn_sr_l.Size = new System.Drawing.Size(75, 23);
-            this.btn_sr_l.TabIndex = 7;
-            this.btn_sr_l.UseVisualStyleBackColor = true;
+            btn_sr_l.Location = new Point(122, 114);
+            btn_sr_l.Margin = new Padding(4, 3, 4, 3);
+            btn_sr_l.Name = "btn_sr_l";
+            btn_sr_l.Size = new Size(88, 27);
+            btn_sr_l.TabIndex = 7;
+            btn_sr_l.UseVisualStyleBackColor = true;
             // 
             // lbl_sl_r
             // 
-            this.lbl_sl_r.AutoSize = true;
-            this.lbl_sl_r.Location = new System.Drawing.Point(15, 133);
-            this.lbl_sl_r.Name = "lbl_sl_r";
-            this.lbl_sl_r.Size = new System.Drawing.Size(85, 13);
-            this.lbl_sl_r.TabIndex = 10;
-            this.lbl_sl_r.Text = "SL Right Joycon";
-            this.lbl_sl_r.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_sl_r.AutoSize = true;
+            lbl_sl_r.Location = new Point(18, 153);
+            lbl_sl_r.Margin = new Padding(4, 0, 4, 0);
+            lbl_sl_r.Name = "lbl_sl_r";
+            lbl_sl_r.Size = new Size(90, 15);
+            lbl_sl_r.TabIndex = 10;
+            lbl_sl_r.Text = "SL Right Joycon";
+            lbl_sl_r.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sl_r
             // 
-            this.btn_sl_r.Location = new System.Drawing.Point(105, 128);
-            this.btn_sl_r.Name = "btn_sl_r";
-            this.btn_sl_r.Size = new System.Drawing.Size(75, 23);
-            this.btn_sl_r.TabIndex = 9;
-            this.btn_sl_r.UseVisualStyleBackColor = true;
+            btn_sl_r.Location = new Point(122, 148);
+            btn_sl_r.Margin = new Padding(4, 3, 4, 3);
+            btn_sl_r.Name = "btn_sl_r";
+            btn_sl_r.Size = new Size(88, 27);
+            btn_sl_r.TabIndex = 9;
+            btn_sl_r.UseVisualStyleBackColor = true;
             // 
             // lbl_sr_r
             // 
-            this.lbl_sr_r.AutoSize = true;
-            this.lbl_sr_r.Location = new System.Drawing.Point(15, 162);
-            this.lbl_sr_r.Name = "lbl_sr_r";
-            this.lbl_sr_r.Size = new System.Drawing.Size(87, 13);
-            this.lbl_sr_r.TabIndex = 12;
-            this.lbl_sr_r.Text = "SR Right Joycon";
-            this.lbl_sr_r.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_sr_r.AutoSize = true;
+            lbl_sr_r.Location = new Point(18, 187);
+            lbl_sr_r.Margin = new Padding(4, 0, 4, 0);
+            lbl_sr_r.Name = "lbl_sr_r";
+            lbl_sr_r.Size = new Size(91, 15);
+            lbl_sr_r.TabIndex = 12;
+            lbl_sr_r.Text = "SR Right Joycon";
+            lbl_sr_r.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sr_r
             // 
-            this.btn_sr_r.Location = new System.Drawing.Point(105, 157);
-            this.btn_sr_r.Name = "btn_sr_r";
-            this.btn_sr_r.Size = new System.Drawing.Size(75, 23);
-            this.btn_sr_r.TabIndex = 11;
-            this.btn_sr_r.UseVisualStyleBackColor = true;
+            btn_sr_r.Location = new Point(122, 181);
+            btn_sr_r.Margin = new Padding(4, 3, 4, 3);
+            btn_sr_r.Name = "btn_sr_r";
+            btn_sr_r.Size = new Size(88, 27);
+            btn_sr_r.TabIndex = 11;
+            btn_sr_r.UseVisualStyleBackColor = true;
             // 
             // btn_close
             // 
-            this.btn_close.Location = new System.Drawing.Point(15, 289);
-            this.btn_close.Name = "btn_close";
-            this.btn_close.Size = new System.Drawing.Size(75, 23);
-            this.btn_close.TabIndex = 13;
-            this.btn_close.Text = "Okay";
-            this.btn_close.UseVisualStyleBackColor = true;
-            this.btn_close.Click += new System.EventHandler(this.btn_close_Click);
+            btn_close.Location = new Point(18, 333);
+            btn_close.Margin = new Padding(4, 3, 4, 3);
+            btn_close.Name = "btn_close";
+            btn_close.Size = new Size(88, 27);
+            btn_close.TabIndex = 13;
+            btn_close.Text = "OK";
+            btn_close.UseVisualStyleBackColor = true;
+            btn_close.Click += btn_close_Click;
             // 
             // btn_apply
             // 
-            this.btn_apply.Location = new System.Drawing.Point(105, 289);
-            this.btn_apply.Name = "btn_apply";
-            this.btn_apply.Size = new System.Drawing.Size(75, 23);
-            this.btn_apply.TabIndex = 14;
-            this.btn_apply.Text = "Apply";
-            this.btn_apply.UseVisualStyleBackColor = true;
-            this.btn_apply.Click += new System.EventHandler(this.btn_apply_Click);
+            btn_apply.Location = new Point(122, 333);
+            btn_apply.Margin = new Padding(4, 3, 4, 3);
+            btn_apply.Name = "btn_apply";
+            btn_apply.Size = new Size(88, 27);
+            btn_apply.TabIndex = 14;
+            btn_apply.Text = "Apply";
+            btn_apply.UseVisualStyleBackColor = true;
+            btn_apply.Click += btn_apply_Click;
             // 
             // lbl_reset_mouse
             // 
-            this.lbl_reset_mouse.AutoSize = true;
-            this.lbl_reset_mouse.Location = new System.Drawing.Point(15, 223);
-            this.lbl_reset_mouse.Name = "lbl_reset_mouse";
-            this.lbl_reset_mouse.Size = new System.Drawing.Size(80, 13);
-            this.lbl_reset_mouse.TabIndex = 16;
-            this.lbl_reset_mouse.Text = "Re-Centre Gyro";
-            this.lbl_reset_mouse.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_reset_mouse.AutoSize = true;
+            lbl_reset_mouse.Location = new Point(18, 257);
+            lbl_reset_mouse.Margin = new Padding(4, 0, 4, 0);
+            lbl_reset_mouse.Name = "lbl_reset_mouse";
+            lbl_reset_mouse.Size = new Size(88, 15);
+            lbl_reset_mouse.TabIndex = 16;
+            lbl_reset_mouse.Text = "Re-Centre Gyro";
+            lbl_reset_mouse.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_reset_mouse
             // 
-            this.btn_reset_mouse.Location = new System.Drawing.Point(105, 218);
-            this.btn_reset_mouse.Name = "btn_reset_mouse";
-            this.btn_reset_mouse.Size = new System.Drawing.Size(75, 23);
-            this.btn_reset_mouse.TabIndex = 15;
-            this.btn_reset_mouse.UseVisualStyleBackColor = true;
+            btn_reset_mouse.Location = new Point(122, 252);
+            btn_reset_mouse.Margin = new Padding(4, 3, 4, 3);
+            btn_reset_mouse.Name = "btn_reset_mouse";
+            btn_reset_mouse.Size = new Size(88, 27);
+            btn_reset_mouse.TabIndex = 15;
+            btn_reset_mouse.UseVisualStyleBackColor = true;
             // 
             // lbl_activate_gyro
             // 
-            this.lbl_activate_gyro.AutoSize = true;
-            this.lbl_activate_gyro.Location = new System.Drawing.Point(14, 252);
-            this.lbl_activate_gyro.Name = "lbl_activate_gyro";
-            this.lbl_activate_gyro.Size = new System.Drawing.Size(71, 13);
-            this.lbl_activate_gyro.TabIndex = 17;
-            this.lbl_activate_gyro.Text = "Activate Gyro";
-            this.lbl_activate_gyro.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_activate_gyro.AutoSize = true;
+            lbl_activate_gyro.Location = new Point(16, 291);
+            lbl_activate_gyro.Margin = new Padding(4, 0, 4, 0);
+            lbl_activate_gyro.Name = "lbl_activate_gyro";
+            lbl_activate_gyro.Size = new Size(78, 15);
+            lbl_activate_gyro.TabIndex = 17;
+            lbl_activate_gyro.Text = "Activate Gyro";
+            lbl_activate_gyro.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_active_gyro
             // 
-            this.btn_active_gyro.Location = new System.Drawing.Point(105, 247);
-            this.btn_active_gyro.Name = "btn_active_gyro";
-            this.btn_active_gyro.Size = new System.Drawing.Size(75, 23);
-            this.btn_active_gyro.TabIndex = 18;
-            this.btn_active_gyro.UseVisualStyleBackColor = true;
+            btn_active_gyro.Location = new Point(122, 285);
+            btn_active_gyro.Margin = new Padding(4, 3, 4, 3);
+            btn_active_gyro.Name = "btn_active_gyro";
+            btn_active_gyro.Size = new Size(88, 27);
+            btn_active_gyro.TabIndex = 18;
+            btn_active_gyro.UseVisualStyleBackColor = true;
             // 
-            // label1
+            // lbl_shake
             // 
-            this.lbl_shake.AutoSize = true;
-            this.lbl_shake.Location = new System.Drawing.Point(15, 191);
-            this.lbl_shake.Name = "lbl_shake";
-            this.lbl_shake.Size = new System.Drawing.Size(87, 13);
-            this.lbl_shake.TabIndex = 20;
-            this.lbl_shake.Text = "Shake Input";
-            this.lbl_shake.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            lbl_shake.AutoSize = true;
+            lbl_shake.Location = new Point(18, 220);
+            lbl_shake.Margin = new Padding(4, 0, 4, 0);
+            lbl_shake.Name = "lbl_shake";
+            lbl_shake.Size = new Size(69, 15);
+            lbl_shake.TabIndex = 20;
+            lbl_shake.Text = "Shake Input";
+            lbl_shake.TextAlign = ContentAlignment.TopCenter;
             // 
-            // splitButton1
+            // btn_shake
             // 
-            this.btn_shake.Location = new System.Drawing.Point(105, 186);
-            this.btn_shake.Name = "btn_shake";
-            this.btn_shake.Size = new System.Drawing.Size(75, 23);
-            this.btn_shake.TabIndex = 19;
-            this.btn_shake.UseVisualStyleBackColor = true;
+            btn_shake.Location = new Point(122, 215);
+            btn_shake.Margin = new Padding(4, 3, 4, 3);
+            btn_shake.Name = "btn_shake";
+            btn_shake.Size = new Size(88, 27);
+            btn_shake.TabIndex = 19;
+            btn_shake.UseVisualStyleBackColor = true;
             // 
             // Reassign
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(192, 338);
-            this.Controls.Add(this.lbl_shake);
-            this.Controls.Add(this.btn_shake);
-            this.Controls.Add(this.btn_active_gyro);
-            this.Controls.Add(this.lbl_activate_gyro);
-            this.Controls.Add(this.lbl_reset_mouse);
-            this.Controls.Add(this.btn_reset_mouse);
-            this.Controls.Add(this.btn_apply);
-            this.Controls.Add(this.btn_close);
-            this.Controls.Add(this.lbl_sr_r);
-            this.Controls.Add(this.btn_sr_r);
-            this.Controls.Add(this.lbl_sl_r);
-            this.Controls.Add(this.btn_sl_r);
-            this.Controls.Add(this.lbl_sr_l);
-            this.Controls.Add(this.btn_sr_l);
-            this.Controls.Add(this.lbl_sl_l);
-            this.Controls.Add(this.btn_sl_l);
-            this.Controls.Add(this.lbl_home);
-            this.Controls.Add(this.btn_home);
-            this.Controls.Add(this.lbl_capture);
-            this.Controls.Add(this.btn_capture);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.Name = "Reassign";
-            this.Text = "Map Special Buttons";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Reassign_FormClosing);
-            this.Load += new System.EventHandler(this.Reassign_Load);
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(224, 370);
+            Controls.Add(lbl_shake);
+            Controls.Add(btn_shake);
+            Controls.Add(btn_active_gyro);
+            Controls.Add(lbl_activate_gyro);
+            Controls.Add(lbl_reset_mouse);
+            Controls.Add(btn_reset_mouse);
+            Controls.Add(btn_apply);
+            Controls.Add(btn_close);
+            Controls.Add(lbl_sr_r);
+            Controls.Add(btn_sr_r);
+            Controls.Add(lbl_sl_r);
+            Controls.Add(btn_sl_r);
+            Controls.Add(lbl_sr_l);
+            Controls.Add(btn_sr_l);
+            Controls.Add(lbl_sl_l);
+            Controls.Add(btn_sl_l);
+            Controls.Add(lbl_home);
+            Controls.Add(btn_home);
+            Controls.Add(lbl_capture);
+            Controls.Add(btn_capture);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            Icon = (Icon)resources.GetObject("$this.Icon");
+            Margin = new Padding(4, 3, 4, 3);
+            MaximizeBox = false;
+            MinimizeBox = false;
+            Name = "Reassign";
+            Text = "Map Special Buttons";
+            FormClosing += Reassign_FormClosing;
+            Load += Reassign_Load;
+            ResumeLayout(false);
+            PerformLayout();
+        }
 
-		}
+        #endregion
 
-		#endregion
-
-		private SplitButton btn_capture;
+        private SplitButton btn_capture;
 		private System.Windows.Forms.Label lbl_capture;
 		private System.Windows.Forms.Label lbl_home;
 		private SplitButton btn_home;

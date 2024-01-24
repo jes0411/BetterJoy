@@ -102,7 +102,7 @@ namespace BetterJoy
             {
                 await _udpSock.SendToAsync(clientEp, packetDataBuffer.ReadOnlyMemory);
             }
-            catch (SocketException /*e*/) { }
+            catch (SocketException) { }
         }
 
         private static bool CheckIncomingValidity(Span<byte> localMsg, out int currIdx)
@@ -338,7 +338,7 @@ namespace BetterJoy
             {
                 _udpSock.Bind(new IPEndPoint(ip, port));
             }
-            catch (SocketException /*e*/)
+            catch (SocketException)
             {
                 _udpSock.Close();
 
