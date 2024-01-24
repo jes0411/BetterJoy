@@ -1046,26 +1046,16 @@ namespace BetterJoy
                 btn_calibrate.Enabled = true;
                 btn_locate.Enabled = true;
             }
-            else if (nbControllers == _con.Count)
+            else if (nbControllers == _con.Count || controller.PadId >= _con.Count)
             {
                 return;
             }
 
-            var i = 0;
-            foreach (var button in _con)
-            {
-                if (!button.Enabled)
-                {
-                    button.Tag = controller; // assign controller to button
-                    button.Enabled = true;
-                    button.Click += ConBtnClick;
-                    SetControllerImage(button, controller.Type);
-
-                    break;
-                }
-
-                i++;
-            }
+            var button = _con[controller.PadId];
+            button.Tag = controller; // assign controller to button
+            button.Enabled = true;
+            button.Click += ConBtnClick;
+            SetControllerImage(button, controller.Type);
         }
 
         public void RemoveController(Joycon controller)
@@ -1077,31 +1067,19 @@ namespace BetterJoy
             }
 
             int nbControllers = GetActiveControllers().Count;
-            if (nbControllers == 0)
+            if (nbControllers == 0 || controller.PadId >= _con.Count)
             {
                 return;
             }
 
-            bool removed = false;
-            int i = 0;
-            foreach (var button in _con)
-            {
-                if (button.Enabled && button.Tag == controller)
-                {
-                    button.BackColor = Color.FromArgb(0x00, SystemColors.Control);
-                    button.Tag = null;
-                    button.Enabled = false;
-                    button.Click -= ConBtnClick;
-                    SetBackgroundImage(button, Resources.cross);
+            var button = _con[controller.PadId];
+            button.BackColor = Color.FromArgb(0x00, SystemColors.Control);
+            button.Tag = null;
+            button.Enabled = false;
+            button.Click -= ConBtnClick;
+            SetBackgroundImage(button, Resources.cross);
 
-                    removed = true;
-                    break;
-                }
-
-                i++;
-            }
-
-            if (removed && nbControllers == 1)
+            if (nbControllers == 1)
             {
                 btn_calibrate.Enabled = false;
                 btn_locate.Enabled = false;

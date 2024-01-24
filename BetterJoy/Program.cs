@@ -262,7 +262,7 @@ namespace BetterJoy
             // Add controller to block-list for HidHide
             Program.AddDeviceToBlocklist(handle);
 
-            var indexController = Controllers.Count;
+            var indexController = GetControllerIndex();
             var controller = new Joycon(
                 _form,
                 handle,
@@ -344,8 +344,10 @@ namespace BetterJoy
                 }
             }
 
-            Controllers.Remove(controller);
-            _form.RemoveController(controller);
+            if (Controllers.Remove(controller))
+            {
+                _form.RemoveController(controller);
+            }
 
             _form.AppendTextBox($"{controller.GetControllerName()} disconnected.");
         }
@@ -379,6 +381,29 @@ namespace BetterJoy
                     while (!writer.TryWrite(notification)) { }
                     break;
             }
+        }
+
+        private int GetControllerIndex()
+        {
+            List<int> ids = new();
+            foreach (var controller in Controllers)
+            {
+                ids.Add(controller.PadId);
+            }
+            ids.Sort();
+
+            int freeId = 0;
+
+            foreach (var id in ids)
+            {
+                if (id != freeId)
+                {
+                    break;
+                }
+                ++freeId;
+            }
+
+            return freeId;
         }
 
         private Joycon GetControllerByPath(string path)
