@@ -278,7 +278,8 @@ namespace BetterJoy
         private void btn_open3rdP_Click(object sender, EventArgs e)
         {
             using var partyForm = new _3rdPartyControllers();
-            partyForm.ShowDialog();
+            partyForm.StartPosition = FormStartPosition.CenterParent;
+            partyForm.ShowDialog(this);
         }
 
         private async void settingsApply_Click(object sender, EventArgs e)
@@ -454,7 +455,8 @@ namespace BetterJoy
         private void btn_reassign_open_Click(object sender, EventArgs e)
         {
             using var mapForm = new Reassign();
-            mapForm.ShowDialog();
+            mapForm.StartPosition = FormStartPosition.CenterParent;
+            mapForm.ShowDialog(this);
         }
 
         private void ShowReassignDialog(Joycon controller)
