@@ -37,10 +37,10 @@
             version_lbl = new System.Windows.Forms.Label();
             lb_github = new System.Windows.Forms.LinkLabel();
             conCntrls = new System.Windows.Forms.GroupBox();
-            loc4 = new System.Windows.Forms.Button();
-            loc3 = new System.Windows.Forms.Button();
-            loc2 = new System.Windows.Forms.Button();
-            loc1 = new System.Windows.Forms.Button();
+            con8 = new System.Windows.Forms.Button();
+            con7 = new System.Windows.Forms.Button();
+            con6 = new System.Windows.Forms.Button();
+            con5 = new System.Windows.Forms.Button();
             con4 = new System.Windows.Forms.Button();
             con3 = new System.Windows.Forms.Button();
             con2 = new System.Windows.Forms.Button();
@@ -55,6 +55,7 @@
             settingsApply = new System.Windows.Forms.Button();
             btn_calibrate = new System.Windows.Forms.Button();
             btn_reassign_open = new System.Windows.Forms.Button();
+            btn_locate = new System.Windows.Forms.Button();
             contextMenu.SuspendLayout();
             conCntrls.SuspendLayout();
             groupBox1.SuspendLayout();
@@ -63,13 +64,13 @@
             // 
             // console
             // 
-            console.Location = new System.Drawing.Point(13, 166);
+            console.Location = new System.Drawing.Point(13, 220);
             console.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             console.Multiline = true;
             console.Name = "console";
             console.ReadOnly = true;
             console.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            console.Size = new System.Drawing.Size(307, 149);
+            console.Size = new System.Drawing.Size(306, 149);
             console.TabIndex = 2;
             // 
             // notifyIcon
@@ -99,7 +100,7 @@
             // version_lbl
             // 
             version_lbl.AutoSize = true;
-            version_lbl.Location = new System.Drawing.Point(290, 321);
+            version_lbl.Location = new System.Drawing.Point(290, 375);
             version_lbl.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             version_lbl.Name = "version_lbl";
             version_lbl.Size = new System.Drawing.Size(28, 15);
@@ -109,7 +110,7 @@
             // lb_github
             // 
             lb_github.AutoSize = true;
-            lb_github.Location = new System.Drawing.Point(243, 321);
+            lb_github.Location = new System.Drawing.Point(243, 375);
             lb_github.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             lb_github.Name = "lb_github";
             lb_github.Size = new System.Drawing.Size(43, 15);
@@ -120,10 +121,10 @@
             // 
             // conCntrls
             // 
-            conCntrls.Controls.Add(loc4);
-            conCntrls.Controls.Add(loc3);
-            conCntrls.Controls.Add(loc2);
-            conCntrls.Controls.Add(loc1);
+            conCntrls.Controls.Add(con8);
+            conCntrls.Controls.Add(con7);
+            conCntrls.Controls.Add(con6);
+            conCntrls.Controls.Add(con5);
             conCntrls.Controls.Add(con4);
             conCntrls.Controls.Add(con3);
             conCntrls.Controls.Add(con2);
@@ -132,57 +133,71 @@
             conCntrls.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             conCntrls.Name = "conCntrls";
             conCntrls.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            conCntrls.Size = new System.Drawing.Size(304, 120);
+            conCntrls.Size = new System.Drawing.Size(304, 173);
             conCntrls.TabIndex = 0;
             conCntrls.TabStop = false;
             conCntrls.Text = "Connected Controllers";
             // 
-            // loc4
+            // con8
             // 
-            loc4.Enabled = false;
-            loc4.Location = new System.Drawing.Point(231, 92);
-            loc4.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            loc4.Name = "loc4";
-            loc4.Size = new System.Drawing.Size(68, 23);
-            loc4.TabIndex = 7;
-            loc4.Text = "Locate";
-            loc4.UseVisualStyleBackColor = true;
+            con8.BackColor = System.Drawing.SystemColors.Control;
+            con8.BackgroundImage = Properties.Resources.cross;
+            con8.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con8.Enabled = false;
+            con8.Location = new System.Drawing.Point(230, 98);
+            con8.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con8.Name = "con8";
+            con8.Size = new System.Drawing.Size(68, 68);
+            con8.TabIndex = 11;
+            con8.TabStop = false;
+            con8.UseVisualStyleBackColor = true;
             // 
-            // loc3
+            // con7
             // 
-            loc3.Enabled = false;
-            loc3.Location = new System.Drawing.Point(156, 92);
-            loc3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            loc3.Name = "loc3";
-            loc3.Size = new System.Drawing.Size(68, 23);
-            loc3.TabIndex = 6;
-            loc3.Text = "Locate";
-            loc3.UseVisualStyleBackColor = true;
+            con7.BackColor = System.Drawing.SystemColors.Control;
+            con7.BackgroundImage = Properties.Resources.cross;
+            con7.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con7.Enabled = false;
+            con7.Location = new System.Drawing.Point(155, 98);
+            con7.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con7.Name = "con7";
+            con7.Size = new System.Drawing.Size(68, 68);
+            con7.TabIndex = 10;
+            con7.TabStop = false;
+            con7.UseVisualStyleBackColor = true;
             // 
-            // loc2
+            // con6
             // 
-            loc2.Enabled = false;
-            loc2.Location = new System.Drawing.Point(82, 92);
-            loc2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            loc2.Name = "loc2";
-            loc2.Size = new System.Drawing.Size(68, 23);
-            loc2.TabIndex = 5;
-            loc2.Text = "Locate";
-            loc2.UseVisualStyleBackColor = true;
+            con6.BackColor = System.Drawing.SystemColors.Control;
+            con6.BackgroundImage = Properties.Resources.cross;
+            con6.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con6.Enabled = false;
+            con6.Location = new System.Drawing.Point(81, 98);
+            con6.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con6.Name = "con6";
+            con6.Size = new System.Drawing.Size(68, 68);
+            con6.TabIndex = 9;
+            con6.TabStop = false;
+            con6.UseVisualStyleBackColor = true;
             // 
-            // loc1
+            // con5
             // 
-            loc1.Enabled = false;
-            loc1.Location = new System.Drawing.Point(7, 92);
-            loc1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            loc1.Name = "loc1";
-            loc1.Size = new System.Drawing.Size(68, 23);
-            loc1.TabIndex = 4;
-            loc1.Text = "Locate";
-            loc1.UseVisualStyleBackColor = true;
+            con5.BackColor = System.Drawing.SystemColors.Control;
+            con5.BackgroundImage = Properties.Resources.cross;
+            con5.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con5.Enabled = false;
+            con5.Location = new System.Drawing.Point(6, 98);
+            con5.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            con5.Name = "con5";
+            con5.Size = new System.Drawing.Size(68, 68);
+            con5.TabIndex = 8;
+            con5.TabStop = false;
+            btnTip.SetToolTip(con5, "Click on Joycons to join/split them");
+            con5.UseVisualStyleBackColor = true;
             // 
             // con4
             // 
+            con4.BackColor = System.Drawing.SystemColors.Control;
             con4.BackgroundImage = Properties.Resources.cross;
             con4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con4.Enabled = false;
@@ -196,6 +211,7 @@
             // 
             // con3
             // 
+            con3.BackColor = System.Drawing.SystemColors.Control;
             con3.BackgroundImage = Properties.Resources.cross;
             con3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con3.Enabled = false;
@@ -209,6 +225,7 @@
             // 
             // con2
             // 
+            con2.BackColor = System.Drawing.SystemColors.Control;
             con2.BackgroundImage = Properties.Resources.cross;
             con2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con2.Enabled = false;
@@ -222,6 +239,7 @@
             // 
             // con1
             // 
+            con1.BackColor = System.Drawing.SystemColors.Control;
             con1.BackgroundImage = Properties.Resources.cross;
             con1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             con1.Enabled = false;
@@ -236,7 +254,7 @@
             // 
             // foldLbl
             // 
-            foldLbl.Location = new System.Drawing.Point(320, 23);
+            foldLbl.Location = new System.Drawing.Point(320, 70);
             foldLbl.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
             foldLbl.Name = "foldLbl";
             foldLbl.Size = new System.Drawing.Size(15, 267);
@@ -249,7 +267,7 @@
             // startInTrayBox
             // 
             startInTrayBox.AutoSize = true;
-            startInTrayBox.Location = new System.Drawing.Point(13, 321);
+            startInTrayBox.Location = new System.Drawing.Point(13, 375);
             startInTrayBox.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             startInTrayBox.Name = "startInTrayBox";
             startInTrayBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
@@ -261,7 +279,7 @@
             // 
             // btn_open3rdP
             // 
-            btn_open3rdP.Location = new System.Drawing.Point(110, 135);
+            btn_open3rdP.Location = new System.Drawing.Point(77, 191);
             btn_open3rdP.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             btn_open3rdP.Name = "btn_open3rdP";
             btn_open3rdP.Size = new System.Drawing.Size(100, 25);
@@ -277,7 +295,7 @@
             groupBox1.Margin = new System.Windows.Forms.Padding(2);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new System.Windows.Forms.Padding(2);
-            groupBox1.Size = new System.Drawing.Size(355, 298);
+            groupBox1.Size = new System.Drawing.Size(355, 352);
             groupBox1.TabIndex = 9;
             groupBox1.TabStop = false;
             groupBox1.Text = "Config";
@@ -294,7 +312,7 @@
             settingsTable.Name = "settingsTable";
             settingsTable.RowCount = 1;
             settingsTable.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            settingsTable.Size = new System.Drawing.Size(350, 274);
+            settingsTable.Size = new System.Drawing.Size(350, 328);
             settingsTable.TabIndex = 1;
             // 
             // rightPanel
@@ -304,15 +322,15 @@
             rightPanel.Location = new System.Drawing.Point(337, 1);
             rightPanel.Margin = new System.Windows.Forms.Padding(2, 2, 14, 2);
             rightPanel.Name = "rightPanel";
-            rightPanel.Size = new System.Drawing.Size(364, 343);
+            rightPanel.Size = new System.Drawing.Size(364, 397);
             rightPanel.TabIndex = 11;
             rightPanel.Visible = false;
             // 
             // settingsApply
             // 
             settingsApply.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
-            settingsApply.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            settingsApply.Location = new System.Drawing.Point(288, 315);
+            settingsApply.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F);
+            settingsApply.Location = new System.Drawing.Point(288, 367);
             settingsApply.Margin = new System.Windows.Forms.Padding(2);
             settingsApply.Name = "settingsApply";
             settingsApply.Size = new System.Drawing.Size(71, 24);
@@ -324,10 +342,10 @@
             // btn_calibrate
             // 
             btn_calibrate.Enabled = false;
-            btn_calibrate.Location = new System.Drawing.Point(235, 135);
+            btn_calibrate.Location = new System.Drawing.Point(249, 191);
             btn_calibrate.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             btn_calibrate.Name = "btn_calibrate";
-            btn_calibrate.Size = new System.Drawing.Size(83, 25);
+            btn_calibrate.Size = new System.Drawing.Size(70, 25);
             btn_calibrate.TabIndex = 8;
             btn_calibrate.Text = "Calibrate";
             btn_calibrate.UseVisualStyleBackColor = true;
@@ -335,14 +353,26 @@
             // 
             // btn_reassign_open
             // 
-            btn_reassign_open.Location = new System.Drawing.Point(14, 135);
+            btn_reassign_open.Location = new System.Drawing.Point(13, 191);
             btn_reassign_open.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             btn_reassign_open.Name = "btn_reassign_open";
-            btn_reassign_open.Size = new System.Drawing.Size(88, 25);
+            btn_reassign_open.Size = new System.Drawing.Size(60, 25);
             btn_reassign_open.TabIndex = 13;
-            btn_reassign_open.Text = "Map Buttons";
+            btn_reassign_open.Text = "Remap";
             btn_reassign_open.UseVisualStyleBackColor = true;
             btn_reassign_open.Click += btn_reassign_open_Click;
+            // 
+            // btn_locate
+            // 
+            btn_locate.Enabled = false;
+            btn_locate.Location = new System.Drawing.Point(181, 191);
+            btn_locate.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            btn_locate.Name = "btn_locate";
+            btn_locate.Size = new System.Drawing.Size(64, 25);
+            btn_locate.TabIndex = 14;
+            btn_locate.Text = "Locate";
+            btn_locate.UseVisualStyleBackColor = true;
+            btn_locate.Click += StartLocate;
             // 
             // MainForm
             // 
@@ -350,7 +380,8 @@
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             AutoSize = true;
             AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            ClientSize = new System.Drawing.Size(718, 347);
+            ClientSize = new System.Drawing.Size(718, 401);
+            Controls.Add(btn_locate);
             Controls.Add(btn_reassign_open);
             Controls.Add(foldLbl);
             Controls.Add(rightPanel);
@@ -392,10 +423,6 @@
         private System.Windows.Forms.Button con4;
         private System.Windows.Forms.Button con3;
         private System.Windows.Forms.Button con2;
-        private System.Windows.Forms.Button loc4;
-        private System.Windows.Forms.Button loc3;
-        private System.Windows.Forms.Button loc2;
-        private System.Windows.Forms.Button loc1;
         private System.Windows.Forms.ToolTip btnTip;
         private System.Windows.Forms.CheckBox startInTrayBox;
         private System.Windows.Forms.Button btn_open3rdP;
@@ -406,5 +433,10 @@
         private System.Windows.Forms.Label foldLbl;
         private System.Windows.Forms.Button btn_calibrate;
         private System.Windows.Forms.Button btn_reassign_open;
+        private System.Windows.Forms.Button con8;
+        private System.Windows.Forms.Button con7;
+        private System.Windows.Forms.Button con6;
+        private System.Windows.Forms.Button con5;
+        private System.Windows.Forms.Button btn_locate;
     }
 }

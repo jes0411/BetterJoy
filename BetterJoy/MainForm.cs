@@ -17,11 +17,11 @@ namespace BetterJoy
         {
             None,
             Calibrate,
-            Remap // not implemented
+            Remap, // not implemented
+            Locate
         }
 
         private readonly List<Button> _con;
-        private readonly List<Button> _loc;
 
         public readonly bool AllowCalibration = bool.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
 
@@ -53,8 +53,7 @@ namespace BetterJoy
                 btn_calibrate.Hide();
             }
 
-            _con = new List<Button> { con1, con2, con3, con4 };
-            _loc = new List<Button> { loc1, loc2, loc3, loc4 };
+            _con = new List<Button> { con1, con2, con3, con4, con5, con6, con7, con8 };
 
             //list all options
             var myConfigs = ConfigurationManager.AppSettings.AllKeys;
@@ -170,7 +169,7 @@ namespace BetterJoy
 
                 await Program.Stop();
                 SystemEvents.PowerModeChanged -= OnPowerChange;
-                
+
                 FormClosing -= MainForm_FormClosing; // don't retrigger the event with Application.Exit()
                 Application.Exit();
             }
@@ -216,22 +215,16 @@ namespace BetterJoy
             console.AppendText(value + "\r\n");
         }
 
-        private async void LocBtnClickAsync(object sender, EventArgs e)
+        private async Task LocateController(Joycon controller)
         {
-            var buttonLoc = sender as Button;
-
-            if (buttonLoc?.Tag is not Button button ||
-                button?.Tag is not Joycon controller)
-            {
-                return;
-            }
+            SetLocate(false);
 
             controller.SetRumble(160.0f, 320.0f, 1.0f);
             await Task.Delay(300);
             controller.SetRumble(160.0f, 320.0f, 0);
         }
 
-        private void ConBtnClick(object sender, EventArgs e)
+        private async void ConBtnClick(object sender, EventArgs e)
         {
             var button = sender as Button;
 
@@ -240,9 +233,11 @@ namespace BetterJoy
                 return;
             }
 
+            var action = _currentAction;
+
             if (_selectController)
             {
-                switch (_currentAction)
+                switch (action)
                 {
                     case ControllerAction.Remap:
                         ShowReassignDialog(controller);
@@ -250,13 +245,16 @@ namespace BetterJoy
                     case ControllerAction.Calibrate:
                         StartCalibrate(controller);
                         break;
+                    case ControllerAction.Locate:
+                        await LocateController(controller);
+                        break;
                 }
 
                 _selectController = false;
                 return;
             }
 
-            if (_currentAction != ControllerAction.None)
+            if (action != ControllerAction.None)
             {
                 return;
             }
@@ -392,15 +390,18 @@ namespace BetterJoy
 
             _currentAction = calibrate ? ControllerAction.Calibrate : ControllerAction.None;
             SetCalibrateButtonText(calibrate);
-            btn_reassign_open.Enabled = !calibrate;
         }
 
         private void StartCalibrate(object sender, EventArgs e)
         {
-            if (_currentAction != ControllerAction.None)
+            switch (_currentAction)
             {
-                SetCalibrate(false);
-                return;
+                case ControllerAction.Calibrate:
+                    SetCalibrate(false);
+                    return;
+                case ControllerAction.Locate:
+                    SetLocate(false);
+                    break;
             }
 
             SetCalibrate();
@@ -417,6 +418,53 @@ namespace BetterJoy
                 default:
                     _selectController = true;
                     AppendTextBox("Click on a controller to calibrate.");
+                    break;
+            }
+        }
+
+        private void SetLocateButtonText(bool ongoing = false)
+        {
+            btn_locate.Text = ongoing ? "Select..." : "Locate";
+        }
+
+        private void SetLocate(bool locate = true)
+        {
+            if ((_currentAction == ControllerAction.Locate && locate) ||
+                (_currentAction != ControllerAction.Locate && !locate))
+            {
+                return;
+            }
+
+            _currentAction = locate ? ControllerAction.Locate : ControllerAction.None;
+            SetLocateButtonText(locate);
+        }
+
+        private async void StartLocate(object sender, EventArgs e)
+        {
+            switch (_currentAction)
+            {
+                case ControllerAction.Locate:
+                    SetLocate(false);
+                    return;
+                case ControllerAction.Calibrate:
+                    SetCalibrate(false);
+                    break;
+            }
+
+            SetLocate();
+
+            var controllers = GetActiveControllers();
+
+            switch (controllers.Count)
+            {
+                case 0:
+                    return;
+                case 1:
+                    await LocateController(controllers.First());
+                    break;
+                default:
+                    _selectController = true;
+                    AppendTextBox("Click on a controller to locate.");
                     break;
             }
         }
@@ -996,6 +1044,7 @@ namespace BetterJoy
             if (nbControllers == 0)
             {
                 btn_calibrate.Enabled = true;
+                btn_locate.Enabled = true;
             }
             else if (nbControllers == _con.Count)
             {
@@ -1011,10 +1060,6 @@ namespace BetterJoy
                     button.Enabled = true;
                     button.Click += ConBtnClick;
                     SetControllerImage(button, controller.Type);
-
-                    _loc[i].Tag = button;
-                    _loc[i].Click += LocBtnClickAsync;
-                    _loc[i].Enabled = true;
 
                     break;
                 }
@@ -1049,10 +1094,6 @@ namespace BetterJoy
                     button.Click -= ConBtnClick;
                     SetBackgroundImage(button, Resources.cross);
 
-                    _loc[i].Tag = null;
-                    _loc[i].Click -= LocBtnClickAsync;
-                    _loc[i].Enabled = false;
-
                     removed = true;
                     break;
                 }
@@ -1063,6 +1104,7 @@ namespace BetterJoy
             if (removed && nbControllers == 1)
             {
                 btn_calibrate.Enabled = false;
+                btn_locate.Enabled = false;
             }
         }
 

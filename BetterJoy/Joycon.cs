@@ -95,7 +95,6 @@ namespace BetterJoy
         private static readonly bool ToRumble = bool.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
         private static readonly bool ShowAsXInput = bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
         private static readonly bool ShowAsDs4 = bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
-        private static readonly bool UseIncrementalLights = bool.Parse(ConfigurationManager.AppSettings["UseIncrementalLights"]);
         private static readonly float DefaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
         private static readonly float DefaultRange = float.Parse(ConfigurationManager.AppSettings["SticksRange"]);
         private static readonly bool SticksSquared = bool.Parse(ConfigurationManager.AppSettings["SticksSquared"]);
@@ -103,6 +102,8 @@ namespace BetterJoy
         private static readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
         private static readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
         private static readonly float ShakeSensitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
+
+        private static readonly byte[] LedById = { 0b0001, 0b0011, 0b0111, 0b1111, 0b1001, 0b0101, 0b1101, 0b0110 };
 
         private readonly short[] _accNeutral = { 0, 0, 0 };
         private readonly short[] _accR = { 0, 0, 0 };
@@ -304,7 +305,6 @@ namespace BetterJoy
             _filterweight = alpha;
 
             PadId = id;
-            LED = (byte)(0x1 << PadId);
 
             IsUSB = isUSB;
             Type = type;
@@ -342,32 +342,17 @@ namespace BetterJoy
 
         public Joycon Other;
 
-        public byte LED { get; private set; }
-
         public void SetLEDByPlayerNum(int id)
         {
-            if (id > 3)
+            if (id >= LedById.Length)
             {
-                // No support for any higher than 3 (4 Joycons/Controllers supported in the application normally)
-                id = 3;
+                // No support for any higher than 8 controllers
+                id = LedById.Length - 1;
             }
 
-            if (UseIncrementalLights)
-            {
-                // Set all LEDs from 0 to the given id to lit
-                var ledId = id;
-                LED = 0x0;
-                do
-                {
-                    LED |= (byte)(0x1 << ledId);
-                } while (--ledId >= 0);
-            }
-            else
-            {
-                LED = (byte)(0x1 << id);
-            }
+            byte led = LedById[id];
 
-            SetPlayerLED(LED);
+            SetPlayerLED(led);
         }
 
         public void SetLEDByPadID()

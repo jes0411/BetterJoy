@@ -109,7 +109,7 @@ namespace BetterJoy
         {
             currIdx = 0;
 
-            if (localMsg.Length < 28)
+            if (localMsg.Length < 20)
             {
                 return false;
             }
@@ -191,7 +191,7 @@ namespace BetterJoy
                     // Requested information on gamepads - return MAC address
                     var numPadRequests = BitConverter.ToInt32(localMsg.Slice(currIdx, 4));
                     currIdx += 4;
-                    if (numPadRequests > 0)
+                    if (numPadRequests > 0 && numPadRequests + currIdx <= localMsg.Length)
                     {
                         var outputData = new byte[16];
 
@@ -249,35 +249,36 @@ namespace BetterJoy
                             }
                         }
                     }
-
                     break;
                 }
                 case (uint)MessageType.DsucPadDataReq:
                 {
-                    var regFlags = localMsg[currIdx++];
-                    var idToReg = localMsg[currIdx++];
-                    PhysicalAddress macToReg;
+                    if (currIdx + 8 <= localMsg.Length)
                     {
-                        var macBytes = new byte[6];
-                        localMsg.Slice(currIdx, macBytes.Length).CopyTo(macBytes);
-
-                        macToReg = new PhysicalAddress(macBytes);
-                    }
-
-                    lock (_clients)
-                    {
-                        if (_clients.TryGetValue(clientEp, out var client))
+                        var regFlags = localMsg[currIdx++];
+                        var idToReg = localMsg[currIdx++];
+                        PhysicalAddress macToReg;
                         {
-                            client.RequestPadInfo(regFlags, idToReg, macToReg);
+                            var macBytes = new byte[6];
+                            localMsg.Slice(currIdx, macBytes.Length).CopyTo(macBytes);
+
+                            macToReg = new PhysicalAddress(macBytes);
                         }
-                        else
+
+                        lock (_clients)
                         {
-                            var clientTimes = new ClientRequestTimes();
-                            clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
-                            _clients[clientEp] = clientTimes;
+                            if (_clients.TryGetValue(clientEp, out var client))
+                            {
+                                client.RequestPadInfo(regFlags, idToReg, macToReg);
+                            }
+                            else
+                            {
+                                var clientTimes = new ClientRequestTimes();
+                                clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
+                                _clients[clientEp] = clientTimes;
+                            }
                         }
                     }
-
                     break;
                 }
             }
@@ -351,7 +352,7 @@ namespace BetterJoy
             var iocIn = 0x80000000;
             uint iocVendor = 0x18000000;
             var sioUdpConnreset = iocIn | iocVendor | 12;
-            _udpSock.IOControl((int)sioUdpConnreset, new[] { Convert.ToByte(false) }, null);
+            _udpSock.IOControl((int)sioUdpConnreset, [Convert.ToByte(false)], null);
 
             var randomBuf = new byte[4];
             new Random().NextBytes(randomBuf);
@@ -529,8 +530,8 @@ namespace BetterJoy
                     {
                         relevantClients[nbClients++] = client.Key;
                     }
-                    else if (hidReport.PadId is >= 0 and <= 3 &&
-                             !IsControllerTimedout(now, client.Value.PadIdsTime[(byte)hidReport.PadId]))
+                    else if ((hidReport.PadId >= 0 && hidReport.PadId < client.Value.PadIdsTime.Length) &&
+                             !IsControllerTimedout(now, client.Value.PadIdsTime[hidReport.PadId]))
                     {
                         relevantClients[nbClients++] = client.Key;
                     }
@@ -636,7 +637,7 @@ namespace BetterJoy
             public ClientRequestTimes()
             {
                 AllPadsTime = DateTime.MinValue;
-                PadIdsTime = new DateTime[4];
+                PadIdsTime = new DateTime[8];
 
                 for (var i = 0; i < PadIdsTime.Length; i++)
                 {

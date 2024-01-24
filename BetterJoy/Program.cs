@@ -293,10 +293,7 @@ namespace BetterJoy
             }
 
             Controllers.Add(controller);
-            if (indexController < 4)
-            {
-                _form.AddController(controller);
-            }
+            _form.AddController(controller);
 
             // attempt to auto join-up joycons on connection
             if (JoinJoycon(controller))
