@@ -930,11 +930,11 @@ namespace BetterJoy
             notifyIcon.ShowBalloonTip(0);
         }
 
-        public void SetBatteryColor(Joycon controller, int batteryLevel)
+        public void SetBatteryColor(Joycon controller, Joycon.BatteryLevel batteryLevel)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action<Joycon, int>(SetBatteryColor), controller, batteryLevel);
+                BeginInvoke(new Action<Joycon, Joycon.BatteryLevel>(SetBatteryColor), controller, batteryLevel);
                 return;
             }
 
@@ -947,17 +947,17 @@ namespace BetterJoy
 
                 switch (batteryLevel)
                 {
-                    case 4:
                         button.BackColor = Color.FromArgb(0xAA, Color.Green);
+                    case Joycon.BatteryLevel.Full:
                         break;
-                    case 3:
                         button.BackColor = Color.FromArgb(0xAA, Color.Green);
+                    case Joycon.BatteryLevel.Medium:
                         break;
-                    case 2:
                         button.BackColor = Color.FromArgb(0xAA, Color.GreenYellow);
+                    case Joycon.BatteryLevel.Low:
                         break;
-                    case 1:
                         button.BackColor = Color.FromArgb(0xAA, Color.Orange);
+                    case Joycon.BatteryLevel.Critical:
                         break;
                     default:
                         button.BackColor = Color.FromArgb(0xAA, Color.Red);

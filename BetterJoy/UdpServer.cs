@@ -15,6 +15,39 @@ namespace BetterJoy
 {
     internal class UdpServer : IDisposable
     {
+        public enum ControllerState : byte
+        {
+            Disconnected = 0x00,
+            Connected = 0x02
+        };
+
+        public enum ControllerConnection : byte
+        {
+            None = 0x00,
+            USB = 0x01,
+            Bluetooth = 0x02
+        };
+
+        public enum ControllerModel : byte
+        {
+            None = 0x00,
+            DS3 = 0x01,
+            DS4 = 0x02,
+            Generic = 0x03
+        }
+
+        public enum ControllerBattery : byte
+        {
+            Empty = 0x00,
+            Critical = 0x01,
+            Low = 0x02,
+            Medium = 0x03,
+            High = 0x04,
+            Full = 0x05,
+            Charging = 0xEE,
+            Charged = 0xEF
+        };
+
         private enum MessageType
         {
             DsucVersionReq = 0x100000,
@@ -218,9 +251,9 @@ namespace BetterJoy
                                 outIdx += 4;
 
                                 outputData[outIdx++] = (byte)padData.PadId;
-                                outputData[outIdx++] = (byte)padData.Constate;
-                                outputData[outIdx++] = (byte)padData.Model;
-                                outputData[outIdx++] = (byte)padData.Connection;
+                                outputData[outIdx++] = (byte)ControllerState.Connected;
+                                outputData[outIdx++] = (byte)ControllerModel.DS4;
+                                outputData[outIdx++] = (byte)(padData.IsUSB ? ControllerConnection.USB : ControllerConnection.Bluetooth);
 
                                 var addressBytes = padData.PadMacAddress.GetAddressBytes();
                                 if (addressBytes.Length == 6)
@@ -242,7 +275,7 @@ namespace BetterJoy
                                     outputData[outIdx++] = 0;
                                 }
 
-                                outputData[outIdx++] = (byte)padData.Battery;
+                                outputData[outIdx++] = (byte)GetBattery(padData);
                                 outputData[outIdx++] = 0;
 
                                 replies.Add(outputData);
@@ -594,9 +627,9 @@ namespace BetterJoy
             outIdx += 4;
 
             outputData[outIdx++] = (byte)hidReport.PadId;
-            outputData[outIdx++] = (byte)hidReport.Constate;
-            outputData[outIdx++] = (byte)hidReport.Model;
-            outputData[outIdx++] = (byte)hidReport.Connection;
+            outputData[outIdx++] = (byte)ControllerState.Connected;
+            outputData[outIdx++] = (byte)ControllerModel.DS4;
+            outputData[outIdx++] = (byte)(hidReport.IsUSB ? ControllerConnection.USB : ControllerConnection.Bluetooth);
             {
                 ReadOnlySpan<byte> padMac = hidReport.PadMacAddress.GetAddressBytes();
                 foreach (var number in padMac)
@@ -605,7 +638,7 @@ namespace BetterJoy
                 }
             }
 
-            outputData[outIdx++] = (byte)hidReport.Battery;
+            outputData[outIdx++] = (byte)GetBattery(hidReport);
             outputData[outIdx++] = 1;
 
             BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), hidReport.PacketCounter);
@@ -618,6 +651,23 @@ namespace BetterJoy
             {
                 _udpSock.SendTo(outputData, client);
             }
+        }
+
+        private static ControllerBattery GetBattery(Joycon controller)
+        {
+            if (controller.Charging)
+            {
+                return ControllerBattery.Charging;
+            }
+
+            return controller.Battery switch
+            {
+                Joycon.BatteryLevel.Critical => ControllerBattery.Critical,
+                Joycon.BatteryLevel.Low => ControllerBattery.Low,
+                Joycon.BatteryLevel.Medium => ControllerBattery.Medium,
+                Joycon.BatteryLevel.Full => ControllerBattery.Full,
+                _ => ControllerBattery.Empty,
+            };
         }
 
         private static int CalculateCrc32(ReadOnlySpan<byte> data, Span<byte> crc)

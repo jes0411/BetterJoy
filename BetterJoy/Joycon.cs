@@ -71,6 +71,15 @@ namespace BetterJoy
             IMUDataOk
         }
 
+        public enum BatteryLevel
+        {
+            Empty,
+            Critical,
+            Low,
+            Medium,
+            Full
+        }
+
         private enum ReceiveError
         {
             None,
@@ -184,11 +193,8 @@ namespace BetterJoy
         private float _activeStick1Range;
         private float _activeStick2Range;
 
-        public int Battery = -1;
+        public BatteryLevel Battery = BatteryLevel.Empty;
         public bool Charging = false;
-
-        public readonly int Connection = 3;
-        public readonly int Constate = 2;
 
         private float _deadzone;
         private float _deadzone2;
@@ -209,7 +215,6 @@ namespace BetterJoy
         public readonly bool IsThirdParty;
         public readonly bool IsUSB;
         private long _lastDoubleClick = -1;
-        public readonly int Model = 2;
 
         public OutputControllerDualShock4 OutDs4;
         public OutputControllerXbox360 OutXbox;
@@ -312,8 +317,6 @@ namespace BetterJoy
             Path = path;
             _CommandLength = isUSB ? 64 : 49;
             _MixedComsLength = Math.Max(ReportLength, _CommandLength);
-
-            Connection = isUSB ? 0x01 : 0x02;
 
             if (ShowAsXInput)
             {
@@ -705,7 +708,7 @@ namespace BetterJoy
             // battery changed level
             _form.SetBatteryColor(this, Battery);
 
-            if (!IsUSB && !Charging && Battery <= 1)
+            if (!IsUSB && !Charging && Battery <= BatteryLevel.Critical)
             {
                 var msg = $"Controller {PadId} ({GetControllerName()}) - low battery notification!";
                 _form.Tooltip(msg);
@@ -1359,7 +1362,7 @@ namespace BetterJoy
             var prevCharging = Charging;
 
             byte highNibble = (byte)(reportBuf[2] >> 4);
-            Battery = highNibble / 2;
+            Battery = (BatteryLevel)(Math.Clamp(highNibble / 2, (int)BatteryLevel.Empty, (int)BatteryLevel.Full));
             Charging = (highNibble & 0x1) == 1;
 
             if (prevBattery != Battery)
