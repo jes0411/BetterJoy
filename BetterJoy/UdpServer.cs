@@ -346,8 +346,15 @@ namespace BetterJoy
                 }
                 catch (SocketException)
                 {
-                    // We're done
-                    break;
+                    if (_running)
+                    {
+                        ResetUDPSocket();
+                    }
+                    else
+                    {
+                        // We're done
+                        break;
+                    }
                 }
             }
         }
@@ -380,12 +387,6 @@ namespace BetterJoy
                 );
                 return;
             }
-
-            // Ignore ICMP
-            var iocIn = 0x80000000;
-            uint iocVendor = 0x18000000;
-            var sioUdpConnreset = iocIn | iocVendor | 12;
-            _udpSock.IOControl((int)sioUdpConnreset, [Convert.ToByte(false)], null);
 
             var randomBuf = new byte[4];
             new Random().NextBytes(randomBuf);
@@ -423,6 +424,15 @@ namespace BetterJoy
         public void Dispose()
         {
             _ctsTransfers.Dispose();
+        }
+
+        private void ResetUDPSocket()
+        {
+            const uint iocIn = 0x80000000;
+            const uint iocVendor = 0x18000000;
+            uint sioUdpConnreset = iocIn | iocVendor | 12;
+
+            _udpSock.IOControl((int)sioUdpConnreset, [Convert.ToByte(false)], null);
         }
 
         private void ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx)
