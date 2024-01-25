@@ -154,30 +154,37 @@ namespace BetterJoy
 
             while (await channelReader.WaitToReadAsync(token))
             {
-                while (channelReader.TryRead(out var job))
+                bool read;
+                do
                 {
-                    switch (job.Notification)
+                    token.ThrowIfCancellationRequested();
+                    read = channelReader.TryRead(out var job);
+
+                    if (read)
                     {
-                        case DeviceNotification.Type.Connected:
+                        switch (job.Notification)
                         {
-                            var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
-                            OnDeviceConnected(deviceInfos);
-                            break;
-                        }
-                        case DeviceNotification.Type.Disconnected:
-                        {
-                            var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
-                            OnDeviceDisconnected(deviceInfos);
-                            break;
-                        }
-                        case DeviceNotification.Type.Errored:
-                        {
-                            var controller = (Joycon)job.Data;
-                            OnDeviceErrored(controller);
-                            break;
+                            case DeviceNotification.Type.Connected:
+                            {
+                                var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
+                                OnDeviceConnected(deviceInfos);
+                                break;
+                            }
+                            case DeviceNotification.Type.Disconnected:
+                            {
+                                var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
+                                OnDeviceDisconnected(deviceInfos);
+                                break;
+                            }
+                            case DeviceNotification.Type.Errored:
+                            {
+                                var controller = (Joycon)job.Data;
+                                OnDeviceErrored(controller);
+                                break;
+                            }
                         }
                     }
-                }
+                } while (read);
             }
         }
 
