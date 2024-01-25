@@ -947,20 +947,20 @@ namespace BetterJoy
 
                 switch (batteryLevel)
                 {
-                        button.BackColor = Color.FromArgb(0xAA, Color.Green);
                     case Joycon.BatteryLevel.Full:
+                        button.BackColor = Color.FromArgb(0xAA, 0, 150, 0);
                         break;
-                        button.BackColor = Color.FromArgb(0xAA, Color.Green);
                     case Joycon.BatteryLevel.Medium:
+                        button.BackColor = Color.FromArgb(0xAA, 150, 230, 0);
                         break;
-                        button.BackColor = Color.FromArgb(0xAA, Color.GreenYellow);
                     case Joycon.BatteryLevel.Low:
+                        button.BackColor = Color.FromArgb(0xAA, 250, 210, 0);
                         break;
-                        button.BackColor = Color.FromArgb(0xAA, Color.Orange);
                     case Joycon.BatteryLevel.Critical:
+                        button.BackColor = Color.FromArgb(0xAA, 250, 150, 0);
                         break;
                     default:
-                        button.BackColor = Color.FromArgb(0xAA, Color.Red);
+                        button.BackColor = Color.FromArgb(0xAA, 230, 0, 0);
                         break;
                 }
             }
