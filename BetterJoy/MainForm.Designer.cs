@@ -142,7 +142,7 @@
             // 
             con8.BackColor = System.Drawing.SystemColors.Control;
             con8.BackgroundImage = Properties.Resources.cross;
-            con8.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con8.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con8.Enabled = false;
             con8.Location = new System.Drawing.Point(230, 98);
             con8.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -156,7 +156,7 @@
             // 
             con7.BackColor = System.Drawing.SystemColors.Control;
             con7.BackgroundImage = Properties.Resources.cross;
-            con7.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con7.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con7.Enabled = false;
             con7.Location = new System.Drawing.Point(155, 98);
             con7.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -170,7 +170,7 @@
             // 
             con6.BackColor = System.Drawing.SystemColors.Control;
             con6.BackgroundImage = Properties.Resources.cross;
-            con6.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con6.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con6.Enabled = false;
             con6.Location = new System.Drawing.Point(81, 98);
             con6.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -184,7 +184,7 @@
             // 
             con5.BackColor = System.Drawing.SystemColors.Control;
             con5.BackgroundImage = Properties.Resources.cross;
-            con5.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con5.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con5.Enabled = false;
             con5.Location = new System.Drawing.Point(6, 98);
             con5.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -199,7 +199,7 @@
             // 
             con4.BackColor = System.Drawing.SystemColors.Control;
             con4.BackgroundImage = Properties.Resources.cross;
-            con4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con4.Enabled = false;
             con4.Location = new System.Drawing.Point(231, 23);
             con4.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -213,7 +213,7 @@
             // 
             con3.BackColor = System.Drawing.SystemColors.Control;
             con3.BackgroundImage = Properties.Resources.cross;
-            con3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con3.Enabled = false;
             con3.Location = new System.Drawing.Point(156, 23);
             con3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -227,7 +227,7 @@
             // 
             con2.BackColor = System.Drawing.SystemColors.Control;
             con2.BackgroundImage = Properties.Resources.cross;
-            con2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con2.Enabled = false;
             con2.Location = new System.Drawing.Point(82, 23);
             con2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
@@ -241,7 +241,7 @@
             // 
             con1.BackColor = System.Drawing.SystemColors.Control;
             con1.BackgroundImage = Properties.Resources.cross;
-            con1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            con1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             con1.Enabled = false;
             con1.Location = new System.Drawing.Point(7, 23);
             con1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
