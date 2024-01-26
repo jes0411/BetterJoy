@@ -4,8 +4,8 @@
 
 # BetterJoy v8.3 LTS
 #### Fork changes
- - fixed a good amount of bugs, crashes, controller connection/disconnection issues.
- - added the calibration of the controller with the calibrate button (have to be enabled in the config).
+ - fixed a good amount of bugs, crashes, controller connection/disconnection issues
+ - added the calibration of the controller with the calibrate button
  - added a deadzone and a range setting
  - updated to .NET 8
  - updated hidapi and packages

@@ -115,11 +115,8 @@ namespace BetterJoy
         private static readonly byte[] LedById = { 0b0001, 0b0011, 0b0111, 0b1111, 0b1001, 0b0101, 0b1101, 0b0110 };
 
         private readonly short[] _accNeutral = { 0, 0, 0 };
-        private readonly short[] _accR = { 0, 0, 0 };
-
+        private readonly short[] _accRaw = { 0, 0, 0 };
         private readonly short[] _accSensiti = { 0, 0, 0 };
-        private readonly ushort[] _activeStick1;
-        private readonly ushort[] _activeStick2;
 
         private readonly MadgwickAHRS _AHRS = new(0.005f, AHRSBeta); // for getting filtered Euler angles of rotation; 5ms sampling rate
 
@@ -141,7 +138,7 @@ namespace BetterJoy
         private readonly string _extraGyroFeature = ConfigurationManager.AppSettings["GyroToJoyOrMouse"];
         private readonly short[] _gyrNeutral = { 0, 0, 0 };
 
-        private readonly short[] _gyrR = { 0, 0, 0 };
+        private readonly short[] _gyrRaw = { 0, 0, 0 };
 
         private readonly short[] _gyrSensiti = { 0, 0, 0 };
 
@@ -187,7 +184,11 @@ namespace BetterJoy
         private Vector3 _accG = Vector3.Zero;
         public bool ActiveGyro;
 
-        private short[] _activeIMUData;
+        private bool _IMUCalibrated = false;
+        private bool _SticksCalibrated = false;
+        private readonly short[] _activeIMUData = new short[6];
+        private readonly ushort[] _activeStick1 = new ushort[6];
+        private readonly ushort[] _activeStick2 = new ushort[6];
         private float _activeStick1Deadzone;
         private float _activeStick2Deadzone;
         private float _activeStick1Range;
@@ -295,9 +296,6 @@ namespace BetterJoy
             _form = form;
             SerialNumber = serialNum;
             SerialOrMac = serialNum;
-            _activeIMUData = new short[6];
-            _activeStick1 = new ushort[6];
-            _activeStick2 = new ushort[6];
             _handle = handle;
             _IMUEnabled = imu;
             _doLocalize = localize;
@@ -376,16 +374,24 @@ namespace BetterJoy
 
         public void GetActiveIMUData()
         {
-            _activeIMUData = _form.ActiveCaliIMUData(SerialOrMac);
+            var activeIMUData = _form.ActiveCaliIMUData(SerialOrMac);
+            if (activeIMUData != null)
+            {
+                Array.Copy(activeIMUData, _activeIMUData, 6);
+                _IMUCalibrated = true;
+            }
         }
 
         public void GetActiveSticksData()
         {
+            var activeSticksData = _form.ActiveCaliSticksData(SerialOrMac);
+            if (activeSticksData != null)
             {
-                var activeSticksData = _form.ActiveCaliSticksData(SerialOrMac);
                 Array.Copy(activeSticksData, _activeStick1, 6);
                 Array.Copy(activeSticksData, 6, _activeStick2, 0, 6);
+                _SticksCalibrated = true;
             }
+
             _activeStick1Deadzone = DefaultDeadzone;
             _activeStick2Deadzone = DefaultDeadzone;
 
@@ -1362,7 +1368,7 @@ namespace BetterJoy
             var prevCharging = Charging;
 
             byte highNibble = (byte)(reportBuf[2] >> 4);
-            Battery = (BatteryLevel)(Math.Clamp(highNibble / 2, (int)BatteryLevel.Empty, (int)BatteryLevel.Full));
+            Battery = (BatteryLevel)(Math.Clamp(highNibble >> 1, (byte)BatteryLevel.Empty, (byte)BatteryLevel.Full));
             Charging = (highNibble & 0x1) == 1;
 
             if (prevBattery != Battery)
@@ -1659,7 +1665,7 @@ namespace BetterJoy
                 var dz = _deadzone;
                 var range = _range;
 
-                if (_form.AllowCalibration)
+                if (_SticksCalibrated)
                 {
                     cal = _activeStick1;
                     dz = _activeStick1Deadzone;
@@ -1674,7 +1680,7 @@ namespace BetterJoy
                     dz = _deadzone2;
                     range = _range2;
 
-                    if (_form.AllowCalibration)
+                    if (_SticksCalibrated)
                     {
                         cal = _activeStick2;
                         dz = _activeStick2Deadzone;
@@ -1807,64 +1813,64 @@ namespace BetterJoy
                 return false;
             }
 
-            _gyrR[0] = (short)(reportBuf[19 + n * 12] | (reportBuf[20 + n * 12] << 8));
-            _gyrR[1] = (short)(reportBuf[21 + n * 12] | (reportBuf[22 + n * 12] << 8));
-            _gyrR[2] = (short)(reportBuf[23 + n * 12] | (reportBuf[24 + n * 12] << 8));
-            _accR[0] = (short)(reportBuf[13 + n * 12] | (reportBuf[14 + n * 12] << 8));
-            _accR[1] = (short)(reportBuf[15 + n * 12] | (reportBuf[16 + n * 12] << 8));
-            _accR[2] = (short)(reportBuf[17 + n * 12] | (reportBuf[18 + n * 12] << 8));
+            _gyrRaw[0] = (short)(reportBuf[19 + n * 12] | (reportBuf[20 + n * 12] << 8));
+            _gyrRaw[1] = (short)(reportBuf[21 + n * 12] | (reportBuf[22 + n * 12] << 8));
+            _gyrRaw[2] = (short)(reportBuf[23 + n * 12] | (reportBuf[24 + n * 12] << 8));
+            _accRaw[0] = (short)(reportBuf[13 + n * 12] | (reportBuf[14 + n * 12] << 8));
+            _accRaw[1] = (short)(reportBuf[15 + n * 12] | (reportBuf[16 + n * 12] << 8));
+            _accRaw[2] = (short)(reportBuf[17 + n * 12] | (reportBuf[18 + n * 12] << 8));
+
+            if (_calibrateIMU)
+            {
+                // We need to add the accelerometer offset from the origin position when it's on a flat surface
+                short[] accOffset;
+                if (IsPro)
+                {
+                    accOffset = _accProHorOffset;
+                }
+                else if (IsLeft)
+                {
+                    accOffset = _accLeftHorOffset;
+                }
+                else
+                {
+                    accOffset = _accRightHorOffset;
+                }
+
+                var imuData = new IMUData(
+                    _gyrRaw[0],
+                    _gyrRaw[1],
+                    _gyrRaw[2],
+                    (short)(_accRaw[0] - accOffset[0]),
+                    (short)(_accRaw[1] - accOffset[1]),
+                    (short)(_accRaw[2] - accOffset[2])
+                );
+                CalibrationIMUDatas.Add(imuData);
+            }
 
             var direction = IsLeft ? 1 : -1;
 
-            if (_form.AllowCalibration)
+            if (_IMUCalibrated)
             {
-                _accG.X = (_accR[0] - _activeIMUData[3]) * (1.0f / (_accSensiti[0] - _accNeutral[0])) * 4.0f;
-                _gyrG.X = (_gyrR[0] - _activeIMUData[0]) * (816.0f / (_gyrSensiti[0] - _activeIMUData[0]));
+                _accG.X = (_accRaw[0] - _activeIMUData[3]) * (1.0f / (_accSensiti[0] - _accNeutral[0])) * 4.0f;
+                _gyrG.X = (_gyrRaw[0] - _activeIMUData[0]) * (816.0f / (_gyrSensiti[0] - _activeIMUData[0]));
 
-                _accG.Y = direction * (_accR[1] -_activeIMUData[4]) * (1.0f / (_accSensiti[1] - _accNeutral[1])) * 4.0f;
-                _gyrG.Y = -direction * (_gyrR[1] - _activeIMUData[1]) * (816.0f / (_gyrSensiti[1] - _activeIMUData[1]));
+                _accG.Y = direction * (_accRaw[1] -_activeIMUData[4]) * (1.0f / (_accSensiti[1] - _accNeutral[1])) * 4.0f;
+                _gyrG.Y = -direction * (_gyrRaw[1] - _activeIMUData[1]) * (816.0f / (_gyrSensiti[1] - _activeIMUData[1]));
 
-                _accG.Z = direction * (_accR[2] - _activeIMUData[5]) * (1.0f / (_accSensiti[2] - _accNeutral[2])) * 4.0f;
-                _gyrG.Z = -direction * (_gyrR[2] - _activeIMUData[2]) * (816.0f / (_gyrSensiti[2] - _activeIMUData[2]));
-
-                if (_calibrateIMU)
-                {
-                    // We need to add the accelerometer offset from the origin position when it's on a flat surface
-                    short[] accOffset;
-                    if (IsPro)
-                    {
-                        accOffset = _accProHorOffset;
-                    }
-                    else if (IsLeft)
-                    {
-                        accOffset = _accLeftHorOffset;
-                    }
-                    else
-                    {
-                        accOffset = _accRightHorOffset;
-                    }
-
-                    var imuData = new IMUData(
-                        _gyrR[0],
-                        _gyrR[1],
-                        _gyrR[2],
-                        (short)(_accR[0] - accOffset[0]),
-                        (short)(_accR[1] - accOffset[1]),
-                        (short)(_accR[2] - accOffset[2])
-                    );
-                    CalibrationIMUDatas.Add(imuData);
-                }
+                _accG.Z = direction * (_accRaw[2] - _activeIMUData[5]) * (1.0f / (_accSensiti[2] - _accNeutral[2])) * 4.0f;
+                _gyrG.Z = -direction * (_gyrRaw[2] - _activeIMUData[2]) * (816.0f / (_gyrSensiti[2] - _activeIMUData[2]));
             }
             else
             {
-                _accG.X = _accR[0] * (1.0f / (_accSensiti[0] - _accNeutral[0])) * 4.0f;
-                _gyrG.X = (_gyrR[0] - _gyrNeutral[0]) * (816.0f / (_gyrSensiti[0] - _gyrNeutral[0]));
+                _accG.X = _accRaw[0] * (1.0f / (_accSensiti[0] - _accNeutral[0])) * 4.0f;
+                _gyrG.X = (_gyrRaw[0] - _gyrNeutral[0]) * (816.0f / (_gyrSensiti[0] - _gyrNeutral[0]));
 
-                _accG.Y = direction * _accR[1] * (1.0f / (_accSensiti[1] - _accNeutral[1])) * 4.0f;
-                _gyrG.Y = -direction * (_gyrR[1] - _gyrNeutral[1]) * (816.0f / (_gyrSensiti[1] - _gyrNeutral[1]));
+                _accG.Y = direction * _accRaw[1] * (1.0f / (_accSensiti[1] - _accNeutral[1])) * 4.0f;
+                _gyrG.Y = -direction * (_gyrRaw[1] - _gyrNeutral[1]) * (816.0f / (_gyrSensiti[1] - _gyrNeutral[1]));
 
-                _accG.Z = direction * _accR[2] * (1.0f / (_accSensiti[2] - _accNeutral[2])) * 4.0f;
-                _gyrG.Z = -direction * (_gyrR[2] - _gyrNeutral[2]) * (816.0f / (_gyrSensiti[2] - _gyrNeutral[2]));
+                _accG.Z = direction * _accRaw[2] * (1.0f / (_accSensiti[2] - _accNeutral[2])) * 4.0f;
+                _gyrG.Z = -direction * (_gyrRaw[2] - _gyrNeutral[2]) * (816.0f / (_gyrSensiti[2] - _gyrNeutral[2]));
             }
 
             if (IsJoycon && Other == null)

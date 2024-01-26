@@ -25,8 +25,8 @@ namespace BetterJoy
 
         public readonly bool AllowCalibration = bool.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
 
-        public readonly List<KeyValuePair<string, short[]>> CaliIMUData;
-        public readonly List<KeyValuePair<string, ushort[]>> CaliSticksData;
+        public readonly List<KeyValuePair<string, short[]>> CaliIMUData = new();
+        public readonly List<KeyValuePair<string, ushort[]>> CaliSticksData = new();
 
         private int _count;
         private Timer _countDown;
@@ -36,16 +36,6 @@ namespace BetterJoy
 
         public MainForm()
         {
-            CaliIMUData = new List<KeyValuePair<string, short[]>>
-            {
-                new("0", new short[6] { 0, 0, 0, -710, 0, 0 })
-            };
-
-            CaliSticksData = new List<KeyValuePair<string, ushort[]>>
-            {
-                new("0", new ushort[12] { 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048 })
-            };
-
             InitializeComponent();
 
             if (!AllowCalibration)
@@ -592,7 +582,7 @@ namespace BetterJoy
                     imuData[4] = (short)quickselect_median(yA, rnd.Next);
                     imuData[5] = (short)quickselect_median(zA, rnd.Next);
 
-                    console.Text += "IMU Calibration completed!!!\r\n";
+                    console.Text += "IMU calibration completed!!!\r\n";
 
                     Config.SaveCaliIMUData(CaliIMUData);
                     controller.GetActiveIMUData();
@@ -794,7 +784,7 @@ namespace BetterJoy
 
                 ClearCalibrateDatas(controller);
 
-                console.Text += "Sticks min and max position Calibration completed!!!\r\n";
+                console.Text += "Sticks min and max position calibration completed!!!\r\n";
 
                 Config.SaveCaliSticksData(CaliSticksData);
                 controller.GetActiveSticksData();
@@ -888,7 +878,7 @@ namespace BetterJoy
                 return arr;
             }
 
-            return CaliIMUData[0].Value;
+            return null;
         }
 
         public ushort[] ActiveCaliSticksData(string serNum, bool init = false)
@@ -914,7 +904,7 @@ namespace BetterJoy
                 return arr;
             }
 
-            return CaliSticksData[0].Value;
+            return null;
         }
 
         public void Tooltip(string msg)
