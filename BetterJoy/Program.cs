@@ -303,7 +303,8 @@ namespace BetterJoy
             _form.AddController(controller);
 
             // attempt to auto join-up joycons on connection
-            if (JoinJoycon(controller))
+            bool doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
+            if (!doNotRejoin && JoinJoycon(controller))
             {
                 _form.JoinJoycon(controller, controller.Other);
             }
@@ -496,7 +497,8 @@ namespace BetterJoy
                 if (!otherController.IsJoycon ||
                     otherController.Other != null || // already associated
                     controller.IsLeft == otherController.IsLeft ||
-                    controller == otherController)
+                    controller == otherController ||
+                    otherController.State < Joycon.Status.Attached)
                 {
                     continue;
                 }

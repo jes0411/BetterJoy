@@ -358,8 +358,7 @@ namespace BetterJoy
 
         public void SetLEDByPadID()
         {
-            // If the other Joycon is itself, the Joycon is sideways
-            if (Other == null || Other == this)
+            if (!IsJoined)
             {
                 // Set LED to current Pad ID
                 SetLEDByPlayerNum(PadId);
