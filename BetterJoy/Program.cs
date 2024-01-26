@@ -178,8 +178,8 @@ namespace BetterJoy
                             }
                             case DeviceNotification.Type.Errored:
                             {
-                                var controller = (Joycon)job.Data;
-                                OnDeviceErrored(controller);
+                                var devicePath = (string)job.Data;
+                                OnDeviceErrored(devicePath);
                                 break;
                             }
                         }
@@ -298,8 +298,11 @@ namespace BetterJoy
                 _form.AppendTextBox($"Could not connect {controller.GetControllerName()} ({e.Message}). Dropped.");
                 return;
             }
-
-            Controllers.Add(controller);
+            finally
+            {
+                Controllers.Add(controller);
+            }
+            
             _form.AddController(controller);
 
             // attempt to auto join-up joycons on connection
@@ -360,8 +363,14 @@ namespace BetterJoy
             _form.AppendTextBox($"{controller.GetControllerName()} disconnected.");
         }
 
-        private void OnDeviceErrored(Joycon controller)
+        private void OnDeviceErrored(string devicePath)
         {
+            Joycon controller = GetControllerByPath(devicePath);
+            if (controller == null)
+            {
+                return;
+            }
+
             if (controller.State > Joycon.Status.Dropped)
             {
                 // device not in error anymore (after a reset or a reconnection from the system)
@@ -385,7 +394,7 @@ namespace BetterJoy
             switch (e.State)
             {
                 case Joycon.Status.Errored:
-                    var notification = new DeviceNotification(DeviceNotification.Type.Errored, controller);
+                    var notification = new DeviceNotification(DeviceNotification.Type.Errored, controller.Path);
                     while (!writer.TryWrite(notification)) { }
                     break;
             }
