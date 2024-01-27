@@ -184,7 +184,7 @@ namespace BetterJoy
 
         private ContextMenuStrip createMenuJoyButtons()
         {
-            var menuJoyButtons = new ContextMenuStrip();
+            var menuJoyButtons = new ContextMenuStrip(components);
 
             foreach (int tag in Enum.GetValues(typeof(ButtonAction)))
             {
