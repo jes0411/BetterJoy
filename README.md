@@ -29,7 +29,7 @@ Thank you for using my software and all the constructive feedback I've been gett
 It's been quite a wild ride, with nearly **590k** (!!) official download on GitHub and probably many more through the nightlies. I think this project was responsible for both software jobs I landed so far, so I am quite proud of it.
 
 ### Screenshot
-![Example](https://github.com/d3xMachina/BetterJoy/assets/16732772/02aa978f-6b26-4d76-b910-b8fcea175a71)
+![Example](https://github.com/d3xMachina/BetterJoy/assets/16732772/2cb06404-5484-480b-a733-2db72fdf043d)
 
 # Downloads
 Go to the [Releases tab](https://github.com/d3xMachina/BetterJoy/releases/)!
