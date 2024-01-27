@@ -312,12 +312,7 @@ namespace BetterJoy
                 _form.JoinJoycon(controller, controller.Other);
             }
 
-            if (_form.AllowCalibration)
-            {
-                controller.GetActiveIMUData();
-                controller.GetActiveSticksData();
-            }
-
+            controller.SetCalibration(_form.AllowCalibration);
             controller.Begin();
         }
 

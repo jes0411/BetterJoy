@@ -184,6 +184,7 @@ namespace BetterJoy
         private Vector3 _accG = Vector3.Zero;
         public bool ActiveGyro;
 
+        private bool _DumpedCalibration = false;
         private bool _IMUCalibrated = false;
         private bool _SticksCalibrated = false;
         private readonly short[] _activeIMUData = new short[6];
@@ -374,15 +375,26 @@ namespace BetterJoy
         public void GetActiveIMUData()
         {
             var activeIMUData = _form.ActiveCaliIMUData(SerialOrMac);
+
             if (activeIMUData != null)
             {
                 Array.Copy(activeIMUData, _activeIMUData, 6);
                 _IMUCalibrated = true;
             }
+            else
+            {
+                _IMUCalibrated = false;
+            }
         }
 
         public void GetActiveSticksData()
         {
+            _activeStick1Deadzone = DefaultDeadzone;
+            _activeStick2Deadzone = DefaultDeadzone;
+
+            _activeStick1Range = DefaultRange;
+            _activeStick2Range = DefaultRange;
+
             var activeSticksData = _form.ActiveCaliSticksData(SerialOrMac);
             if (activeSticksData != null)
             {
@@ -390,12 +402,10 @@ namespace BetterJoy
                 Array.Copy(activeSticksData, 6, _activeStick2, 0, 6);
                 _SticksCalibrated = true;
             }
-
-            _activeStick1Deadzone = DefaultDeadzone;
-            _activeStick2Deadzone = DefaultDeadzone;
-
-            _activeStick1Range = DefaultRange;
-            _activeStick2Range = DefaultRange;
+            else
+            {
+                _SticksCalibrated = false;
+            }
         }
 
         public void ReceiveRumble(Xbox360FeedbackReceivedEventArgs e)
@@ -1927,11 +1937,11 @@ namespace BetterJoy
                 _sendCommandsThread.Start();
                 _receiveReportsThread.Start();
 
-                Log("Starting poll thread.");
+                Log("Ready.");
             }
             else
             {
-                Log("Poll cannot start.");
+                Log("Poll thread cannot start!");
             }
         }
 
@@ -2120,6 +2130,8 @@ namespace BetterJoy
                 _range = DefaultRange;
                 _range2 = DefaultRange;
 
+                _DumpedCalibration = false;
+
                 return true;
             }
 
@@ -2139,13 +2151,13 @@ namespace BetterJoy
                 {
                     if (userStickData[IsLeft ? 0 : 11] == 0xB2 && userStickData[IsLeft ? 1 : 12] == 0xA1)
                     {
-                        Log($"Using user {stick1Name} stick calibration data.");
+                        DebugPrint($"Retrieve user {stick1Name} stick calibration data.", DebugType.Comms);
                     }
                     else
                     {
                         stick1Data = new ReadOnlySpan<byte>(factoryStickData, IsLeft ? 0 : 9, 9);
 
-                        Log($"Using factory {stick1Name} stick calibration data.");
+                        DebugPrint($"Retrieve factory {stick1Name} stick calibration data.", DebugType.Comms);
                     }
                 }
 
@@ -2167,13 +2179,13 @@ namespace BetterJoy
                     {
                         if (userStickData[!IsLeft ? 0 : 11] == 0xB2 && userStickData[!IsLeft ? 1 : 12] == 0xA1)
                         {
-                            Log($"Using user {stick2Name} stick calibration data.");
+                            DebugPrint($"Retrieve user {stick2Name} stick calibration data.", DebugType.Comms);
                         }
                         else
                         {
                             stick2Data = new ReadOnlySpan<byte>(factoryStickData, !IsLeft ? 0 : 9, 9);
 
-                            Log($"Using factory {stick2Name} stick calibration data.");
+                            DebugPrint($"Retrieve factory {stick2Name} stick calibration data.", DebugType.Comms);
                         }
                     }
 
@@ -2221,14 +2233,14 @@ namespace BetterJoy
                 {
                     if (userSensorData[0] == 0xB2 && userSensorData[1] == 0xA1)
                     {
-                        Log($"Using user sensors calibration data.");
+                        DebugPrint($"Retrieve user sensors calibration data.", DebugType.Comms);
                     }
                     else
                     {
                         var factorySensorData = ReadSPICheck(0x60, 0x20, 0x18, ref ok);
                         sensorData = new ReadOnlySpan<byte>(factorySensorData, 0, 24);
 
-                        Log($"Using factory sensors calibration data.");
+                        DebugPrint($"Retrieve factory sensors calibration data.", DebugType.Comms);
                     }
                 }
 
@@ -2286,10 +2298,27 @@ namespace BetterJoy
 
             if (!ok)
             {
-                Log("Error while reading calibration data.");
+                Log("Error while reading calibration datas.");
             }
 
+            _DumpedCalibration = ok;
+
             return ok;
+        }
+
+        public void SetCalibration(bool userCalibration)
+        {
+            if (userCalibration)
+            {
+                GetActiveIMUData();
+                GetActiveSticksData();
+            }
+            
+            var calibrationType = _SticksCalibrated ? "user" : _DumpedCalibration ? "controller" : "default";
+            Log($"Using {calibrationType} sticks calibration.");
+
+            calibrationType = _IMUCalibrated ? "user" : _DumpedCalibration ? "controller" : "default";
+            Log($"Using {calibrationType} sensors calibration.");
         }
 
         private int Read(Span<byte> response, int timeout = 100)
