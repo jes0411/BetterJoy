@@ -536,7 +536,6 @@ namespace BetterJoy
                 if (ReadUSBCheck(0x1, buf) < 10)
                 {
                     // can occur when USB connection isn't closed properly
-                    Reset();
                     throw new Exception("reset mac");
                 }
 
