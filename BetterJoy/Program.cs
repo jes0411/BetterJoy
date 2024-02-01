@@ -264,12 +264,13 @@ namespace BetterJoy
 
             HIDApi.SetNonBlocking(handle, 1);
 
-            _form.AppendTextBox(Joycon.GetControllerName(type) + " connected.");
+            var index = GetControllerIndex();
+            var name = Joycon.GetControllerName(type);
+            _form.AppendTextBox($"[P{index + 1}] {name} connected.");
 
             // Add controller to block-list for HidHide
             Program.AddDeviceToBlocklist(handle);
 
-            var indexController = GetControllerIndex();
             var controller = new Joycon(
                 _form,
                 handle,
@@ -279,7 +280,7 @@ namespace BetterJoy
                 path,
                 serial,
                 isUSB,
-                indexController,
+                index,
                 type,
                 isThirdparty
             );
@@ -295,7 +296,7 @@ namespace BetterJoy
             {
                 controller.Drop(true);
 
-                _form.AppendTextBox($"Could not connect {controller.GetControllerName()} ({e.Message}). Dropped.");
+                _form.AppendTextBox($"[P{index + 1}] Could not connect ({e.Message}). Dropped.");
                 return;
             }
             finally
@@ -355,7 +356,8 @@ namespace BetterJoy
                 _form.RemoveController(controller);
             }
 
-            _form.AppendTextBox($"{controller.GetControllerName()} disconnected.");
+            var name = controller.GetControllerName();
+            _form.AppendTextBox($"[P{controller.PadId + 1}] {name} disconnected.");
         }
 
         private void OnDeviceErrored(string devicePath)
