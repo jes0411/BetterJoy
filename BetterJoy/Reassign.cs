@@ -81,7 +81,7 @@ namespace BetterJoy
                 value = "joy_" + (int)clickedItem.Tag;
             }
 
-            Config.SetValue((string)caller.Tag, value);
+            Settings.SetValue((string)caller.Tag, value);
             GetPrettyName(caller);
         }
 
@@ -95,7 +95,7 @@ namespace BetterJoy
                     _curAssignment = c;
                     break;
                 case MouseButtons.Middle:
-                    Config.SetValue((string)c.Tag, Config.GetDefaultValue((string)c.Tag));
+                    Settings.SetValue((string)c.Tag, Settings.GetDefaultValue((string)c.Tag));
                     GetPrettyName(c);
                     break;
                 case MouseButtons.Right:
@@ -115,7 +115,7 @@ namespace BetterJoy
 
             if (_curAssignment != null && button != null)
             {
-                Config.SetValue((string)_curAssignment.Tag, "mse_" + (int)button);
+                Settings.SetValue((string)_curAssignment.Tag, "mse_" + (int)button);
                 AsyncPrettyName(_curAssignment);
                 _curAssignment = null;
                 e.Next_Hook_Enabled = false;
@@ -128,7 +128,7 @@ namespace BetterJoy
 
             if (_curAssignment != null && key != null)
             {
-                Config.SetValue((string)_curAssignment.Tag, "key_" + (int)key);
+                Settings.SetValue((string)_curAssignment.Tag, "key_" + (int)key);
                 AsyncPrettyName(_curAssignment);
                 _curAssignment = null;
                 e.Next_Hook_Enabled = false;
@@ -154,7 +154,7 @@ namespace BetterJoy
 
         private void GetPrettyName(Control c)
         {
-            string val = Config.Value((string)c.Tag);
+            string val = Settings.Value((string)c.Tag);
 
             if (val == "0")
             {
@@ -173,7 +173,7 @@ namespace BetterJoy
 
         private void btn_apply_Click(object sender, EventArgs e)
         {
-            Config.Save();
+            Settings.Save();
         }
 
         private void btn_close_Click(object sender, EventArgs e)

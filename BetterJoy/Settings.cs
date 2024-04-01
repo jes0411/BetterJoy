@@ -5,7 +5,7 @@ using WindowsInput.Events;
 
 namespace BetterJoy
 {
-    public static class Config
+    public static class Settings
     {
         private const int SettingsNum = 11; // currently - ProgressiveScan, StartInTray + special buttons
 
@@ -13,7 +13,7 @@ namespace BetterJoy
         private static readonly string Path;
         private static readonly Dictionary<string, string> Variables = new();
 
-        static Config()
+        static Settings()
         {
             Path = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "\\settings";
         }

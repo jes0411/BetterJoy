@@ -830,7 +830,7 @@ namespace BetterJoy
 
             if (button != null)
             {
-                var resVal = Config.Value("reset_mouse");
+                var resVal = Settings.Value("reset_mouse");
                 if (resVal.StartsWith("mse_"))
                 {
                     if ((int)button == int.Parse(resVal.AsSpan(4)))
@@ -841,7 +841,7 @@ namespace BetterJoy
                     }
                 }
 
-                resVal = Config.Value("active_gyro");
+                resVal = Settings.Value("active_gyro");
                 if (resVal.StartsWith("mse_"))
                 {
                     if ((int)button == int.Parse(resVal.AsSpan(4)))
@@ -859,7 +859,7 @@ namespace BetterJoy
 
             if (button != null)
             {
-                var resVal = Config.Value("active_gyro");
+                var resVal = Settings.Value("active_gyro");
                 if (resVal.StartsWith("mse_"))
                 {
                     if ((int)button == int.Parse(resVal.AsSpan(4)))
@@ -879,7 +879,7 @@ namespace BetterJoy
 
             if (key != null)
             {
-                var resVal = Config.Value("reset_mouse");
+                var resVal = Settings.Value("reset_mouse");
                 if (resVal.StartsWith("key_"))
                 {
                     if ((int)key == int.Parse(resVal.AsSpan(4)))
@@ -890,7 +890,7 @@ namespace BetterJoy
                     }
                 }
 
-                resVal = Config.Value("active_gyro");
+                resVal = Settings.Value("active_gyro");
                 if (resVal.StartsWith("key_"))
                 {
                     if ((int)key == int.Parse(resVal.AsSpan(4)))
@@ -908,7 +908,7 @@ namespace BetterJoy
 
             if (key != null)
             {
-                var resVal = Config.Value("active_gyro");
+                var resVal = Settings.Value("active_gyro");
                 if (resVal.StartsWith("key_"))
                 {
                     if ((int)key == int.Parse(resVal.AsSpan(4)))

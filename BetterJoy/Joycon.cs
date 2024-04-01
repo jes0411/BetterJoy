@@ -949,7 +949,7 @@ namespace BetterJoy
                     _hasShaked = true;
 
                     // Mapped shake key down
-                    Simulate(Config.Value("shake"), false);
+                    Simulate(Settings.Value("shake"), false);
                     DebugPrint("Shaked at time: " + _shakedTime, DebugType.Shake);
                 }
 
@@ -957,7 +957,7 @@ namespace BetterJoy
                 if (_hasShaked && currentShakeTime >= _shakedTime + 10)
                 {
                     // Mapped shake key up
-                    Simulate(Config.Value("shake"), false, true);
+                    Simulate(Settings.Value("shake"), false, true);
                     DebugPrint("Shake completed", DebugType.Shake);
                     _hasShaked = false;
                 }
@@ -1049,12 +1049,12 @@ namespace BetterJoy
         private void ReleaseRemappedButtons()
         {
             // overwrite custom-mapped buttons
-            if (Config.Value("capture") != "0")
+            if (Settings.Value("capture") != "0")
             {
                 _buttonsRemapped[(int)Button.Capture] = false;
             }
 
-            if (Config.Value("home") != "0")
+            if (Settings.Value("home") != "0")
             {
                 _buttonsRemapped[(int)Button.Home] = false;
             }
@@ -1062,24 +1062,24 @@ namespace BetterJoy
             // single joycon mode
             if (IsLeft)
             {
-                if (Config.Value("sl_l") != "0")
+                if (Settings.Value("sl_l") != "0")
                 {
                     _buttonsRemapped[(int)Button.SL] = false;
                 }
 
-                if (Config.Value("sr_l") != "0")
+                if (Settings.Value("sr_l") != "0")
                 {
                     _buttonsRemapped[(int)Button.SR] = false;
                 }
             }
             else
             {
-                if (Config.Value("sl_r") != "0")
+                if (Settings.Value("sl_r") != "0")
                 {
                     _buttonsRemapped[(int)Button.SL] = false;
                 }
 
-                if (Config.Value("sr_r") != "0")
+                if (Settings.Value("sr_r") != "0")
                 {
                     _buttonsRemapped[(int)Button.SR] = false;
                 }
@@ -1090,79 +1090,79 @@ namespace BetterJoy
         {
             if (_buttonsDown[(int)Button.Capture])
             {
-                Simulate(Config.Value("capture"), false);
+                Simulate(Settings.Value("capture"), false);
             }
 
             if (_buttonsUp[(int)Button.Capture])
             {
-                Simulate(Config.Value("capture"), false, true);
+                Simulate(Settings.Value("capture"), false, true);
             }
 
             if (_buttonsDown[(int)Button.Home])
             {
-                Simulate(Config.Value("home"), false);
+                Simulate(Settings.Value("home"), false);
             }
 
             if (_buttonsUp[(int)Button.Home])
             {
-                Simulate(Config.Value("home"), false, true);
+                Simulate(Settings.Value("home"), false, true);
             }
 
-            SimulateContinous((int)Button.Capture, Config.Value("capture"));
-            SimulateContinous((int)Button.Home, Config.Value("home"));
+            SimulateContinous((int)Button.Capture, Settings.Value("capture"));
+            SimulateContinous((int)Button.Home, Settings.Value("home"));
 
             if (IsLeft)
             {
                 if (_buttonsDown[(int)Button.SL])
                 {
-                    Simulate(Config.Value("sl_l"), false);
+                    Simulate(Settings.Value("sl_l"), false);
                 }
 
                 if (_buttonsUp[(int)Button.SL])
                 {
-                    Simulate(Config.Value("sl_l"), false, true);
+                    Simulate(Settings.Value("sl_l"), false, true);
                 }
 
                 if (_buttonsDown[(int)Button.SR])
                 {
-                    Simulate(Config.Value("sr_l"), false);
+                    Simulate(Settings.Value("sr_l"), false);
                 }
 
                 if (_buttonsUp[(int)Button.SR])
                 {
-                    Simulate(Config.Value("sr_l"), false, true);
+                    Simulate(Settings.Value("sr_l"), false, true);
                 }
 
-                SimulateContinous((int)Button.SL, Config.Value("sl_l"));
-                SimulateContinous((int)Button.SR, Config.Value("sr_l"));
+                SimulateContinous((int)Button.SL, Settings.Value("sl_l"));
+                SimulateContinous((int)Button.SR, Settings.Value("sr_l"));
             }
             else
             {
                 if (_buttonsDown[(int)Button.SL])
                 {
-                    Simulate(Config.Value("sl_r"), false);
+                    Simulate(Settings.Value("sl_r"), false);
                 }
 
                 if (_buttonsUp[(int)Button.SL])
                 {
-                    Simulate(Config.Value("sl_r"), false, true);
+                    Simulate(Settings.Value("sl_r"), false, true);
                 }
 
                 if (_buttonsDown[(int)Button.SR])
                 {
-                    Simulate(Config.Value("sr_r"), false);
+                    Simulate(Settings.Value("sr_r"), false);
                 }
 
                 if (_buttonsUp[(int)Button.SR])
                 {
-                    Simulate(Config.Value("sr_r"), false, true);
+                    Simulate(Settings.Value("sr_r"), false, true);
                 }
 
-                SimulateContinous((int)Button.SL, Config.Value("sl_r"));
-                SimulateContinous((int)Button.SR, Config.Value("sr_r"));
+                SimulateContinous((int)Button.SL, Settings.Value("sl_r"));
+                SimulateContinous((int)Button.SR, Settings.Value("sr_r"));
             }
 
-            SimulateContinous(_hasShaked, Config.Value("shake"));
+            SimulateContinous(_hasShaked, Settings.Value("shake"));
         }
 
         private void RemapButtons()
@@ -1278,7 +1278,7 @@ namespace BetterJoy
                 }
             }
 
-            var resVal = Config.Value("active_gyro");
+            var resVal = Settings.Value("active_gyro");
             if (resVal.StartsWith("joy_"))
             {
                 var i = int.Parse(resVal.AsSpan(4));
@@ -1304,7 +1304,7 @@ namespace BetterJoy
 
             if (_extraGyroFeature.StartsWith("joy"))
             {
-                if (Config.Value("active_gyro") == "0" || ActiveGyro)
+                if (Settings.Value("active_gyro") == "0" || ActiveGyro)
                 {
                     var controlStick = _extraGyroFeature == "joy_left" ? _stick : _stick2;
 
@@ -1328,7 +1328,7 @@ namespace BetterJoy
                      (IsPro || Other == null || (Other != null && (_gyroMouseLeftHanded ? IsLeft : !IsLeft))))
             {
                 // gyro data is in degrees/s
-                if (Config.Value("active_gyro") == "0" || ActiveGyro)
+                if (Settings.Value("active_gyro") == "0" || ActiveGyro)
                 {
                     int dx, dy;
 
@@ -1347,7 +1347,7 @@ namespace BetterJoy
                 }
 
                 // reset mouse position to centre of primary monitor
-                resVal = Config.Value("reset_mouse");
+                resVal = Settings.Value("reset_mouse");
                 if (resVal.StartsWith("joy_"))
                 {
                     var i = int.Parse(resVal.AsSpan(4));

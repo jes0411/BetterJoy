@@ -129,11 +129,11 @@ namespace BetterJoy
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            Config.Init(CaliIMUData, CaliSticksData);
+            Settings.Init(CaliIMUData, CaliSticksData);
 
-            startInTrayBox.Checked = Config.IntValue("StartInTray") == 1;
+            startInTrayBox.Checked = Settings.IntValue("StartInTray") == 1;
 
-            if (Config.IntValue("StartInTray") == 1)
+            if (Settings.IntValue("StartInTray") == 1)
             {
                 HideToTray();
             }
@@ -259,8 +259,8 @@ namespace BetterJoy
 
         private void startInTrayBox_CheckedChanged(object sender, EventArgs e)
         {
-            Config.SetValue("StartInTray", startInTrayBox.Checked ? "1" : "0");
-            Config.Save();
+            Settings.SetValue("StartInTray", startInTrayBox.Checked ? "1" : "0");
+            Settings.Save();
         }
 
         private void btn_open3rdP_Click(object sender, EventArgs e)
@@ -584,7 +584,7 @@ namespace BetterJoy
 
                     console.Text += "IMU calibration completed!!!\r\n";
 
-                    Config.SaveCaliIMUData(CaliIMUData);
+                    Settings.SaveCaliIMUData(CaliIMUData);
                     controller.GetActiveIMUData();
                 }
 
@@ -786,7 +786,7 @@ namespace BetterJoy
 
                 console.Text += "Sticks min and max position calibration completed!!!\r\n";
 
-                Config.SaveCaliSticksData(CaliSticksData);
+                Settings.SaveCaliSticksData(CaliSticksData);
                 controller.GetActiveSticksData();
 
                 CancelCalibrate(controller);
