@@ -289,8 +289,8 @@ namespace BetterJoy
             // Connect device straight away
             try
             {
-                controller.ConnectViGEm();
                 controller.Attach();
+                controller.ConnectViGEm();
             }
             catch (Exception e)
             {
