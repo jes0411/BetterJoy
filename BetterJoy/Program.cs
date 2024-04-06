@@ -276,7 +276,6 @@ namespace BetterJoy
                 handle,
                 EnableIMU,
                 EnableLocalize && EnableIMU,
-                0.05f,
                 path,
                 serial,
                 isUSB,

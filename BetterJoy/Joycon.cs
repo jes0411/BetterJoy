@@ -205,7 +205,6 @@ namespace BetterJoy
         private float _range2;
         
         private bool _doLocalize;
-        private float _filterweight;
 
         private MainForm _form;
 
@@ -286,7 +285,6 @@ namespace BetterJoy
             IntPtr handle,
             bool imu,
             bool localize,
-            float alpha,
             string path,
             string serialNum,
             bool isUSB,
@@ -307,7 +305,6 @@ namespace BetterJoy
                 _buttonsDownTimestamp[i] = -1;
             }
 
-            _filterweight = alpha;
 
             PadId = id;
 
@@ -741,11 +738,6 @@ namespace BetterJoy
         private void ChargingChanged()
         {
             _form.SetCharging(this, Charging);
-        }
-
-        public void SetFilterCoeff(float a)
-        {
-            _filterweight = a;
         }
 
         public void Detach(bool close = true)
