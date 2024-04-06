@@ -1063,6 +1063,11 @@ namespace BetterJoy
             }
 
             var button = _con[controller.PadId];
+            if (!button.Enabled)
+            {
+                return;
+            }
+
             button.BackColor = Color.FromArgb(0x00, SystemColors.Control);
             button.Tag = null;
             button.Enabled = false;

@@ -65,6 +65,7 @@ namespace BetterJoy
         public enum Status : uint
         {
             NotAttached,
+            AttachError,
             Errored,
             Dropped,
             Attached,
@@ -471,56 +472,64 @@ namespace BetterJoy
                 return;
             }
 
-            if (_handle == IntPtr.Zero)
+            try
             {
-                throw new Exception("reset hidapi");
-            }
-
-            // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
-            // do not always send a response so we don't check if there is one
-            SetReportMode(ReportMode.SimpleHID);
-
-            // Connect
-            if (IsUSB)
-            {
-                Log("Using USB.");
-
-                try
+                if (_handle == IntPtr.Zero)
                 {
-                    GetMAC();
-                    USBPairing();
+                    throw new Exception("reset hidapi");
                 }
-                catch (Exception)
+
+                // set report mode to simple HID mode (fix SPI read not working when controller is already initialized)
+                // do not always send a response so we don't check if there is one
+                SetReportMode(ReportMode.SimpleHID);
+
+                // Connect
+                if (IsUSB)
+                {
+                    Log("Using USB.");
+
+                    try
+                    {
+                        GetMAC();
+                        USBPairing();
+                    }
+                    catch (Exception)
+                    {
+                        Reset();
+                        throw;
+                    }
+
+                    //BTManualPairing();
+                }
+                else
+                {
+                    Log("Using Bluetooth.");
+                    GetMAC();
+                }
+
+                var ok = DumpCalibrationData();
+                if (!ok)
                 {
                     Reset();
-                    throw;
+                    throw new Exception("reset calibration");
                 }
 
-                //BTManualPairing();
+                BlinkHomeLight();
+                SetLEDByPlayerNum(PadId);
+
+                SetIMU(_IMUEnabled);
+                SetRumble(true);
+                SetReportMode(ReportMode.StandardFull);
+
+                State = Status.Attached;
+
+                DebugPrint("Done with init.", DebugType.Comms);
             }
-            else
+            catch
             {
-                Log("Using Bluetooth.");
-                GetMAC();
+                State = Status.AttachError;
+                throw;
             }
-
-            var ok = DumpCalibrationData();
-            if (!ok)
-            {
-                Reset();
-                throw new Exception("reset calibration");
-            }
-
-            BlinkHomeLight();
-            SetLEDByPlayerNum(PadId);
-
-            SetIMU(_IMUEnabled);
-            SetRumble(true);
-            SetReportMode(ReportMode.StandardFull);
-
-            State = Status.Attached;
-
-            DebugPrint("Done with init.", DebugType.Comms);
         }
 
         private void GetMAC()

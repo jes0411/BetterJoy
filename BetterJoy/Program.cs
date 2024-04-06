@@ -294,9 +294,7 @@ namespace BetterJoy
             }
             catch (Exception e)
             {
-                controller.Drop(true);
-
-                _form.AppendTextBox($"[P{index + 1}] Could not connect ({e.Message}). Dropped.");
+                _form.AppendTextBox($"[P{index + 1}] Could not connect ({e.Message}).");
                 return;
             }
             finally
@@ -331,6 +329,7 @@ namespace BetterJoy
                 return;
             }
 
+            Joycon.Status oldState = controller.State;
             controller.StateChanged -= OnControllerStateChanged;
             controller.Detach();
 
@@ -351,7 +350,8 @@ namespace BetterJoy
                 }
             }
 
-            if (Controllers.Remove(controller))
+            if (Controllers.Remove(controller) &&
+                oldState > Joycon.Status.AttachError)
             {
                 _form.RemoveController(controller);
             }
@@ -390,6 +390,7 @@ namespace BetterJoy
 
             switch (e.State)
             {
+                case Joycon.Status.AttachError:
                 case Joycon.Status.Errored:
                     var notification = new DeviceNotification(DeviceNotification.Type.Errored, controller.Path);
                     while (!writer.TryWrite(notification)) { }
