@@ -38,7 +38,7 @@ Go to the [Releases tab](https://github.com/d3xMachina/BetterJoy/releases/)!
 1. Install drivers
     1. Read the READMEs (they're there for a reason!)
     2. Run *Drivers/ViGEmBus_1.22.0_x64_x86_arm64.exe*
-    3. Run *Drivers/HidHide_1.4.192_x64.exe* (optional but recommended to hide the default device)
+    3. Run *Drivers/HidHide_1.5.212_x64.exe* (optional but recommended to hide the default device)
     4. Restart your computer
 2. Run *BetterJoy.exe*
     1. Run as Administrator if your keyboard/mouse button mappings don't work
