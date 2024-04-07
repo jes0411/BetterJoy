@@ -142,7 +142,12 @@ namespace BetterJoy.Controller
         public void Disconnect()
         {
             _connected = false;
-            _controller?.Disconnect();
+
+            try
+            {
+                _controller?.Disconnect();
+            }
+            catch { } // nothing we can do, might not be connected in the first place
         }
 
         public bool UpdateInput(OutputControllerDualShock4InputState newState)

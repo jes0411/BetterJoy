@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Globalization;
 using System.Linq;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Channels;
@@ -304,13 +302,12 @@ namespace BetterJoy
             _form.AddController(controller);
 
             // attempt to auto join-up joycons on connection
-            bool doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
-            if (!doNotRejoin && JoinJoycon(controller))
+            if (!controller.Config.DoNotRejoin && JoinJoycon(controller))
             {
                 _form.JoinJoycon(controller, controller.Other);
             }
 
-            controller.SetCalibration(_form.AllowCalibration);
+            controller.SetCalibration(_form.Config.AllowCalibration);
             controller.Begin();
         }
 
@@ -467,12 +464,11 @@ namespace BetterJoy
 
             _ctsDevicesNotifications.Dispose();
 
-            var powerOff = bool.Parse(ConfigurationManager.AppSettings["AutoPowerOff"]);
             foreach (var controller in Controllers)
             {
                 controller.StateChanged -= OnControllerStateChanged;
 
-                if (powerOff && !controller.IsUSB)
+                if (controller.Config.AutoPowerOff && !controller.IsUSB)
                 {
                     controller.PowerOff();
                 }
@@ -564,8 +560,7 @@ namespace BetterJoy
                 int nbJoycons = Controllers.Count(j => j.IsJoycon);
 
                 // when we want to have a single joycon in vertical mode
-                bool doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
-                bool joinSelf = nbJoycons == 1 || doNotRejoin;
+                bool joinSelf = nbJoycons == 1 || controller.Config.DoNotRejoin;
 
                 if (JoinJoycon(controller, joinSelf))
                 {
@@ -605,7 +600,6 @@ namespace BetterJoy
             controller.HidapiLock.EnterReadLock();
             try
             {
-                controller.HomeLEDOn = on;
                 controller.SetHomeLight(on);
             }
             finally
@@ -620,6 +614,19 @@ namespace BetterJoy
             try
             {
                 controller.PowerOff();
+            }
+            finally
+            {
+                controller.HidapiLock.ExitReadLock();
+            }
+        }
+
+        public void ApplyConfig(Joycon controller)
+        {
+            controller.HidapiLock.EnterReadLock();
+            try
+            {
+                controller.ApplyConfig();
             }
             finally
             {
@@ -641,8 +648,9 @@ namespace BetterJoy
 
         public static readonly ConcurrentList<SController> ThirdpartyCons = new();
 
-        private static bool _useHIDHide = bool.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
+        public static ProgramConfig Config;
 
+        private static readonly HidHideControlService _hidHideService = new();
         private static readonly HashSet<string> BlockedDeviceInstances = new();
 
         private static bool _isRunning;
@@ -652,29 +660,27 @@ namespace BetterJoy
 
         public static void Start()
         {
-            _useHIDHide = StartHIDHide();
+            Config = new(_form);
+            Config.Update();
 
-            if (bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]) ||
-                bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]))
+            StartHIDHide();
+
+            try
             {
-                try
-                {
-                    EmClient = new ViGEmClient(); // Manages emulated XInput
-                }
-                catch (VigemBusNotFoundException)
-                {
-                    _form.AppendTextBox("Could not connect to VIGEmBus. Make sure VIGEmBus driver is installed correctly.");
-                }
-                catch (VigemBusAccessFailedException)
-                {
-                    _form.AppendTextBox("Could not connect to VIGEmBus. VIGEmBus is busy. Try restarting your computer or reinstalling VIGEmBus driver.");
-                }
-                catch (VigemBusVersionMismatchException)
-                {
-                    _form.AppendTextBox("Could not connect to VIGEmBus. The installed VIGEmBus driver is not compatible. Install a newer version of VIGEmBus driver.");
-                }
+                EmClient = new ViGEmClient(); // Manages emulated XInput
             }
-
+            catch (VigemBusNotFoundException)
+            {
+                _form.AppendTextBox("Could not connect to VIGEmBus. Make sure VIGEmBus driver is installed correctly.");
+            }
+            catch (VigemBusAccessFailedException)
+            {
+                _form.AppendTextBox("Could not connect to VIGEmBus. VIGEmBus is busy. Try restarting your computer or reinstalling VIGEmBus driver.");
+            }
+            catch (VigemBusVersionMismatchException)
+            {
+                _form.AppendTextBox("Could not connect to VIGEmBus. The installed VIGEmBus driver is not compatible. Install a newer version of VIGEmBus driver.");
+            }
 
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
             {
@@ -695,10 +701,14 @@ namespace BetterJoy
             Mgr = new JoyconManager(_form);
             Server = new UdpServer(_form, Mgr.Controllers);
 
-            Server.Start(
-                IPAddress.Parse(ConfigurationManager.AppSettings["IP"]),
-                int.Parse(ConfigurationManager.AppSettings["Port"])
-            );
+            if (!Config.MotionServer)
+            {
+                _form.AppendTextBox("Motion server is OFF.");
+            }
+            else
+            {
+                Server.Start(Config.IP, Config.Port);
+            }
 
             InputCapture.Global.RegisterEvent(GlobalKeyEvent);
             InputCapture.Global.RegisterEvent(GlobalMouseEvent);
@@ -708,71 +718,69 @@ namespace BetterJoy
             _isRunning = true;
         }
 
-        private static bool StartHIDHide()
+        private static void StartHIDHide()
         {
-            if (!_useHIDHide)
+            if (!Config.UseHIDHide || _hidHideService.IsActive)
             {
-                return false;
+                return;
             }
 
-            var hidHideService = new HidHideControlService();
-            if (!hidHideService.IsInstalled)
+            if (!_hidHideService.IsInstalled)
             {
                 _form.AppendTextBox("HIDHide is not installed.");
-                return false;
+                return;
             }
 
             try
             {
-                hidHideService.IsAppListInverted = false;
+                _hidHideService.IsAppListInverted = false;
             }
             catch (Exception)
             {
                 _form.AppendTextBox("Unable to set HIDHide in whitelist mode.");
-                return false;
+                return;
             }
 
-            //if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
+            //if (Config.PurgeAffectedDevices) {
             //    try {
             //        hidHideService.ClearBlockedInstancesList();
             //    } catch (Exception) {
             //        form.AppendTextBox("Unable to purge blacklisted devices.");
-            //        return false;
+            //        return;
             //    }
             //}
 
             try
             {
-                if (bool.Parse(ConfigurationManager.AppSettings["PurgeWhitelist"]))
+                if (Config.PurgeWhitelist)
                 {
-                    hidHideService.ClearApplicationsList();
+                    _hidHideService.ClearApplicationsList();
                 }
 
-                hidHideService.AddApplicationPath(Environment.ProcessPath);
+                _hidHideService.AddApplicationPath(Environment.ProcessPath);
             }
             catch (Exception)
             {
                 _form.AppendTextBox("Unable to add program to whitelist.");
-                return false;
+                return;
             }
 
             try
             {
-                hidHideService.IsActive = true;
+                _hidHideService.IsActive = true;
             }
             catch (Exception)
             {
                 _form.AppendTextBox("Unable to hide devices.");
-                return false;
+                return;
             }
 
             _form.AppendTextBox("HIDHide is enabled.");
-            return true;
         }
 
         public static void AddDeviceToBlocklist(IntPtr handle)
         {
-            if (!_useHIDHide)
+            if (!_hidHideService.IsActive)
             {
                 return;
             }
@@ -816,10 +824,9 @@ namespace BetterJoy
 
         public static void BlockDeviceInstances(IList<string> instances)
         {
-            var hidHideService = new HidHideControlService();
             foreach (var instance in instances)
             {
-                hidHideService.AddBlockedInstanceId(instance);
+                _hidHideService.AddBlockedInstanceId(instance);
                 BlockedDeviceInstances.Add(instance);
             }
         }
@@ -958,29 +965,27 @@ namespace BetterJoy
 
         public static void StopHIDHide()
         {
-            if (!_useHIDHide)
+            if (!_hidHideService.IsActive)
             {
                 return;
             }
 
-            var hidHideService = new HidHideControlService();
-
             try
             {
-                hidHideService.RemoveApplicationPath(Environment.ProcessPath);
+                _hidHideService.RemoveApplicationPath(Environment.ProcessPath);
             }
             catch (Exception)
             {
                 _form.AppendTextBox("Unable to remove program from whitelist.");
             }
 
-            if (bool.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"]))
+            if (Config.PurgeAffectedDevices)
             {
                 try
                 {
                     foreach (var instance in BlockedDeviceInstances)
                     {
-                        hidHideService.RemoveBlockedInstanceId(instance);
+                        _hidHideService.RemoveBlockedInstanceId(instance);
                     }
                 }
                 catch (Exception)
@@ -991,12 +996,14 @@ namespace BetterJoy
 
             try
             {
-                hidHideService.IsActive = false;
+                _hidHideService.IsActive = false;
             }
             catch (Exception)
             {
                 _form.AppendTextBox("Unable to disable HIDHide.");
             }
+
+            _form.AppendTextBox("HIDHide is disabled.");
         }
 
         public static void UpdateThirdpartyControllers(List<SController> controllers)
@@ -1033,6 +1040,47 @@ namespace BetterJoy
             var pathVariable = Environment.GetEnvironmentVariable("PATH");
             pathVariable = $"{archPath};{pathVariable}";
             Environment.SetEnvironmentVariable("PATH", pathVariable);
+        }
+
+        public static async Task ApplyConfig()
+        {
+            var oldConfig = Config.Clone();
+            Config.Update();
+
+            if (oldConfig.MotionServer != Config.MotionServer)
+            {
+                if (Config.MotionServer)
+                {
+                    Server.Start(Config.IP, Config.Port);
+                }
+                else
+                {
+                    await Server.Stop();
+                }
+            }
+            else if (!oldConfig.IP.Equals(Config.IP) ||
+                     oldConfig.Port != Config.Port)
+            {
+                await Server.Stop();
+                Server.Start(Config.IP, Config.Port);
+            }
+
+            if (oldConfig.UseHIDHide != Config.UseHIDHide)
+            {
+                if (Config.UseHIDHide)
+                {
+                    StartHIDHide();
+                }
+                else
+                {
+                    StopHIDHide();
+                }
+            }
+
+            foreach (var controller in Mgr.Controllers)
+            {
+                Mgr.ApplyConfig(controller);
+            }
         }
     }
 }

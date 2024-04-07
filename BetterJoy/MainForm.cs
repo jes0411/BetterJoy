@@ -23,7 +23,7 @@ namespace BetterJoy
 
         private readonly List<Button> _con;
 
-        public readonly bool AllowCalibration = bool.Parse(ConfigurationManager.AppSettings["AllowCalibration"]);
+        public readonly MainFormConfig Config;
 
         public readonly List<KeyValuePair<string, short[]>> CaliIMUData = new();
         public readonly List<KeyValuePair<string, ushort[]>> CaliSticksData = new();
@@ -38,7 +38,10 @@ namespace BetterJoy
         {
             InitializeComponent();
 
-            if (!AllowCalibration)
+            Config = new(this);
+            Config.Update();
+
+            if (!Config.AllowCalibration)
             {
                 btn_calibrate.Hide();
             }
@@ -68,14 +71,15 @@ namespace BetterJoy
                 Control childControl;
                 if (value == "true" || value == "false")
                 {
-                    childControl = new CheckBox { Checked = bool.Parse(value), Size = childSize };
+                    var checkBox = new CheckBox { Checked = bool.Parse(value), Size = childSize };
+                    checkBox.CheckedChanged += checkBox_Changed;
+                    childControl = checkBox;
                 }
                 else
                 {
                     childControl = new TextBox { Text = value, Size = childSize };
                 }
 
-                childControl.MouseClick += cbBox_Changed;
                 settingsTable.Controls.Add(childControl, 1, i);
             }
 
@@ -293,19 +297,15 @@ namespace BetterJoy
             try
             {
                 configFile.Save(ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
+
+                await Program.ApplyConfig();
+                AppendTextBox("Configuration applied.");
             }
             catch (ConfigurationErrorsException)
             {
                 AppendTextBox("Error writing app settings.");
             }
-
-            // Prevent joycons poweroff when applying settings
-            ConfigurationManager.AppSettings["AutoPowerOff"] = "false";
-
-            await Program.Stop();
-            SystemEvents.PowerModeChanged -= OnPowerChange;
-            Program.AllowAnotherInstance();
-            Restart();
         }
 
         private void Restart()
@@ -326,42 +326,30 @@ namespace BetterJoy
             foldLbl.Text = rightPanel.Visible ? "<" : ">";
         }
 
-        private void cbBox_Changed(object sender, EventArgs e)
+        private async void checkBox_Changed(object sender, EventArgs e)
         {
-            var coord = settingsTable.GetPositionFromControl(sender as Control);
-
-            var valCtl = settingsTable.GetControlFromPosition(coord.Column, coord.Row);
+            var checkBox = sender as CheckBox;
+            var coord = settingsTable.GetPositionFromControl(checkBox);
             var keyCtl = settingsTable.GetControlFromPosition(coord.Column - 1, coord.Row).Text;
 
             try
             {
                 var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
                 var settings = configFile.AppSettings.Settings;
-                if (valCtl.GetType() == typeof(CheckBox) && settings[keyCtl] != null)
+                if (settings[keyCtl] != null)
                 {
-                    settings[keyCtl].Value = ((CheckBox)valCtl).Checked.ToString().ToLower();
-                }
-                else if (valCtl.GetType() == typeof(TextBox) && settings[keyCtl] != null)
-                {
-                    settings[keyCtl].Value = ((TextBox)valCtl).Text.ToLower();
-                }
-
-                if (keyCtl == "HomeLEDOn")
-                {
-                    var on = settings[keyCtl].Value.ToLower() == "true";
-                    foreach (var controller in Program.Mgr.Controllers)
-                    {
-                        Program.Mgr.SetHomeLight(controller, on);
-                    }
+                    settings[keyCtl].Value = checkBox.Checked.ToString().ToLower();
                 }
 
                 configFile.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
+
+                await Program.ApplyConfig();
+                AppendTextBox("Configuration applied.");
             }
             catch (ConfigurationErrorsException)
             {
                 AppendTextBox("Error writing app settings.");
-                Trace.WriteLine($"rw {coord.Row}, column {coord.Column}, {sender.GetType()}, {keyCtl}");
             }
         }
 

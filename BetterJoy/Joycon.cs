@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
@@ -59,7 +58,8 @@ namespace BetterJoy
             Threading,
             IMU,
             Rumble,
-            Shake
+            Shake,
+            Test
         }
 
         public enum Status : uint
@@ -100,18 +100,7 @@ namespace BetterJoy
         private readonly int _CommandLength;
         private readonly int _MixedComsLength; // when the buffer is used for both read and write to hid
 
-        private static readonly int LowFreq = int.Parse(ConfigurationManager.AppSettings["LowFreqRumble"]);
-        private static readonly int HighFreq = int.Parse(ConfigurationManager.AppSettings["HighFreqRumble"]);
-        private static readonly bool ToRumble = bool.Parse(ConfigurationManager.AppSettings["EnableRumble"]);
-        private static readonly bool ShowAsXInput = bool.Parse(ConfigurationManager.AppSettings["ShowAsXInput"]);
-        private static readonly bool ShowAsDs4 = bool.Parse(ConfigurationManager.AppSettings["ShowAsDS4"]);
-        private static readonly float DefaultDeadzone = float.Parse(ConfigurationManager.AppSettings["SticksDeadzone"]);
-        private static readonly float DefaultRange = float.Parse(ConfigurationManager.AppSettings["SticksRange"]);
-        private static readonly bool SticksSquared = bool.Parse(ConfigurationManager.AppSettings["SticksSquared"]);
-        private static readonly float AHRSBeta = float.Parse(ConfigurationManager.AppSettings["AHRS_beta"]);
-        private static readonly float ShakeDelay = float.Parse(ConfigurationManager.AppSettings["ShakeInputDelay"]);
-        private static readonly bool ShakeInputEnabled = bool.Parse(ConfigurationManager.AppSettings["EnableShakeInput"]);
-        private static readonly float ShakeSensitivity = float.Parse(ConfigurationManager.AppSettings["ShakeInputSensitivity"]);
+        public readonly ControllerConfig Config;
 
         private static readonly byte[] LedById = { 0b0001, 0b0011, 0b0111, 0b1111, 0b1001, 0b0101, 0b1101, 0b0110 };
 
@@ -119,7 +108,7 @@ namespace BetterJoy
         private readonly short[] _accRaw = { 0, 0, 0 };
         private readonly short[] _accSensiti = { 0, 0, 0 };
 
-        private readonly MadgwickAHRS _AHRS = new(0.005f, AHRSBeta); // for getting filtered Euler angles of rotation; 5ms sampling rate
+        private readonly MadgwickAHRS _AHRS; // for getting filtered Euler angles of rotation; 5ms sampling rate
 
         private readonly bool[] _buttons = new bool[20];
         private readonly bool[] _buttonsDown = new bool[20];
@@ -128,39 +117,20 @@ namespace BetterJoy
         private readonly bool[] _buttonsPrev = new bool[20];
         private readonly bool[] _buttonsRemapped = new bool[20];
 
-        private readonly bool _changeOrientationDoubleClick = bool.Parse(ConfigurationManager.AppSettings["ChangeOrientationDoubleClick"]);
-
         private readonly float[] _curRotation = { 0, 0, 0, 0, 0, 0 }; // Filtered IMU data
 
         private readonly byte[] _defaultBuf = { 0x0, 0x1, 0x40, 0x40, 0x0, 0x1, 0x40, 0x40 };
 
-        private readonly bool _dragToggle = bool.Parse(ConfigurationManager.AppSettings["DragToggle"]);
-
-        private readonly string _extraGyroFeature = ConfigurationManager.AppSettings["GyroToJoyOrMouse"];
         private readonly short[] _gyrNeutral = { 0, 0, 0 };
 
         private readonly short[] _gyrRaw = { 0, 0, 0 };
 
         private readonly short[] _gyrSensiti = { 0, 0, 0 };
 
-        private readonly int _gyroAnalogSensitivity = int.Parse(ConfigurationManager.AppSettings["GyroAnalogSensitivity"]);
-        private readonly bool _gyroAnalogSliders = bool.Parse(ConfigurationManager.AppSettings["GyroAnalogSliders"]);
-        private readonly bool _gyroHoldToggle = bool.Parse(ConfigurationManager.AppSettings["GyroHoldToggle"]);
-        private readonly bool _gyroMouseLeftHanded = bool.Parse(ConfigurationManager.AppSettings["GyroMouseLeftHanded"]);
-        private readonly int _gyroMouseSensitivityX = int.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityX"]);
-        private readonly int _gyroMouseSensitivityY = int.Parse(ConfigurationManager.AppSettings["GyroMouseSensitivityY"]);
-        private readonly float _gyroStickReduction = float.Parse(ConfigurationManager.AppSettings["GyroStickReduction"]);
-        private readonly float _gyroStickSensitivityX = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityX"]);
-        private readonly float _gyroStickSensitivityY = float.Parse(ConfigurationManager.AppSettings["GyroStickSensitivityY"]);
-        private readonly bool _homeLongPowerOff = bool.Parse(ConfigurationManager.AppSettings["HomeLongPowerOff"]);
-        public bool HomeLEDOn = bool.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
-
         private readonly bool _IMUEnabled;
         private readonly Dictionary<int, bool> _mouseToggleBtn = new();
 
         private readonly float[] _otherStick = { 0, 0 };
-
-        private readonly long _powerOffInactivityMins = int.Parse(ConfigurationManager.AppSettings["PowerOffInactivity"]);
 
         // Values from https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/spi_flash_notes.md#6-axis-horizontal-offsets
         private readonly short[] _accProHorOffset = { -688, 0, 4038 };
@@ -176,11 +146,6 @@ namespace BetterJoy
 
         private readonly ushort[] _stick2Cal = { 0, 0, 0, 0, 0, 0 };
         private readonly ushort[] _stick2Precal = { 0, 0 };
-
-        private readonly bool _swapAB = bool.Parse(ConfigurationManager.AppSettings["SwapAB"]);
-        private readonly bool _swapXY = bool.Parse(ConfigurationManager.AppSettings["SwapXY"]);
-        private readonly bool _useFilteredIMU = bool.Parse(ConfigurationManager.AppSettings["UseFilteredIMU"]);
-        private readonly DebugType _debugType = (DebugType)int.Parse(ConfigurationManager.AppSettings["DebugType"]);
 
         private Vector3 _accG = Vector3.Zero;
         public bool ActiveGyro;
@@ -294,17 +259,22 @@ namespace BetterJoy
         )
         {
             _form = form;
+
+            Config = new(_form);
+            Config.Update();
+
             SerialNumber = serialNum;
             SerialOrMac = serialNum;
             _handle = handle;
             _IMUEnabled = imu;
             _doLocalize = localize;
-            _rumbleObj = new Rumble([LowFreq, HighFreq, 0]);
+            _rumbleObj = new Rumble([Config.LowFreq, Config.HighFreq, 0]);
             for (var i = 0; i < _buttonsDownTimestamp.Length; i++)
             {
                 _buttonsDownTimestamp[i] = -1;
             }
 
+            _AHRS = new MadgwickAHRS(0.005f, Config.AHRSBeta);
 
             PadId = id;
 
@@ -315,23 +285,12 @@ namespace BetterJoy
             _CommandLength = isUSB ? 64 : 49;
             _MixedComsLength = Math.Max(ReportLength, _CommandLength);
 
-            if (ShowAsXInput)
-            {
-                OutXbox = new OutputControllerXbox360();
-                if (ToRumble)
-                {
-                    OutXbox.FeedbackReceived += ReceiveRumble;
-                }
-            }
 
-            if (ShowAsDs4)
-            {
-                OutDs4 = new OutputControllerDualShock4();
-                if (ToRumble)
-                {
-                    OutDs4.FeedbackReceived += Ds4_FeedbackReceived;
-                }
-            }
+            OutXbox = new OutputControllerXbox360();
+            OutXbox.FeedbackReceived += ReceiveRumble;
+
+            OutDs4 = new OutputControllerDualShock4();
+            OutDs4.FeedbackReceived += Ds4_FeedbackReceived;
         }
 
         public bool IsPro => Type is ControllerType.Pro or ControllerType.SNES;
@@ -387,11 +346,11 @@ namespace BetterJoy
 
         public void GetActiveSticksData()
         {
-            _activeStick1Deadzone = DefaultDeadzone;
-            _activeStick2Deadzone = DefaultDeadzone;
+            _activeStick1Deadzone = Config.DefaultDeadzone;
+            _activeStick2Deadzone = Config.DefaultDeadzone;
 
-            _activeStick1Range = DefaultRange;
-            _activeStick2Range = DefaultRange;
+            _activeStick1Range = Config.DefaultRange;
+            _activeStick2Range = Config.DefaultRange;
 
             var activeSticksData = _form.ActiveCaliSticksData(SerialOrMac);
             if (activeSticksData != null)
@@ -408,23 +367,33 @@ namespace BetterJoy
 
         public void ReceiveRumble(Xbox360FeedbackReceivedEventArgs e)
         {
+            if (!Config.EnableRumble)
+            {
+                return;
+            }
+
             DebugPrint("Rumble data Received: XInput", DebugType.Rumble);
-            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
+            SetRumble(Config.LowFreq, Config.HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
 
             if (IsJoined)
             {
-                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
+                Other.SetRumble(Config.LowFreq, Config.HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
             }
         }
 
         public void Ds4_FeedbackReceived(DualShock4FeedbackReceivedEventArgs e)
         {
+            if (!Config.EnableRumble)
+            {
+                return;
+            }
+
             DebugPrint("Rumble data Received: DS4", DebugType.Rumble);
-            SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
+            SetRumble(Config.LowFreq, Config.HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
 
             if (IsJoined)
             {
-                Other.SetRumble(LowFreq, HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
+                Other.SetRumble(Config.LowFreq, Config.HighFreq, Math.Max(e.LargeMotor, e.SmallMotor) / 255f);
             }
         }
 
@@ -435,12 +404,12 @@ namespace BetterJoy
 
         public void DebugPrint(string message, DebugType type)
         {
-            if (_debugType == DebugType.None)
+            if (Config.DebugType == DebugType.None)
             {
                 return;
             }
 
-            if (type == DebugType.All || type == _debugType || _debugType == DebugType.All)
+            if (type == DebugType.All || type == Config.DebugType || Config.DebugType == DebugType.All)
             {
                 Log(message);
             }
@@ -795,18 +764,21 @@ namespace BetterJoy
 
         public void ConnectViGEm()
         {
-            OutXbox?.Connect();
-            OutDs4?.Connect();
+            if (Config.ShowAsXInput)
+            {
+                OutXbox.Connect();
+            }
+            
+            if (Config.ShowAsDs4)
+            {
+                OutDs4.Connect();
+            }
         }
 
         public void DisconnectViGEm()
         {
-            try
-            {
-                OutXbox?.Disconnect();
-                OutDs4?.Disconnect();
-            }
-            catch { } // nothing we can do, might not be connected in the first place
+            OutXbox.Disconnect();
+            OutDs4.Disconnect();
         }
 
         private void UpdateInput()
@@ -833,8 +805,8 @@ namespace BetterJoy
                     xbox = ref Other.OutXbox;
                 }
 
-                ds4?.UpdateInput(MapToDualShock4Input(this));
-                xbox?.UpdateInput(MapToXbox360Input(this));
+                ds4.UpdateInput(MapToDualShock4Input(this));
+                xbox.UpdateInput(MapToXbox360Input(this));
             }
             catch { } // ignore
             finally
@@ -938,13 +910,13 @@ namespace BetterJoy
 
         private void DetectShake()
         {
-            if (ShakeInputEnabled)
+            if (Config.ShakeInputEnabled)
             {
                 var currentShakeTime = _shakeTimer.ElapsedMilliseconds;
 
                 // Shake detection logic
-                var isShaking = GetAccel().LengthSquared() >= ShakeSensitivity;
-                if (isShaking && (currentShakeTime >= _shakedTime + ShakeDelay || _shakedTime == 0))
+                var isShaking = GetAccel().LengthSquared() >= Config.ShakeSensitivity;
+                if (isShaking && (currentShakeTime >= _shakedTime + Config.ShakeDelay || _shakedTime == 0))
                 {
                     _shakedTime = currentShakeTime;
                     _hasShaked = true;
@@ -999,7 +971,7 @@ namespace BetterJoy
                 }
                 else
                 {
-                    if (_dragToggle)
+                    if (Config.DragToggle)
                     {
                         if (!up)
                         {
@@ -1185,7 +1157,7 @@ namespace BetterJoy
             var powerOffButton = (int)(IsPro || !IsLeft || IsJoined ? Button.Home : Button.Capture);
 
             var timestampNow = Stopwatch.GetTimestamp();
-            if (_homeLongPowerOff && _buttons[powerOffButton] && !IsUSB)
+            if (Config.HomeLongPowerOff && _buttons[powerOffButton] && !IsUSB)
             {
                 var powerOffPressedDurationMs = (timestampNow - _buttonsDownTimestamp[powerOffButton]) / 10000;
                 if (powerOffPressedDurationMs > 2000)
@@ -1201,7 +1173,7 @@ namespace BetterJoy
 
             if (IsJoycon && !_calibrateSticks && !_calibrateIMU)
             {
-                if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick] && _lastDoubleClick != -1)
+                if (Config.ChangeOrientationDoubleClick && _buttonsDown[(int)Button.Stick] && _lastDoubleClick != -1)
                 {
                     if (_buttonsDownTimestamp[(int)Button.Stick] - _lastDoubleClick < 3000000)
                     {
@@ -1213,16 +1185,16 @@ namespace BetterJoy
 
                     _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                 }
-                else if (_changeOrientationDoubleClick && _buttonsDown[(int)Button.Stick])
+                else if (Config.ChangeOrientationDoubleClick && _buttonsDown[(int)Button.Stick])
                 {
                     _lastDoubleClick = _buttonsDownTimestamp[(int)Button.Stick];
                 }
             }
 
-            if (_powerOffInactivityMins > 0 && !IsUSB)
+            if (Config.PowerOffInactivityMins > 0 && !IsUSB)
             {
                 var timeSinceActivityMs = (timestampNow - _timestampActivity) / 10000;
-                if (timeSinceActivityMs > _powerOffInactivityMins * 60 * 1000)
+                if (timeSinceActivityMs > Config.PowerOffInactivityMins * 60 * 1000)
                 {
                     if (Other != null)
                     {
@@ -1241,7 +1213,7 @@ namespace BetterJoy
             _AHRS.GetEulerAngles(_curRotation);
             float dt = _avgReceiveDeltaMs.GetAverage() / 1000;
 
-            if (_gyroAnalogSliders && (Other != null || IsPro))
+            if (Config.GyroAnalogSliders && (Other != null || IsPro))
             {
                 var leftT = IsLeft ? Button.Shoulder2 : Button.Shoulder22;
                 var rightT = IsLeft ? Button.Shoulder22 : Button.Shoulder2;
@@ -1249,15 +1221,15 @@ namespace BetterJoy
                 var right = !IsLeft || IsPro ? this : Other;
 
                 int ldy, rdy;
-                if (_useFilteredIMU)
+                if (Config.UseFilteredIMU)
                 {
-                    ldy = (int)(_gyroAnalogSensitivity * (left._curRotation[0] - left._curRotation[3]));
-                    rdy = (int)(_gyroAnalogSensitivity * (right._curRotation[0] - right._curRotation[3]));
+                    ldy = (int)(Config.GyroAnalogSensitivity * (left._curRotation[0] - left._curRotation[3]));
+                    rdy = (int)(Config.GyroAnalogSensitivity * (right._curRotation[0] - right._curRotation[3]));
                 }
                 else
                 {
-                    ldy = (int)(_gyroAnalogSensitivity * (left._gyrG.Y * dt));
-                    rdy = (int)(_gyroAnalogSensitivity * (right._gyrG.Y * dt));
+                    ldy = (int)(Config.GyroAnalogSensitivity * (left._gyrG.Y * dt));
+                    rdy = (int)(Config.GyroAnalogSensitivity * (right._gyrG.Y * dt));
                 }
 
                 if (_buttons[(int)leftT])
@@ -1283,7 +1255,7 @@ namespace BetterJoy
             if (resVal.StartsWith("joy_"))
             {
                 var i = int.Parse(resVal.AsSpan(4));
-                if (_gyroHoldToggle)
+                if (Config.GyroHoldToggle)
                 {
                     if (_buttonsDown[i] || (Other != null && Other._buttonsDown[i]))
                     {
@@ -1303,45 +1275,45 @@ namespace BetterJoy
                 }
             }
 
-            if (_extraGyroFeature.StartsWith("joy"))
+            if (Config.ExtraGyroFeature.StartsWith("joy"))
             {
                 if (Settings.Value("active_gyro") == "0" || ActiveGyro)
                 {
-                    var controlStick = _extraGyroFeature == "joy_left" ? _stick : _stick2;
+                    var controlStick = Config.ExtraGyroFeature == "joy_left" ? _stick : _stick2;
 
                     float dx, dy;
-                    if (_useFilteredIMU)
+                    if (Config.UseFilteredIMU)
                     {
-                        dx = _gyroStickSensitivityX * (_curRotation[1] - _curRotation[4]); // yaw
-                        dy = -(_gyroStickSensitivityY * (_curRotation[0] - _curRotation[3])); // pitch
+                        dx = Config.GyroStickSensitivityX * (_curRotation[1] - _curRotation[4]); // yaw
+                        dy = -(Config.GyroStickSensitivityY * (_curRotation[0] - _curRotation[3])); // pitch
                     }
                     else
                     {
-                        dx = _gyroStickSensitivityX * (_gyrG.Z * dt); // yaw
-                        dy = -(_gyroStickSensitivityY * (_gyrG.Y * dt)); // pitch
+                        dx = Config.GyroStickSensitivityX * (_gyrG.Z * dt); // yaw
+                        dy = -(Config.GyroStickSensitivityY * (_gyrG.Y * dt)); // pitch
                     }
 
-                    controlStick[0] = Math.Clamp(controlStick[0] / _gyroStickReduction + dx, -1.0f, 1.0f);
-                    controlStick[1] = Math.Clamp(controlStick[1] / _gyroStickReduction + dy, -1.0f, 1.0f);
+                    controlStick[0] = Math.Clamp(controlStick[0] / Config.GyroStickReduction + dx, -1.0f, 1.0f);
+                    controlStick[1] = Math.Clamp(controlStick[1] / Config.GyroStickReduction + dy, -1.0f, 1.0f);
                 }
             }
-            else if (_extraGyroFeature == "mouse" &&
-                     (IsPro || Other == null || (Other != null && (_gyroMouseLeftHanded ? IsLeft : !IsLeft))))
+            else if (Config.ExtraGyroFeature == "mouse" &&
+                     (IsPro || Other == null || (Other != null && (Config.GyroMouseLeftHanded ? IsLeft : !IsLeft))))
             {
                 // gyro data is in degrees/s
                 if (Settings.Value("active_gyro") == "0" || ActiveGyro)
                 {
                     int dx, dy;
 
-                    if (_useFilteredIMU)
+                    if (Config.UseFilteredIMU)
                     {
-                        dx = (int)(_gyroMouseSensitivityX * (_curRotation[1] - _curRotation[4])); // yaw
-                        dy = (int)-(_gyroMouseSensitivityY * (_curRotation[0] - _curRotation[3])); // pitch
+                        dx = (int)(Config.GyroMouseSensitivityX * (_curRotation[1] - _curRotation[4])); // yaw
+                        dy = (int)-(Config.GyroMouseSensitivityY * (_curRotation[0] - _curRotation[3])); // pitch
                     }
                     else
                     {
-                        dx = (int)(_gyroMouseSensitivityX * (_gyrG.Z * dt));
-                        dy = (int)-(_gyroMouseSensitivityY * (_gyrG.Y * dt));
+                        dx = (int)(Config.GyroMouseSensitivityX * (_gyrG.Z * dt));
+                        dy = (int)-(Config.GyroMouseSensitivityY * (_gyrG.Y * dt));
                     }
 
                     WindowsInput.Simulate.Events().MoveBy(dx, dy).Invoke();
@@ -1402,9 +1374,9 @@ namespace BetterJoy
 
             while (!_stopPolling && State > Status.Dropped)
             {
-                if (HomeLEDOn && (timeSinceHomeLight.ElapsedMilliseconds > sendHomeLightIntervalMs || !timeSinceHomeLight.IsRunning))
+                if (Config.HomeLEDOn && (timeSinceHomeLight.ElapsedMilliseconds > sendHomeLightIntervalMs || !timeSinceHomeLight.IsRunning))
                 {
-                    SetHomeLight(HomeLEDOn);
+                    SetHomeLight(Config.HomeLEDOn);
                     timeSinceHomeLight.Restart();
                 }
 
@@ -1969,7 +1941,7 @@ namespace BetterJoy
                 normalizedX *= scale;
                 normalizedY *= scale;
 
-                if (!SticksSquared || normalizedX == 0f || normalizedY == 0f)
+                if (!Config.SticksSquared || normalizedX == 0f || normalizedY == 0f)
                 {
 				    stick[0] = normalizedX;
 				    stick[1] = normalizedY;
@@ -2110,9 +2082,14 @@ namespace BetterJoy
             return (float)range / 0xFFF;
         }
 
+        private bool CalibrationDataSupported()
+        {
+            return !IsSNES && !IsThirdParty;
+        }
+
         private bool DumpCalibrationData()
         {
-            if (IsSNES || IsThirdParty)
+            if (!CalibrationDataSupported())
             {
                 // Use default joycon values for sensors
                 Array.Fill(_accSensiti, (short)16384);
@@ -2124,11 +2101,11 @@ namespace BetterJoy
                 Array.Fill(_stickCal, (ushort)2048);
                 Array.Fill(_stick2Cal, (ushort)2048);
 
-                _deadzone = DefaultDeadzone;
-                _deadzone2 = DefaultDeadzone;
+                _deadzone = Config.DefaultDeadzone;
+                _deadzone2 = Config.DefaultDeadzone;
 
-                _range = DefaultRange;
-                _range2 = DefaultRange;
+                _range = Config.DefaultRange;
+                _range2 = Config.DefaultRange;
 
                 _DumpedCalibration = false;
 
@@ -2313,6 +2290,11 @@ namespace BetterJoy
                 GetActiveIMUData();
                 GetActiveSticksData();
             }
+            else
+            {
+                _IMUCalibrated = false;
+                _SticksCalibrated = false;
+            }
             
             var calibrationType = _SticksCalibrated ? "user" : _DumpedCalibration ? "controller" : "default";
             Log($"Using {calibrationType} sticks calibration.");
@@ -2356,6 +2338,10 @@ namespace BetterJoy
             {
                 length = Read(response, 100);
                 responseFound = length > 1 && response[0] == 0x81 && response[1] == command;
+                if (!responseFound && length > 0)
+                {
+                    PrintArray<byte>(response, DebugType.Test, length);
+                }
                 ++tries;
             } while (tries < 10 && !responseFound);
 
@@ -2414,7 +2400,7 @@ namespace BetterJoy
             string format = "{0:S}"
         )
         {
-            if (d != _debugType && _debugType != DebugType.All)
+            if (d != Config.DebugType && Config.DebugType != DebugType.All)
             {
                 return;
             }
@@ -2492,14 +2478,14 @@ namespace BetterJoy
         {
             var output = new OutputControllerXbox360InputState();
 
-            var swapAB = input._swapAB;
-            var swapXY = input._swapXY;
+            var swapAB = input.Config.SwapAB;
+            var swapXY = input.Config.SwapXY;
 
             var isPro = input.IsPro;
             var isLeft = input.IsLeft;
             var isSNES = input.IsSNES;
             var other = input.Other;
-            var gyroAnalogSliders = input._gyroAnalogSliders;
+            var gyroAnalogSliders = input.Config.GyroAnalogSliders;
 
             var buttons = input._buttonsRemapped;
             var stick = input._stick;
@@ -2639,14 +2625,14 @@ namespace BetterJoy
         {
             var output = new OutputControllerDualShock4InputState();
 
-            var swapAB = input._swapAB;
-            var swapXY = input._swapXY;
+            var swapAB = input.Config.SwapAB;
+            var swapXY = input.Config.SwapXY;
 
             var isPro = input.IsPro;
             var isLeft = input.IsLeft;
             var isSNES = input.IsSNES;
             var other = input.Other;
-            var gyroAnalogSliders = input._gyroAnalogSliders;
+            var gyroAnalogSliders = input.Config.GyroAnalogSliders;
 
             var buttons = input._buttonsRemapped;
             var stick = input._stick;
@@ -2831,6 +2817,64 @@ namespace BetterJoy
             _form.AppendTextBox($"[P{PadId + 1}] {message}");
         }
 
+        public void ApplyConfig()
+        {
+            var oldConfig = Config.Clone();
+            Config.Update();
+
+            if (oldConfig.ShowAsXInput != Config.ShowAsXInput)
+            {
+                if (Config.ShowAsXInput)
+                {
+                    OutXbox.Connect();
+                }
+                else
+                {
+                    OutXbox.Disconnect();
+                }
+            }
+
+            if (oldConfig.ShowAsDs4 != Config.ShowAsDs4)
+            {
+                if (Config.ShowAsDs4)
+                {
+                    OutDs4.Connect();
+                }
+                else
+                {
+                    OutDs4.Disconnect();
+                }
+            }
+
+            if (oldConfig.HomeLEDOn != Config.HomeLEDOn)
+            {
+                SetHomeLight(Config.HomeLEDOn);
+            }
+
+            if (oldConfig.DefaultDeadzone != Config.DefaultDeadzone)
+            {
+                if (!CalibrationDataSupported())
+                {
+                    _deadzone = Config.DefaultDeadzone;
+                    _deadzone2 = Config.DefaultDeadzone;
+                }
+
+                _activeStick1Deadzone = Config.DefaultDeadzone;
+                _activeStick2Deadzone = Config.DefaultDeadzone;
+            }
+
+            if (oldConfig.DefaultRange != Config.DefaultRange)
+            {
+                if (!CalibrationDataSupported())
+                {
+                    _range = Config.DefaultRange;
+                    _range2 = Config.DefaultRange;
+                }
+
+                _activeStick1Range = Config.DefaultRange;
+                _activeStick2Range = Config.DefaultRange;
+            }
+        }
         private struct Rumble
         {
             private readonly Queue<float[]> _queue;

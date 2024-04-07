@@ -146,7 +146,12 @@ namespace BetterJoy.Controller
         public void Disconnect()
         {
             _connected = false;
-            _xboxController?.Disconnect();
+
+            try
+            {
+                _xboxController?.Disconnect();
+            }
+            catch { } // nothing we can do, might not be connected in the first place
         }
 
         private void DoUpdateInput(OutputControllerXbox360InputState newState)

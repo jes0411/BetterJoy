@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO.Hashing;
 using System.Linq;
 using System.Net;
@@ -366,12 +365,6 @@ namespace BetterJoy
                 return;
             }
 
-            if (!bool.Parse(ConfigurationManager.AppSettings["MotionServer"]))
-            {
-                _form.AppendTextBox("Motion server is OFF.");
-                return;
-            }
-
             _udpSock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
             try
@@ -383,7 +376,7 @@ namespace BetterJoy
                 _udpSock.Close();
 
                 _form.AppendTextBox(
-                    $"Could not start server. Make sure that no other applications using the port {port} are running."
+                    $"Could not start motion server. Make sure that no other applications using the port {port} are running."
                 );
                 return;
             }
@@ -391,9 +384,6 @@ namespace BetterJoy
             var randomBuf = new byte[4];
             new Random().NextBytes(randomBuf);
             _serverId = BitConverter.ToUInt32(randomBuf, 0);
-
-            _running = true;
-            _form.AppendTextBox($"Starting server on {ip}:{port}.");
 
             _receiveTask = Task.Run(
                 async () =>
@@ -405,6 +395,9 @@ namespace BetterJoy
                     catch (OperationCanceledException) when (_ctsTransfers.IsCancellationRequested) { }
                 }
             );
+
+            _running = true;
+            _form.AppendTextBox($"Motion server started on {ip}:{port}.");
         }
 
         public async Task Stop()
@@ -419,6 +412,8 @@ namespace BetterJoy
             _udpSock.Close();
 
             await _receiveTask;
+
+            _form.AppendTextBox($"Motion server stopped.");
         }
 
         public void Dispose()
