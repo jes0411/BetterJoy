@@ -502,13 +502,10 @@ namespace BetterJoy
         {
             if (IsUSB)
             {
-                Span<byte> buf = stackalloc byte[_MixedComsLength];
+                Span<byte> buf = stackalloc byte[ReportLength];
 
                 // Get MAC
-                buf[0] = 0x80;
-                buf[1] = 0x01;
-                Write(buf);
-                if (ReadUSBCheck(0x1, buf) < 10)
+                if (USBCommandCheck(0x01, buf) < 10)
                 {
                     // can occur when USB connection isn't closed properly
                     throw new Exception("reset mac");
@@ -538,35 +535,29 @@ namespace BetterJoy
 
         private void USBPairing()
         {
-            Span<byte> buf = stackalloc byte[_MixedComsLength];
-
-            buf[0] = 0x80;
-            buf[1] = 0x02; // Handshake
-            Write(buf);
-            if (ReadUSBCheck(0x02, buf) == 0)
+            // Handshake
+            if (USBCommandCheck(0x02) == 0)
             {
                 throw new Exception("reset handshake");
             }
 
-            buf[0] = 0x80;
-            buf[1] = 0x03; // 3Mbit baud rate
-            Write(buf);
-            if (ReadUSBCheck(0x03, buf) == 0)
+            // 3Mbit baud rate
+            if (USBCommandCheck(0x03) == 0)
             {
                 throw new Exception("reset baud rate");
             }
 
-            buf[0] = 0x80;
-            buf[1] = 0x02; // Handshake at new baud rate
-            Write(buf);
-            if (ReadUSBCheck(0x02, buf) == 0)
+            // Handshake at new baud rate
+            if (USBCommandCheck(0x02) == 0)
             {
                 throw new Exception("reset new handshake");
             }
 
-            buf[0] = 0x80;
-            buf[1] = 0x04; // Prevent HID timeout
-            Write(buf); // does not send a response
+            // Prevent HID timeout
+            if (!USBCommand(0x04)) // does not send a response
+            {
+                throw new Exception("reset new hid timeout");
+            }
         }
 
         private void BTManualPairing()
@@ -634,7 +625,7 @@ namespace BetterJoy
                 0x11, // transition multiplier | duration multiplier, both use the base duration
                 0xFF, // not used
             ];
-            Subcommand(0x38, buf); // don't wait for reply
+            Subcommand(0x38, buf); // don't wait for response
         }
 
         private void SetHCIState(byte state)
@@ -652,9 +643,9 @@ namespace BetterJoy
             SubcommandCheck(0x48, [enable ? (byte)0x01 : (byte)0x00]);
         }
 
-        private void SetReportMode(ReportMode reportMode, bool checkReply = true)
+        private void SetReportMode(ReportMode reportMode, bool checkResponse = true)
         {
-            if (checkReply)
+            if (checkResponse)
             {
                 SubcommandCheck(0x03, [(byte)reportMode]);
                 return;
@@ -669,18 +660,9 @@ namespace BetterJoy
                 return;
             }
 
-            Span<byte> buf = stackalloc byte[_MixedComsLength];
-            buf.Clear();
-
-            buf[0] = 0x80;
-            buf[1] = 0x05; // Allow device to talk to BT again
-            Write(buf);
-            ReadUSBCheck(0x05, buf);
-
-            buf[0] = 0x80;
-            buf[1] = 0x06; // Allow device to talk to BT again
-            Write(buf);
-            ReadUSBCheck(0x06, buf);
+            // Allow device to talk to BT again
+            USBCommand(0x05);
+            USBCommand(0x06);
         }
 
         public void PowerOff()
@@ -2019,12 +2001,12 @@ namespace BetterJoy
 
             if (print)
             {
-                PrintArray<byte>(buf, DebugType.Comms, bufParameters.Length, 11, $"Subcommand 0x{sc:X2} sent." + " Data: 0x{0:S}");
+                PrintArray<byte>(buf, DebugType.Comms, bufParameters.Length, 11, $"Subcommand {sc:X2} sent." + " Data: {0:S}");
             }
 
-            Write(buf);
+            int length = Write(buf);
 
-            return true;
+            return length > 0;
         }
 
         private int SubcommandCheck(byte sc, ReadOnlySpan<byte> bufParameters, bool print = true)
@@ -2039,18 +2021,25 @@ namespace BetterJoy
             bool sent = Subcommand(sc, bufParameters, print);
             if (!sent)
             {
+                DebugPrint($"Subcommand write error.", DebugType.Comms);
                 return 0;
             }
 
-            var tries = 0;
-            var length = 0;
-            var responseFound = false;
+            int tries = 0;
+            int length;
+            bool responseFound;
             do
             {
                 length = Read(response, 100); // don't set the timeout lower than 100 or might not always work
                 responseFound = length >= 20 && response[0] == 0x21 && response[14] == sc;
+                
+                if (length < 0)
+                {
+                    DebugPrint($"Subcommand read error.", DebugType.Comms);
+                }
+
                 tries++;
-            } while (tries < 10 && !responseFound);
+            } while (tries < 10 && !responseFound && length >= 0);
 
             if (!responseFound)
             {
@@ -2065,7 +2054,7 @@ namespace BetterJoy
                     DebugType.Comms,
                     length - 1,
                     1,
-                    $"Response ID 0x{response[0]:X2}." + " Data: 0x{0:S}"
+                    $"Response ID {response[0]:X2}." + " Data: {0:S}"
                 );
             }
 
@@ -2328,26 +2317,76 @@ namespace BetterJoy
             return length;
         }
 
-        private int ReadUSBCheck(byte command, Span<byte> response)
+        private bool USBCommand(byte command, bool print = true)
         {
+            if (_handle == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            Span<byte> buf = stackalloc byte[_CommandLength];
+            buf.Clear();
+
+            buf[0] = 0x80;
+            buf[1] = command;
+
+            if (print)
+            {
+                DebugPrint($"USB command {command:X2} sent.", DebugType.Comms);
+            }
+
+            int length = Write(buf);
+
+            return length > 0;
+        }
+
+        private int USBCommandCheck(byte command, bool print = true)
+        {
+            Span<byte> response = stackalloc byte[ReportLength];
+
+            return USBCommandCheck(command, response, print);
+        }
+
+        private int USBCommandCheck(byte command, Span<byte> response, bool print = true)
+        {
+            if (!USBCommand(command, print))
+            {
+                DebugPrint("USB command write error.", DebugType.Comms);
+                return 0;
+            }
+
+            int tries = 0;
             int length;
             bool responseFound;
-            var tries = 0;
 
             do
             {
                 length = Read(response, 100);
                 responseFound = length > 1 && response[0] == 0x81 && response[1] == command;
-                if (!responseFound && length > 0)
+
+                if (length < 0)
                 {
-                    PrintArray<byte>(response, DebugType.Test, length);
+                    DebugPrint($"USB command read error.", DebugType.Comms);
                 }
+
                 ++tries;
-            } while (tries < 10 && !responseFound);
+            } while (tries < 10 && !responseFound && length >= 0);
 
             if (!responseFound)
             {
-                length = 0;
+                DebugPrint("No USB response.", DebugType.Comms);
+                return 0;
+            }
+
+            if (print)
+            {
+                PrintArray<byte>(
+                    response,
+                    DebugType.Comms,
+                    length - 1,
+                    1,
+                    $"USB response ID {response[0]:X2}." + " Data: {0:S}"
+                );
             }
 
             return length;
