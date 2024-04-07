@@ -831,32 +831,36 @@ namespace BetterJoy
             }
         }
 
+        private static bool HandleMouseAction(string settingKey, ButtonCode? key)
+        {
+            var resVal = Settings.Value(settingKey);
+            return resVal.StartsWith("mse_") && (int)key == int.Parse(resVal.AsSpan(4));
+        }
+
         private static void GlobalMouseEvent(object sender, EventSourceEventArgs<MouseEvent> e)
         {
             ButtonCode? button = e.Data.ButtonDown?.Button;
 
             if (button != null)
             {
-                var resVal = Settings.Value("reset_mouse");
-                if (resVal.StartsWith("mse_"))
+                if (HandleMouseAction("reset_mouse", button))
                 {
-                    if ((int)button == int.Parse(resVal.AsSpan(4)))
-                    {
-                        Simulate.Events()
-                                .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
-                                .Invoke();
-                    }
+                    Simulate.Events()
+                            .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
+                            .Invoke();
                 }
 
-                resVal = Settings.Value("active_gyro");
-                if (resVal.StartsWith("mse_"))
+                bool activeGyro = HandleMouseAction("active_gyro", button);
+                bool swapAB = HandleMouseAction("swap_ab", button);
+                bool swapXY = HandleMouseAction("swap_xy", button);
+
+                if (activeGyro || swapAB || swapXY)
                 {
-                    if ((int)button == int.Parse(resVal.AsSpan(4)))
+                    foreach (var controller in Mgr.Controllers)
                     {
-                        foreach (var controller in Mgr.Controllers)
-                        {
-                            controller.ActiveGyro = true;
-                        }
+                        if (activeGyro) controller.ActiveGyro = true;
+                        if (swapAB) controller.Config.SwapAB = !controller.Config.SwapAB;
+                        if (swapXY) controller.Config.SwapXY = !controller.Config.SwapXY;
                     }
                 }
                 return;
@@ -866,18 +870,22 @@ namespace BetterJoy
 
             if (button != null)
             {
-                var resVal = Settings.Value("active_gyro");
-                if (resVal.StartsWith("mse_"))
+                bool activeGyro = HandleMouseAction("active_gyro", button);
+
+                if (activeGyro)
                 {
-                    if ((int)button == int.Parse(resVal.AsSpan(4)))
+                    foreach (var controller in Mgr.Controllers)
                     {
-                        foreach (var controller in Mgr.Controllers)
-                        {
-                            controller.ActiveGyro = false;
-                        }
+                        controller.ActiveGyro = false;
                     }
                 }
             }
+        }
+
+        private static bool HandleKeyAction(string settingKey, KeyCode? key)
+        {
+            var resVal = Settings.Value(settingKey);
+            return resVal.StartsWith("key_") && (int)key == int.Parse(resVal.AsSpan(4));
         }
 
         private static void GlobalKeyEvent(object sender, EventSourceEventArgs<KeyboardEvent> e)
@@ -886,26 +894,24 @@ namespace BetterJoy
 
             if (key != null)
             {
-                var resVal = Settings.Value("reset_mouse");
-                if (resVal.StartsWith("key_"))
+                if (HandleKeyAction("reset_mouse", key))
                 {
-                    if ((int)key == int.Parse(resVal.AsSpan(4)))
-                    {
-                        Simulate.Events()
-                                .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
-                                .Invoke();
-                    }
+                    Simulate.Events()
+                            .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
+                            .Invoke();
                 }
 
-                resVal = Settings.Value("active_gyro");
-                if (resVal.StartsWith("key_"))
+                bool activeGyro = HandleKeyAction("active_gyro", key);
+                bool swapAB = HandleKeyAction("swap_ab", key);
+                bool swapXY = HandleKeyAction("swap_xy", key);
+
+                if (activeGyro || swapAB || swapXY)
                 {
-                    if ((int)key == int.Parse(resVal.AsSpan(4)))
+                    foreach (var controller in Mgr.Controllers)
                     {
-                        foreach (var i in Mgr.Controllers)
-                        {
-                            i.ActiveGyro = true;
-                        }
+                        if (activeGyro) controller.ActiveGyro = true;
+                        if (swapAB) controller.Config.SwapAB = !controller.Config.SwapAB;
+                        if (swapXY) controller.Config.SwapXY = !controller.Config.SwapXY;
                     }
                 }
                 return;
@@ -915,15 +921,13 @@ namespace BetterJoy
 
             if (key != null)
             {
-                var resVal = Settings.Value("active_gyro");
-                if (resVal.StartsWith("key_"))
+                bool activeGyro = HandleKeyAction("active_gyro", key);
+
+                if (activeGyro)
                 {
-                    if ((int)key == int.Parse(resVal.AsSpan(4)))
+                    foreach (var controller in Mgr.Controllers)
                     {
-                        foreach (var i in Mgr.Controllers)
-                        {
-                            i.ActiveGyro = false;
-                        }
+                        controller.ActiveGyro = false;
                     }
                 }
             }

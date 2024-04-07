@@ -1134,6 +1134,28 @@ namespace BetterJoy
             }
         }
 
+        private static bool HandleJoyAction(string settingKey, out int button)
+        {
+            var resVal = Settings.Value(settingKey);
+            if (resVal.StartsWith("joy_") && int.TryParse(resVal.AsSpan(4), out button))
+            {
+                return true;
+            }
+
+            button = 0;
+            return false;
+        }
+
+        private bool IsButtonDown(int button)
+        {
+            return _buttonsDown[button] || (Other != null && Other._buttonsDown[button]);
+        }
+
+        private bool IsButtonUp(int button)
+        {
+            return _buttonsUp[button] || (Other != null && Other._buttonsUp[button]);
+        }
+
         private void DoThingsWithButtons()
         {
             var powerOffButton = (int)(IsPro || !IsLeft || IsJoined ? Button.Home : Button.Capture);
@@ -1233,28 +1255,36 @@ namespace BetterJoy
                 }
             }
 
-            var resVal = Settings.Value("active_gyro");
-            if (resVal.StartsWith("joy_"))
+            if (HandleJoyAction("active_gyro", out int button))
             {
-                var i = int.Parse(resVal.AsSpan(4));
                 if (Config.GyroHoldToggle)
                 {
-                    if (_buttonsDown[i] || (Other != null && Other._buttonsDown[i]))
+                    if (IsButtonDown(button))
                     {
                         ActiveGyro = true;
                     }
-                    else if (_buttonsUp[i] || (Other != null && Other._buttonsUp[i]))
+                    else if (IsButtonUp(button))
                     {
                         ActiveGyro = false;
                     }
                 }
                 else
                 {
-                    if (_buttonsDown[i] || (Other != null && Other._buttonsDown[i]))
+                    if (IsButtonDown(button))
                     {
                         ActiveGyro = !ActiveGyro;
                     }
                 }
+            }
+
+            if (HandleJoyAction("swap_ab", out button) && IsButtonDown(button))
+            {
+                Config.SwapAB = !Config.SwapAB;
+            }
+
+            if (HandleJoyAction("swap_xy", out button) && IsButtonDown(button))
+            {
+                Config.SwapXY = !Config.SwapXY;
             }
 
             if (Config.ExtraGyroFeature.StartsWith("joy"))
@@ -1302,19 +1332,14 @@ namespace BetterJoy
                 }
 
                 // reset mouse position to centre of primary monitor
-                resVal = Settings.Value("reset_mouse");
-                if (resVal.StartsWith("joy_"))
+                if (HandleJoyAction("reset_mouse", out button) && IsButtonDown(button))
                 {
-                    var i = int.Parse(resVal.AsSpan(4));
-                    if (_buttonsDown[i] || (Other != null && Other._buttonsDown[i]))
-                    {
-                        WindowsInput.Simulate.Events()
-                                    .MoveTo(
-                                        Screen.PrimaryScreen.Bounds.Width / 2,
-                                        Screen.PrimaryScreen.Bounds.Height / 2
-                                    )
-                                    .Invoke();
-                    }
+                    WindowsInput.Simulate.Events()
+                                .MoveTo(
+                                    Screen.PrimaryScreen.Bounds.Width / 2,
+                                    Screen.PrimaryScreen.Bounds.Height / 2
+                                )
+                                .Invoke();
                 }
             }
         }
@@ -2517,19 +2542,26 @@ namespace BetterJoy
         {
             var output = new OutputControllerXbox360InputState();
 
-            var swapAB = input.Config.SwapAB;
-            var swapXY = input.Config.SwapXY;
-
             var isPro = input.IsPro;
             var isLeft = input.IsLeft;
             var isSNES = input.IsSNES;
             var other = input.Other;
-            var gyroAnalogSliders = input.Config.GyroAnalogSliders;
 
             var buttons = input._buttonsRemapped;
             var stick = input._stick;
             var stick2 = input._stick2;
             var sliderVal = input._sliderVal;
+
+            var gyroAnalogSliders = input.Config.GyroAnalogSliders;
+            var swapAB = input.Config.SwapAB;
+            var swapXY = input.Config.SwapXY;
+
+            if (other != null && !isLeft)
+            {
+                gyroAnalogSliders = other.Config.GyroAnalogSliders;
+                swapAB = other.Config.SwapAB;
+                swapXY = other.Config.SwapXY;
+            }
 
             if (isPro)
             {
@@ -2664,19 +2696,26 @@ namespace BetterJoy
         {
             var output = new OutputControllerDualShock4InputState();
 
-            var swapAB = input.Config.SwapAB;
-            var swapXY = input.Config.SwapXY;
-
             var isPro = input.IsPro;
             var isLeft = input.IsLeft;
             var isSNES = input.IsSNES;
             var other = input.Other;
-            var gyroAnalogSliders = input.Config.GyroAnalogSliders;
 
             var buttons = input._buttonsRemapped;
             var stick = input._stick;
             var stick2 = input._stick2;
             var sliderVal = input._sliderVal;
+
+            var gyroAnalogSliders = input.Config.GyroAnalogSliders;
+            var swapAB = input.Config.SwapAB;
+            var swapXY = input.Config.SwapXY;
+
+            if (other != null && !isLeft)
+            {
+                gyroAnalogSliders = other.Config.GyroAnalogSliders;
+                swapAB = other.Config.SwapAB;
+                swapXY = other.Config.SwapXY;
+            }
 
             if (isPro)
             {

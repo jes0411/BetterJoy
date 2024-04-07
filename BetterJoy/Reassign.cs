@@ -29,7 +29,7 @@ namespace BetterJoy
             foreach (var c in new[]
                      {
                          btn_capture, btn_home, btn_sl_l, btn_sl_r, btn_sr_l, btn_sr_r, btn_shake, btn_reset_mouse,
-                         btn_active_gyro
+                         btn_active_gyro, btn_swap_ab, btn_swap_xy
                      })
             {
                 c.Tag = c.Name.Substring(4);
@@ -40,18 +40,7 @@ namespace BetterJoy
                     "Left-click to detect input.\r\nMiddle-click to clear to default.\r\nRight-click to see more options."
                 );
                 c.MouseDown += Remap;
-                
-                if (c == btn_shake ||
-                    c == btn_reset_mouse ||
-                    c == btn_active_gyro)
-                {
-                    c.Menu = menuJoyButtonsNoDisable;
-                }
-                else
-                {
-                    c.Menu = menuJoyButtons;
-                }
-
+                c.Menu = (c.Parent == gb_inputs) ? menuJoyButtons : menuJoyButtonsNoDisable;
                 c.TextAlign = ContentAlignment.MiddleLeft;
             }
         }
@@ -176,7 +165,7 @@ namespace BetterJoy
             Settings.Save();
         }
 
-        private void btn_close_Click(object sender, EventArgs e)
+        private void btn_ok_Click(object sender, EventArgs e)
         {
             btn_apply_Click(sender, e);
             Close();
@@ -190,7 +179,7 @@ namespace BetterJoy
             {
                 var name = Enum.GetName(typeof(ButtonAction), tag);
                 var temp = new ToolStripMenuItem(name) { Name = name };
-                temp.Tag = (ButtonAction) tag;
+                temp.Tag = (ButtonAction)tag;
                 menuJoyButtons.Items.Add(temp);
             }
 
@@ -198,7 +187,7 @@ namespace BetterJoy
             {
                 var name = Enum.GetName(typeof(Joycon.Button), tag);
                 var temp = new ToolStripMenuItem(name) { Name = name };
-                temp.Tag = (Joycon.Button) tag;
+                temp.Tag = (Joycon.Button)tag;
                 menuJoyButtons.Items.Add(temp);
             }
 

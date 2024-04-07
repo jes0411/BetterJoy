@@ -7,7 +7,7 @@ namespace BetterJoy
 {
     public static class Settings
     {
-        private const int SettingsNum = 11; // currently - ProgressiveScan, StartInTray + special buttons
+        private const int SettingsNum = 13; // currently - ProgressiveScan, StartInTray + special buttons
 
         // stores dynamic configuration, including
         private static readonly string Path;
@@ -59,7 +59,7 @@ namespace BetterJoy
             foreach (var s in new[]
                      {
                          "ProgressiveScan", "StartInTray", "capture", "home", "sl_l", "sl_r", "sr_l", "sr_r",
-                         "shake", "reset_mouse", "active_gyro"
+                         "shake", "reset_mouse", "active_gyro", "swap_ab", "swap_xy"
                      })
             {
                 Variables[s] = GetDefaultValue(s);
