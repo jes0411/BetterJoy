@@ -2952,6 +2952,11 @@ namespace BetterJoy
                 _activeStick1Range = Config.DefaultRange;
                 _activeStick2Range = Config.DefaultRange;
             }
+
+            if (oldConfig.AllowCalibration != Config.AllowCalibration)
+            {
+                SetCalibration(Config.AllowCalibration);
+            }
         }
         private struct Rumble
         {

@@ -89,6 +89,7 @@ namespace BetterJoy
         public DebugType DebugType;
         public bool DoNotRejoin;
         public bool AutoPowerOff;
+        public bool AllowCalibration;
 
         public ControllerConfig(MainForm form) : base(form) { }
 
@@ -127,6 +128,7 @@ namespace BetterJoy
             DebugType = config.DebugType;
             DoNotRejoin = config.DoNotRejoin;
             AutoPowerOff = config.AutoPowerOff;
+            AllowCalibration = config.AllowCalibration;
         }
 
         public override void Update()
@@ -164,6 +166,7 @@ namespace BetterJoy
             UpdateSetting("DebugType", ref DebugType, DebugType.None);
             UpdateSetting("DoNotRejoinJoycons", ref DoNotRejoin, false);
             UpdateSetting("AutoPowerOff", ref AutoPowerOff, false);
+            UpdateSetting("AllowCalibration", ref AllowCalibration, true);
         }
 
         public override ControllerConfig Clone()

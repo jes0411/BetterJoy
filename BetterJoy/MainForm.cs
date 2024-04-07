@@ -299,13 +299,26 @@ namespace BetterJoy
                 configFile.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
 
-                await Program.ApplyConfig();
+                await ApplyConfig();
                 AppendTextBox("Configuration applied.");
             }
             catch (ConfigurationErrorsException)
             {
                 AppendTextBox("Error writing app settings.");
             }
+        }
+
+        public async Task ApplyConfig()
+        {
+            var oldConfig = Config.Clone();
+            Config.Update();
+
+            if (oldConfig.AllowCalibration != Config.AllowCalibration)
+            {
+                btn_calibrate.Visible = Config.AllowCalibration;
+            }
+
+            await Program.ApplyConfig();
         }
 
         private void Restart()
@@ -344,7 +357,7 @@ namespace BetterJoy
                 configFile.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
 
-                await Program.ApplyConfig();
+                await ApplyConfig();
                 AppendTextBox("Configuration applied.");
             }
             catch (ConfigurationErrorsException)
