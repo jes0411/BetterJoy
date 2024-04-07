@@ -9,6 +9,7 @@ namespace BetterJoy
     public abstract class Config
     {
         protected MainForm _form;
+        public bool ShowErrors = true;
 
         protected Config(MainForm form)
         {
@@ -50,7 +51,10 @@ namespace BetterJoy
 
             setting = defaultValue;
 
-            _form.AppendTextBox($"Invalid value \"{value}\" for setting {key}! Using default value \"{defaultValue}\".");
+            if (ShowErrors)
+            {
+                _form.AppendTextBox($"Invalid value \"{value}\" for setting {key}! Using default value \"{defaultValue}\".");
+            }
         }
     }
 

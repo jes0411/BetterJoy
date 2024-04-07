@@ -621,12 +621,12 @@ namespace BetterJoy
             }
         }
 
-        public void ApplyConfig(Joycon controller)
+        public void ApplyConfig(Joycon controller, bool showErrors = true)
         {
             controller.HidapiLock.EnterReadLock();
             try
             {
-                controller.ApplyConfig();
+                controller.ApplyConfig(showErrors);
             }
             finally
             {
@@ -1081,9 +1081,11 @@ namespace BetterJoy
                 }
             }
 
+            bool showErrors = true;
             foreach (var controller in Mgr.Controllers)
             {
-                Mgr.ApplyConfig(controller);
+                Mgr.ApplyConfig(controller, showErrors);
+                showErrors = false; // only show parsing errors once
             }
         }
     }

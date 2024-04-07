@@ -2895,9 +2895,10 @@ namespace BetterJoy
             _form.AppendTextBox($"[P{PadId + 1}] {message}");
         }
 
-        public void ApplyConfig()
+        public void ApplyConfig(bool showErrors = true)
         {
             var oldConfig = Config.Clone();
+            Config.ShowErrors = showErrors;
             Config.Update();
 
             if (oldConfig.ShowAsXInput != Config.ShowAsXInput)
