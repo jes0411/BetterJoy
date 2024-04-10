@@ -511,7 +511,8 @@ namespace BetterJoy
                 SetLEDByPadID(controller);
                 SetLEDByPadID(otherController);
 
-                controller.DisconnectViGEm();
+                var rightController = controller.IsLeft ? otherController : controller;
+                rightController.DisconnectViGEm();
 
                 return true;
             }
