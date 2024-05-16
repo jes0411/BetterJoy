@@ -2,44 +2,53 @@
   <img src="title.png">
 </p>
 
-# BetterJoy v7.0 Edited
-Fork changes :
- - fix some bugs, crashes, controller connection/disconnect issues.
- - hidapi updated
- - added the calibration of the controller with the calibrate button (have to be enabled in the config).
- - Use HidHide instead of the outdated HIDGuardian
-I only tested the changes with the pro controller.
+# BetterJoy v8.4 LTS
+#### Fork changes
+ - fixed a good amount of bugs, crashes, controller connection/disconnection issues
+ - added the calibration of the controller with the calibrate button
+ - added a deadzone and a range setting
+ - updated to .NET 8
+ - updated hidapi and packages
+ - use HidHide instead of the outdated HIDGuardian
+ - instantly connect and disconnect
+ - other minor improvements
+
+I only tested the changes with the official pro controller and joycons as I don't have the other controllers to test.
+
+#### Description
 
 Allows the Nintendo Switch Pro Controller, Joycons, and Switch SNES controller to be used with [Cemu](http://cemu.info/) using [Cemuhook](https://sshnuke.net/cemuhook/), [Citra](https://citra-emu.org/), [Dolphin](https://dolphin-emu.org/), [Yuzu](https://yuzu-emu.org/), and system-wide with generic XInput support.
 
 It also allows using the gyro to control your mouse and remap the special buttons (SL, SR, Capture) to key bindings of your choice.
 
-If anyone would like to donate (for whatever reason), [you can do so here](https://www.paypal.me/DavidKhachaturov/5). 
+If anyone would like to donate to the original creator (for whatever reason), [you can do so here](https://www.paypal.me/DavidKhachaturov/5).
 
-#### Personal note
+#### Original creator note
 Thank you for using my software and all the constructive feedback I've been getting about it. I started writing this project a while back and have since then learnt a lot more about programming and software development in general. I don't have too much time to work on this project, but I will try to fix bugs when and if they arise. Thank you for your patience in that regard too!
 
 It's been quite a wild ride, with nearly **590k** (!!) official download on GitHub and probably many more through the nightlies. I think this project was responsible for both software jobs I landed so far, so I am quite proud of it.
 
 ### Screenshot
-![Example](https://user-images.githubusercontent.com/16619943/67919451-bf8e5680-fb76-11e9-995e-7193b87548e1.png)
+![Example](https://github.com/d3xMachina/BetterJoy/assets/16732772/2cb06404-5484-480b-a733-2db72fdf043d)
 
 # Downloads
-Go to the [Releases tab](https://github.com/Davidobot/BetterJoy/releases/)!
+Go to the [Releases tab](https://github.com/d3xMachina/BetterJoy/releases/)!
 
 # How to use
 1. Install drivers
     1. Read the READMEs (they're there for a reason!)
-    1. Run *Drivers/ViGEmBus_Setup_1.16.116.exe*
-    1. Restart your computer
-2. Run *BetterJoyForCemu.exe* 
+    2. Run *Drivers/ViGEmBus_1.22.0_x64_x86_arm64.exe*
+    3. Run *Drivers/HidHide_1.5.212_x64.exe* (optional but recommended to hide the default device)
+    4. Restart your computer
+2. Run *BetterJoy.exe*
     1. Run as Administrator if your keyboard/mouse button mappings don't work
 3. Connect your controllers.
-4. Start Cemu and ensure CemuHook has the controller selected.
+4. Start your game or emulator and configure your controller.
+5. If you use Cemu, ensure CemuHook has the controller selected.
     1. If using Joycons, CemuHook will detect two controllers - each will give all buttons, but choosing one over the other just chooses preference for which hand to use for gyro controls.
-5. Go into *Input Settings*, choose XInput as a source and assign buttons normally.
-    1. If you don't want to do this for some reason, just have one input profile set up with *Wii U Gamepad* as the controller and enable "Also use for buttons/axes" under *GamePad motion source*. **This is no longer required as of version 3**
-    2. Turn rumble up to 70-80% if you want rumble.
+    2. Go into *Input Settings*, choose XInput as a source and assign buttons normally.
+        1. If you don't want to do this for some reason, just have one input profile set up with *Wii U Gamepad* as the controller and enable "Also use for buttons/axes" under *GamePad motion source*. **This is no longer required as of version 3**
+        2. Turn rumble up to 70-80% if you want rumble.
 
 * As of version 3, you can use the pro controller and Joycons as normal xbox controllers on your PC - try it with Steam!
 
@@ -65,8 +74,8 @@ Check out the [wiki](https://github.com/Davidobot/BetterJoy/wiki)! There, you'll
 
 ## Visual Studio (IDE)
 
-1. If you didn't already, install **Visual Studio Community 2019** via
-   [the official guide](https://docs.microsoft.com/en-us/visualstudio/install/install-visual-studio?view=vs-2019).
+1. If you didn't already, install **Visual Studio Community 2022** via
+   [the official guide](https://docs.microsoft.com/en-us/visualstudio/install/install-visual-studio?view=vs-2022).
    When asked about the workloads, select **.NET Desktop Development**.
 2. Get the code project via Git or by using the *Download ZIP* button.
 3. Open Visual Studio Community and open the solution file (*BetterJoy.sln*).
@@ -76,7 +85,7 @@ Check out the [wiki](https://github.com/Davidobot/BetterJoy/wiki)! There, you'll
 
 ## Visual Studio Build Tools (CLI)
 1. Download **Visual Studio Build Tools** via
-   [the official link](https://visualstudio.microsoft.com/it/downloads/#build-tools-for-visual-studio-2019).
+   [the official link](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022).
 2. Install **NuGet** by following
    [the official guide](https://docs.microsoft.com/en-us/nuget/install-nuget-client-tools#nugetexe-cli).
    You should follow the section for ***nuget.exe***.
@@ -95,7 +104,7 @@ Check out the [wiki](https://github.com/Davidobot/BetterJoy/wiki)! There, you'll
 ## Binaries location
 The built binaries are located under
 
-*BetterJoyForCemu\bin\PLATFORM\CONFIGURATION*
+*BetterJoy\bin\PLATFORM\CONFIGURATION*
 
 where `PLATFORM` and `CONFIGURATION` are the one provided at build time. 
 
